@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getTasks, getUsers, getUsersByBranch, getUsersByDepartment } from "../../services/api";
+import {
+  getTasks,
+  getUsers,
+  getUsersByBranch,
+  getUsersByDepartment,
+} from "../../services/api";
 import { reviewTask } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -25,8 +30,9 @@ ChartJS.register(
   Filler,
 );
 
-const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5000/api")
-  .replace(/\/api\/?$/, "");
+const API_ORIGIN = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+).replace(/\/api\/?$/, "");
 
 // ==================== ANIMATIONS ====================
 const animations = `
@@ -537,7 +543,8 @@ const Dashboard = () => {
   // Lock filters for branch-head / department-head so UI matches access level.
   useEffect(() => {
     if (!user) return;
-    if (user.role === "branch-head" && user.branch) setSelectedBranch(user.branch);
+    if (user.role === "branch-head" && user.branch)
+      setSelectedBranch(user.branch);
     if (user.role === "department-head" && user.department)
       setSelectedDepartment(user.department);
   }, [user]);
@@ -1664,7 +1671,7 @@ const Dashboard = () => {
       {/* Branches */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
         <h2 className="font-semibold text-sm mb-4">📍 Branch Performance</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {branchStats.map((b, i) => (
             <BranchCard
               key={b.name}
