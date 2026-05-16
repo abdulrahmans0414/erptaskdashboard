@@ -120,7 +120,7 @@ const EmployeeProfile = () => {
   // Removed local showToast
 
   const loadData = async () => {
-    setLoading(true);
+    if (!employee) setLoading(true);
     try {
       setUserRole(currentUser?.role || null);
 

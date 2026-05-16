@@ -57,9 +57,9 @@ router.get('/stream', protect, async (req, res) => {
 
             const [tasks, userDoc] = await Promise.all([
                 Task.find(taskFilter)
-                    .select('title status priority dueDate createdAt updatedAt assignedTo department branch')
+                    .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
                     .sort({ updatedAt: -1 })
-                    .limit(500) 
+                    .limit(5000) // Restore full capacity for large teams
                     .lean(),
                 User.findById(req.user._id).select('-password').lean(),
             ]);

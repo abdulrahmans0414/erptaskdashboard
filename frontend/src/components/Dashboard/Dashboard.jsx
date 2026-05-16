@@ -587,7 +587,7 @@ const Dashboard = () => {
   // Local effect only loads employees (not handled by central hook)
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
+      if (allTasks.length === 0) setLoading(true);
       await loadEmployees();
       setLoading(false);
     };
