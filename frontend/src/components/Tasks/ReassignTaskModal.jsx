@@ -8,6 +8,8 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [reason, setReason] = useState("");
+  const [search, setSearch] = useState("");
+  const [showUsers, setShowUsers] = useState(false);
 
   useEffect(() => {
     if (isOpen && task) loadUsers();
@@ -79,18 +81,74 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
             <label className="block text-xs font-medium mb-1">
               New Assignee *
             </label>
-            <select
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-            >
-              <option value="">Select</option>
-              {users.map((u) => (
-                <option key={u._id} value={u._id}>
-                  {u.name} ({u.role})
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search by name or employee ID..."
+                  className="w-full pl-8 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
+                  value={search}
+                  onFocus={() => setShowUsers(true)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setShowUsers(true);
+                    if (selectedUser) setSelectedUser("");
+                  }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowUsers(!showUsers)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showUsers ? "▴" : "▾"}
+                </button>
+              </div>
+              
+              {showUsers && (
+                <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto border border-gray-100 rounded-xl divide-y bg-white shadow-xl origin-top">
+                  {users
+                    .filter(u => 
+                      !search || 
+                      u.name.toLowerCase().includes(search.toLowerCase()) ||
+                      u.employeeId?.toLowerCase().includes(search.toLowerCase())
+                    )
+                    .map((u) => (
+                      <div 
+                        key={u._id}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setSelectedUser(u._id);
+                          setSearch(u.name);
+                          setShowUsers(false);
+                        }}
+                        className={`p-3 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
+                          selectedUser === u._id 
+                            ? "bg-blue-50 ring-1 ring-inset ring-blue-200" 
+                            : "hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className={`font-medium ${selectedUser === u._id ? "text-blue-700" : "text-gray-700"}`}>
+                            {u.name}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            ID: {u.employeeId || "N/A"} • {u.role}
+                          </span>
+                        </div>
+                        {selectedUser === u._id && (
+                          <span className="text-blue-600 text-xs">✓</span>
+                        )}
+                      </div>
+                    ))}
+                  {users.length === 0 && (
+                    <div className="p-4 text-center text-gray-400 text-xs italic">
+                      No employees found.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Reason</label>

@@ -37,6 +37,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [selectedTeam, setSelectedTeam] = useState([]);
   const [collaboratingDepts, setCollaboratingDepts] = useState([]);
   const [taskFormFiles, setTaskFormFiles] = useState([]);
+  const [showUsers, setShowUsers] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -377,60 +378,73 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 <label className="block text-xs font-medium mb-1">
                   Assign To *
                 </label>
-                <div className="space-y-2">
+                <div className="relative">
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
                     <input
                       type="text"
                       value={userSearch}
+                      onFocus={() => setShowUsers(true)}
                       onChange={(e) => {
                         setUserSearch(e.target.value);
+                        setShowUsers(true);
                         if (formData.assignedTo) setFormData(p => ({ ...p, assignedTo: "" }));
                       }}
                       placeholder="Search by name or employee ID..."
-                      className="w-full pl-8 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
+                      className="w-full pl-8 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
                     />
+                    <button 
+                      type="button"
+                      onClick={() => setShowUsers(!showUsers)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showUsers ? "▴" : "▾"}
+                    </button>
                   </div>
                   
-                  <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-xl divide-y bg-white shadow-inner">
-                    {filteredUsers
-                      .filter(u => 
-                        !userSearch || 
-                        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-                        u.employeeId?.toLowerCase().includes(userSearch.toLowerCase())
-                      )
-                      .map((u) => (
-                        <div 
-                          key={u._id}
-                          onClick={() => {
-                            setFormData({ ...formData, assignedTo: u._id });
-                            setUserSearch(u.name);
-                          }}
-                          className={`p-3 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
-                            formData.assignedTo === u._id 
-                              ? "bg-blue-50 ring-1 ring-inset ring-blue-200" 
-                              : "hover:bg-slate-50"
-                          }`}
-                        >
-                          <div className="flex flex-col">
-                            <span className={`font-medium ${formData.assignedTo === u._id ? "text-blue-700" : "text-gray-700"}`}>
-                              {u.name}
-                            </span>
-                            <span className="text-[10px] text-gray-400">
-                              ID: {u.employeeId || "N/A"} • {u.role}
-                            </span>
+                  {showUsers && (
+                    <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto border border-gray-100 rounded-xl divide-y bg-white shadow-xl animate-scaleIn origin-top">
+                      {filteredUsers
+                        .filter(u => 
+                          !userSearch || 
+                          u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                          u.employeeId?.toLowerCase().includes(userSearch.toLowerCase())
+                        )
+                        .map((u) => (
+                          <div 
+                            key={u._id}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setFormData({ ...formData, assignedTo: u._id });
+                              setUserSearch(u.name);
+                              setShowUsers(false);
+                            }}
+                            className={`p-3 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
+                              formData.assignedTo === u._id 
+                                ? "bg-blue-50 ring-1 ring-inset ring-blue-200" 
+                                : "hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="flex flex-col">
+                              <span className={`font-medium ${formData.assignedTo === u._id ? "text-blue-700" : "text-gray-700"}`}>
+                                {u.name}
+                              </span>
+                              <span className="text-[10px] text-gray-400">
+                                ID: {u.employeeId || "N/A"} • {u.role}
+                              </span>
+                            </div>
+                            {formData.assignedTo === u._id && (
+                              <span className="text-blue-600 text-xs">✓</span>
+                            )}
                           </div>
-                          {formData.assignedTo === u._id && (
-                            <span className="text-blue-600 text-xs">✓ Selected</span>
-                          )}
+                        ))}
+                      {filteredUsers.length === 0 && (
+                        <div className="p-4 text-center text-gray-400 text-xs italic">
+                          No employees found in this department.
                         </div>
-                      ))}
-                    {filteredUsers.length === 0 && (
-                      <div className="p-4 text-center text-gray-400 text-xs italic">
-                        No employees found in this department.
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
