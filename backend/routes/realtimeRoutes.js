@@ -59,7 +59,7 @@ router.get('/stream', protect, async (req, res) => {
                 Task.find(taskFilter)
                     .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
                     .sort({ updatedAt: -1 })
-                    .limit(50)
+                    .limit(5000)
                     .lean(),
                 User.findById(req.user._id).select('-password').lean(),
             ]);
