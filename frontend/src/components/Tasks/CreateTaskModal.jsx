@@ -7,6 +7,7 @@ import {
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
+import toast from "react-hot-toast";
 
 const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const { user } = useAuth();
@@ -188,10 +189,12 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       } else {
         await createTask(taskData);
       }
+      toast.success("Task created successfully!");
       if (onTaskCreated) onTaskCreated();
       onClose();
       resetForm();
     } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create task");
       setError(err.response?.data?.message || "Failed");
     }
     setLoading(false);

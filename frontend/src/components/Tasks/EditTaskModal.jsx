@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { updateTask, getUsers } from "../../services/api";
+import toast from "react-hot-toast";
 
 const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   const [formData, setFormData] = useState({
@@ -49,10 +50,12 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
     setError("");
     try {
       await updateTask(task._id, formData);
+      toast.success("Task updated successfully!");
       if (onUpdated) onUpdated();
       onClose();
     } catch (error) {
       console.error("Error updating task:", error);
+      toast.error(error.response?.data?.message || "Failed to update task");
       setError(error.response?.data?.message || "Failed to update task");
     }
     setLoading(false);

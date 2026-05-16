@@ -175,16 +175,36 @@ function AppRoutes() {
   );
 }
 
+import { Toaster } from 'react-hot-toast';
+
 export default function App() {
   return (
     <Provider store={store}>
-      <Router>
-        <SettingsProvider>
-          <AuthProvider>
+      <SettingsProvider>
+        <AuthProvider>
+          <Toaster 
+            position="bottom-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                borderRadius: '10px',
+                background: '#333',
+                color: '#fff',
+                fontSize: '14px',
+              },
+              success: {
+                style: { background: '#10b981' }
+              },
+              error: {
+                style: { background: '#ef4444' }
+              }
+            }}
+          />
+          <Router>
             <AppRoutes />
-          </AuthProvider>
-        </SettingsProvider>
-      </Router>
+          </Router>
+        </AuthProvider>
+      </SettingsProvider>
     </Provider>
   );
 }

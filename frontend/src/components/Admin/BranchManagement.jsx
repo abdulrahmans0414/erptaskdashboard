@@ -31,32 +31,7 @@ const EMPTY_FORM = {
   headEmail: "",
 };
 
-const Toast = ({ message, type, onClose }) => {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3500);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  const styles =
-    type === "success"
-      ? "bg-emerald-600"
-      : type === "error"
-        ? "bg-red-600"
-        : "bg-slate-800";
-  return (
-    <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-white text-sm font-medium ${styles} animate-[slideUp_.25s_ease-out]`}
-    >
-      <span>{type === "success" ? "✅" : type === "error" ? "❌" : "ℹ️"}</span>
-      <span>{message}</span>
-      <button
-        onClick={onClose}
-        className="ml-2 opacity-70 hover:opacity-100 text-lg leading-none"
-      >
-        ×
-      </button>
-    </div>
-  );
-};
+import toast from "react-hot-toast";
 
 const BranchManagement = () => {
   const [branches, setBranches] = useState([]);
@@ -66,10 +41,12 @@ const BranchManagement = () => {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const showToast = (message, type = "success") => setToast({ message, type });
+  const showToast = (message, type = "success") => {
+    if (type === "success") toast.success(message);
+    else toast.error(message);
+  };
 
   useEffect(() => {
     loadBranches();
@@ -173,8 +150,6 @@ const BranchManagement = () => {
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
         @keyframes scaleIn { from { opacity:0; transform:scale(.96) } to { opacity:1; transform:scale(1) } }
       `}</style>
-
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
       <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
         {/* Header */}

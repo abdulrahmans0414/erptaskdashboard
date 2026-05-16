@@ -2,20 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useSettings } from "../../context/SettingsContext";
 import api from "../../services/api";
 
-/* ─── Toast ─────────────────────────────────────────────────────── */
-const Toast = ({ msg, type, onClose }) => {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3500);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  return (
-    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-white text-sm font-medium ${type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
-      <span>{type === "error" ? "❌" : "✅"}</span>
-      <span>{msg}</span>
-      <button onClick={onClose} className="ml-1 opacity-70 hover:opacity-100 text-lg">×</button>
-    </div>
-  );
-};
+import toast from "react-hot-toast";
 
 /* ─── Array Manager (Departments / Branches) ─────────────────────── */
 const ArrayManager = ({ title, icon, items, setItems, placeholder, accent = "blue" }) => {
@@ -266,7 +253,10 @@ const SystemSettings = () => {
   const [branches, setBranches] = useState([]);
   const [customFields, setCustomFields] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(null);
+  const showToast = (msg, type = "success") => {
+    if (type === "success") toast.success(msg);
+    else toast.error(msg);
+  };
 
   useEffect(() => {
     if (settings) {
@@ -275,8 +265,6 @@ const SystemSettings = () => {
       setCustomFields(settings.userCustomFields || []);
     }
   }, [settings]);
-
-  const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); };
 
   const handleSave = async () => {
     setSaving(true);
@@ -296,7 +284,6 @@ const SystemSettings = () => {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
       {/* Header */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

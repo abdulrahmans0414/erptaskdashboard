@@ -4,6 +4,7 @@ import { startTask, reviewTask, addTaskComment } from "../../store/slices/taskSl
 import { useAuth } from "../../context/AuthContext";
 import { updateTask, reassignTask, getUsers } from "../../services/api";
 import { useSettings } from "../../context/SettingsContext";
+import toast from "react-hot-toast";
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
@@ -463,9 +464,7 @@ export default function TaskCard({ task, onUpdate }) {
     const [modal, setModal] = useState(null); // 'submit'|'review'|'edit'|'activity'|'reassign'
     const [reviewStage, setReviewStage] = useState(null); // 'department'|'branch'
     const [starting, setStarting] = useState(false);
-    const [toast, setToast] = useState(null);
 
-    const showToast = (msg, type) => { setToast({msg,type}); setTimeout(()=>setToast(null), 3500); };
     const closeModal = () => { setModal(null); setReviewStage(null); if(onUpdate) onUpdate(); };
 
     const userId = user?._id || user?.id;
@@ -501,9 +500,9 @@ export default function TaskCard({ task, onUpdate }) {
         setStarting(true);
         try {
             await dispatch(startTask(task._id)).unwrap();
-            showToast("Task started! Time tracking begun.", "success");
+            toast.success("Task started! Time tracking begun.");
             if (onUpdate) onUpdate();
-        } catch (e) { showToast(e || "Failed to start", "error"); }
+        } catch (e) { toast.error(e || "Failed to start"); }
         setStarting(false);
     };
 
@@ -512,13 +511,6 @@ export default function TaskCard({ task, onUpdate }) {
 
     return (
         <>
-            {toast && (
-                <div className={`fixed bottom-5 right-5 z-50 px-5 py-3 rounded-2xl shadow-xl text-white text-sm flex items-center gap-2.5 ${toast.type==="success"?"bg-green-600":"bg-red-600"}`}>
-                    <span>{toast.type==="success"?"✅":"❌"}</span> {toast.msg}
-                    <button onClick={()=>setToast(null)} className="ml-2 opacity-70 hover:opacity-100">×</button>
-                </div>
-            )}
-
             <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all p-4 ${isOverdue?'border-red-200 bg-red-50/20':''}`}>
                 {/* Progress stepper */}
                 <Stepper status={task.status} />

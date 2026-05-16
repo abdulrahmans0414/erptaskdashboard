@@ -17,34 +17,7 @@ const ROLE_COLORS = {
   student: "bg-yellow-100 text-yellow-700 border-yellow-200",
 };
 
-const Toast = ({ message, type, onClose }) => {
-  useEffect(() => {
-    const t = setTimeout(onClose, 4000);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  const styles =
-    type === "success"
-      ? "bg-emerald-600"
-      : type === "error"
-        ? "bg-red-600"
-        : "bg-blue-600";
-  return (
-    <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-medium ${styles} animate-[slideUp_.25s_ease-out]`}
-    >
-      <span className="text-lg">
-        {type === "success" ? "✅" : type === "error" ? "❌" : "ℹ️"}
-      </span>
-      <span>{message}</span>
-      <button
-        onClick={onClose}
-        className="ml-2 opacity-70 hover:opacity-100 text-xl leading-none"
-      >
-        ×
-      </button>
-    </div>
-  );
-};
+import toast from "react-hot-toast";
 
 const StatusBadge = ({ status }) => {
   const map = {
@@ -73,13 +46,15 @@ export default function PendingRegistrations() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("pending,otp_sent");
   const [search, setSearch] = useState("");
-  const [toast, setToast] = useState(null);
   const [reviewing, setReviewing] = useState(null);
   const [adminNote, setAdminNote] = useState("");
   const [otpInfo, setOtpInfo] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
-  const showToast = (message, type = "success") => setToast({ message, type });
+  const showToast = (message, type = "success") => {
+    if (type === "success") toast.success(message);
+    else toast.error(message);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -154,8 +129,6 @@ export default function PendingRegistrations() {
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
         @keyframes scaleIn { from { opacity:0; transform:scale(.96) } to { opacity:1; transform:scale(1) } }
       `}</style>
-
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
       {/* OTP Modal */}
       {otpInfo && (

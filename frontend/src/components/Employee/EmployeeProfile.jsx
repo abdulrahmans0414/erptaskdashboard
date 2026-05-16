@@ -12,6 +12,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import toast from "react-hot-toast";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -29,19 +30,9 @@ import ProfileHeader from "./Profile/ProfileHeader";
 /* ------------------------------------------------------------------ */
 /*  Reusable bits                                                      */
 /* ------------------------------------------------------------------ */
-const Toast = ({ toast }) =>
-  toast ? (
-    <div
-      className={`fixed bottom-5 right-5 z-[60] px-4 py-3 rounded-xl shadow-2xl text-white text-sm font-medium animate-[slideUp_.3s_ease-out] ${
-        toast.type === "success"
-          ? "bg-gradient-to-r from-emerald-500 to-green-600"
-          : "bg-gradient-to-r from-rose-500 to-red-600"
-      }`}
-    >
-      {toast.message}
-    </div>
-  ) : null;
-
+/* ------------------------------------------------------------------ */
+/*  Reusable bits                                                      */
+/* ------------------------------------------------------------------ */
 const SkeletonCard = ({ className = "" }) => (
   <div className={`animate-pulse rounded-xl bg-slate-200/70 ${className}`} />
 );
@@ -97,7 +88,6 @@ const EmployeeProfile = () => {
     role: "",
   });
   const [editLoading, setEditLoading] = useState(false);
-  const [toast, setToast] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
 
@@ -127,10 +117,7 @@ const EmployeeProfile = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveId, currentUser]);
 
-  const showToast = (message, type) => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  // Removed local showToast
 
   const loadData = async () => {
     setLoading(true);
@@ -139,7 +126,7 @@ const EmployeeProfile = () => {
 
       const [empRes, tasksRes] = await Promise.all([
         getUserById(effectiveId),
-        getTasks(),
+        getTasks({ limit: 5000 }),
       ]);
 
       const emp = empRes.data?.data;
@@ -226,9 +213,9 @@ const EmployeeProfile = () => {
         setProfileImage(avatarPath);
         setEmployee((prev) => (prev ? { ...prev, avatar: avatarPath } : prev));
       }
-      showToast("Profile image updated!", "success");
+      toast.success("Profile image updated!");
     } catch (err) {
-      showToast(err.response?.data?.message || "Avatar upload failed", "error");
+      toast.error(err.response?.data?.message || "Avatar upload failed");
     } finally {
       setAvatarUploading(false);
       // allow re-select same file
@@ -259,12 +246,12 @@ const EmployeeProfile = () => {
     try {
       const response = await updateUser(employee._id, editForm);
       if (response.data.success) {
-        showToast("Profile updated successfully", "success");
+        toast.success("Profile updated successfully");
         setShowEditModal(false);
         await loadData();
       }
     } catch (error) {
-      showToast(error.response?.data?.message || "Update failed", "error");
+      toast.error(error.response?.data?.message || "Update failed");
     }
     setEditLoading(false);
   };
@@ -419,8 +406,6 @@ const EmployeeProfile = () => {
         .animate-fade-in { animation: fadeIn .4s ease-out; }
         .animate-scale-in { animation: scaleIn .3s ease-out; }
       `}</style>
-
-      <Toast toast={toast} />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-5 animate-fade-in">
         {/* ---------------- Profile Header ---------------- */}
