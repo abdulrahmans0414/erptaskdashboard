@@ -13,6 +13,8 @@ import departmentRoutes from './routes/departmentRoutes.js';
 import branchRoutes from './routes/branchRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import realtimeRoutes from './routes/realtimeRoutes.js';
+import User from './models/User.js';
+import { seedDatabase } from './seed.js';
 
 // DNS Configuration - Fix for MongoDB Atlas SRV lookup
 dns.setServers(['1.1.1.1', '8.8.8.8']);
@@ -87,6 +89,14 @@ app.use((err, req, res, next) => {
 // Connect to DB and Start Server
 const startServer = async () => {
     await connectDB();
+    
+    // Auto-seed if database is empty
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+        console.log('⚠️ Database is empty. Seeding database automatically...');
+        await seedDatabase(true);
+    }
+
     app.listen(PORT, () => {
         console.log(`✅ Server running on http://localhost:${PORT}`);
         console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);

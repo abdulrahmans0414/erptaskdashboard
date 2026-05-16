@@ -352,7 +352,7 @@ const generateEmail = (name, empCode) => {
     return `${baseEmail}.${empCode}@company.com`;
 };
 
-const seedDatabase = async () => {
+export const seedDatabase = async (isApi = false) => {
     try {
         // Use the connectDB function from config
         await connectDB();
@@ -512,14 +512,22 @@ const seedDatabase = async () => {
         console.log('   👨‍💼 Dept Manager: abdul.rahman@company.com / manager123');
         console.log('   👨‍💼 Employee: use email shown above / employee123');
         
-        // Close the connection
-        await mongoose.connection.close();
-        console.log('📴 Database connection closed');
+        if (!isApi) {
+            // Close the connection
+            await mongoose.connection.close();
+            console.log('📴 Database connection closed');
+        } else {
+            console.log('✅ Seeding completed via API/Server');
+        }
         
     } catch (error) {
         console.error('❌ Error seeding database:', error);
-        process.exit(1);
+        if (!isApi) process.exit(1);
+        throw error;
     }
 };
 
-seedDatabase();
+import { fileURLToPath } from 'url';
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    seedDatabase();
+}
