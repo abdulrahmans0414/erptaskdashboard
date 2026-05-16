@@ -225,8 +225,27 @@ export const getTasks = async (req, res) => {
             });
         }
 
-        // Robust Date Filtering
-        if (startDate || endDate) {
+        // Robust Date Filtering (Supports named filters or custom ranges)
+        const timeFilter = req.query.timeFilter;
+        if (timeFilter && timeFilter !== 'all') {
+            query.createdAt = query.createdAt || {};
+            const now = new Date();
+            if (timeFilter === 'daily') {
+                const start = new Date(now);
+                start.setHours(0, 0, 0, 0);
+                query.createdAt.$gte = start;
+            } else if (timeFilter === 'weekly') {
+                const start = new Date(now);
+                start.setDate(now.getDate() - 7);
+                start.setHours(0, 0, 0, 0);
+                query.createdAt.$gte = start;
+            } else if (timeFilter === 'monthly') {
+                const start = new Date(now);
+                start.setMonth(now.getMonth() - 1);
+                start.setHours(0, 0, 0, 0);
+                query.createdAt.$gte = start;
+            }
+        } else if (startDate || endDate) {
             query.createdAt = query.createdAt || {};
             if (startDate && !isNaN(new Date(startDate))) {
                 query.createdAt.$gte = new Date(startDate);
@@ -935,8 +954,27 @@ export const getDashboardStats = async (req, res) => {
             query.branch = branch;
         }
         
-        // Date Filtering
-        if (startDate || endDate) {
+        // Date Filtering (Named filters like daily, weekly, monthly or custom dates)
+        const timeFilter = req.query.timeFilter;
+        if (timeFilter && timeFilter !== 'all') {
+            query.createdAt = query.createdAt || {};
+            const now = new Date();
+            if (timeFilter === 'daily') {
+                const start = new Date(now);
+                start.setHours(0, 0, 0, 0);
+                query.createdAt.$gte = start;
+            } else if (timeFilter === 'weekly') {
+                const start = new Date(now);
+                start.setDate(now.getDate() - 7);
+                start.setHours(0, 0, 0, 0);
+                query.createdAt.$gte = start;
+            } else if (timeFilter === 'monthly') {
+                const start = new Date(now);
+                start.setMonth(now.getMonth() - 1);
+                start.setHours(0, 0, 0, 0);
+                query.createdAt.$gte = start;
+            }
+        } else if (startDate || endDate) {
             query.createdAt = query.createdAt || {};
             if (startDate && !isNaN(new Date(startDate))) {
                 query.createdAt.$gte = new Date(startDate);
