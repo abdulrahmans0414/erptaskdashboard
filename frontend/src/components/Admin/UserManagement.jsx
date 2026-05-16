@@ -95,6 +95,7 @@ const UserManagement = () => {
 
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+  const [userStats, setUserStats] = useState({ total: 0, active: 0, admins: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -121,6 +122,7 @@ const UserManagement = () => {
       if (response.data.success) {
         setUsers(response.data.data);
         setPagination(response.data.pagination || { page: 1, pages: 1, total: response.data.data.length });
+        if (response.data.stats) setUserStats(response.data.stats);
       }
     } catch (error) {
       console.error("Error loading users:", error);
@@ -249,11 +251,11 @@ const UserManagement = () => {
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            { label: "Total Users", value: users.length, color: "text-slate-900" },
-            { label: "Active", value: users.filter((u) => u.isActive !== false).length, color: "text-emerald-600" },
+            { label: "Total Users", value: userStats.total, color: "text-slate-900" },
+            { label: "Active", value: userStats.active, color: "text-emerald-600" },
             { label: "Departments", value: departments.length, color: "text-blue-600" },
             { label: "Branches", value: branches.length, color: "text-indigo-600" },
-            { label: "Admins", value: users.filter((u) => u.role === "admin").length, color: "text-purple-600" },
+            { label: "Admins", value: userStats.admins, color: "text-purple-600" },
           ].map((s) => (
             <div
               key={s.label}

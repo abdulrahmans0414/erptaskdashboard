@@ -37,7 +37,11 @@ export const getAllUsers = async (req, res) => {
             .limit(parseInt(limit))
             .lean();
 
-        const total = await User.countDocuments(query);
+        const [total, active, admins] = await Promise.all([
+            User.countDocuments(req.userFilter || {}),
+            User.countDocuments({ ...(req.userFilter || {}), isActive: true }),
+            User.countDocuments({ ...(req.userFilter || {}), role: 'admin' })
+        ]);
 
         res.json({ 
             success: true, 
@@ -46,6 +50,11 @@ export const getAllUsers = async (req, res) => {
                 total,
                 page: parseInt(page),
                 pages: Math.ceil(total / parseInt(limit))
+            },
+            stats: {
+                total,
+                active,
+                admins
             }
         });
     } catch (error) {
