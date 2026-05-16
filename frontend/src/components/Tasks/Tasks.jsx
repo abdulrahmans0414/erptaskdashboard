@@ -13,7 +13,7 @@ export default function Tasks() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
-  const { items: allTasks, loading, isPolling } = useSelector((s) => s.tasks);
+  const { items: allTasks, pagination, loading } = useSelector((s) => s.tasks);
 
   const BRANCHES = settings?.branches || ["Gaurabagh"];
   const DEPTS = settings?.departments || ["IT"];
@@ -27,7 +27,6 @@ export default function Tasks() {
     branch: "all",
   });
   const [page, setPage] = useState(1);
-  const PER_PAGE = 8;
   const canManage = ["admin", "department-head", "branch-head"].includes(
     user?.role,
   );
@@ -35,18 +34,31 @@ export default function Tasks() {
     user?.role,
   );
 
-  const load = () => dispatch(fetchTasks());
+  const load = () => {
+    dispatch(fetchTasks({ 
+      page, 
+      limit: 10,
+      search: filters.search,
+      status: filters.status,
+      priority: filters.priority,
+      department: filters.department,
+      branch: filters.branch
+    }));
+  };
 
-  // Real-time sync handled centrally by useRealtimeSync in App.jsx
-  // Just mark polling status and trigger initial load if store is empty
+  // Reload data when filters or page changes
   useEffect(() => {
-    dispatch(setPollingStatus(true));
-    // Trigger a load in case the central hook hasn't fired yet
     load();
-    return () => {
-      dispatch(setPollingStatus(false));
-    };
-  }, []);
+  }, [page, filters.status, filters.priority, filters.department, filters.branch]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (page !== 1) setPage(1);
+      else load();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [filters.search]);
 
   // Clamp filter options to user's authorized scope
   useEffect(() => {
@@ -63,62 +75,25 @@ export default function Tasks() {
     });
   }, [user?.role, user?.branch, user?.department]);
 
-  // Filtered + paginated
-  const filtered = useMemo(() => {
-    return allTasks.filter((t) => {
-      if (
-        filters.search &&
-        !t.title.toLowerCase().includes(filters.search.toLowerCase()) &&
-        !t.description?.toLowerCase().includes(filters.search.toLowerCase())
-      )
-        return false;
-      if (filters.status !== "all" && t.status !== filters.status) return false;
-      if (filters.priority !== "all" && t.priority !== filters.priority)
-        return false;
-      if (filters.department !== "all" && t.department !== filters.department)
-        return false;
-      if (filters.branch !== "all" && t.branch !== filters.branch) return false;
-      return true;
-    });
-  }, [allTasks, filters]);
-
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const current = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
   const stats = useMemo(
     () => ({
-      total: allTasks.length,
-      pending: allTasks.filter((t) => t.status === "pending").length,
+      total: pagination.total || 0,
+      pending: allTasks.filter((t) => t.status === "pending").length, // This is now partial (current page only)
       inProgress: allTasks.filter((t) => t.status === "in-progress").length,
       submitted: allTasks.filter((t) => t.status === "submitted").length,
       approved: allTasks.filter((t) =>
         ["approved", "completed"].includes(t.status),
       ).length,
     }),
-    [allTasks],
+    [allTasks, pagination.total],
   );
 
+  // Note: For full stats counters, we would ideally use the dashboardStats or a separate summary API.
+  // For now, keeping these as current-page stats or using the total from pagination.
   const STAT_CARDS = [
-    { l: "Total", v: stats.total, c: "text-gray-700", bg: "bg-gray-50" },
-    { l: "Pending", v: stats.pending, c: "text-amber-600", bg: "bg-amber-50" },
-    {
-      l: "In Progress",
-      v: stats.inProgress,
-      c: "text-blue-600",
-      bg: "bg-blue-50",
-    },
-    {
-      l: "Submitted",
-      v: stats.submitted,
-      c: "text-violet-600",
-      bg: "bg-violet-50",
-    },
-    {
-      l: "Approved",
-      v: stats.approved,
-      c: "text-green-600",
-      bg: "bg-green-50",
-    },
+    { l: "Total Tasks", v: pagination.total, c: "text-gray-700", bg: "bg-gray-50" },
+    { l: "Page", v: `${pagination.page} / ${pagination.pages}`, c: "text-blue-600", bg: "bg-blue-50" },
+    { l: "Limit", v: "10 per page", c: "text-gray-500", bg: "bg-gray-50" }
   ];
 
   const setF = (k, v) => {
@@ -237,8 +212,8 @@ export default function Tasks() {
       {/* Count */}
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span>
-          Showing <strong>{current.length}</strong> of{" "}
-          <strong>{filtered.length}</strong> tasks
+          Showing page <strong>{pagination.page}</strong> of{" "}
+          <strong>{pagination.pages}</strong> ({pagination.total} total tasks)
         </span>
         {Object.values(filters).some((v) => v !== "all" && v !== "") && (
           <button
@@ -260,11 +235,11 @@ export default function Tasks() {
       </div>
 
       {/* Task list */}
-      {loading && allTasks.length === 0 ? (
+      {loading ? (
         <div className="flex justify-center py-16">
           <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full"></div>
         </div>
-      ) : current.length === 0 ? (
+      ) : allTasks.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
           <p className="text-4xl mb-3">📭</p>
           <p className="text-gray-500 font-medium">No tasks found</p>
@@ -276,14 +251,14 @@ export default function Tasks() {
         </div>
       ) : (
         <div className="space-y-3">
-          {current.map((t) => (
+          {allTasks.map((t) => (
             <TaskCard key={t._id} task={t} onUpdate={load} />
           ))}
         </div>
-      )}
+      );}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {pagination.pages > 1 && (
         <div className="flex items-center justify-center gap-1.5">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -292,14 +267,15 @@ export default function Tasks() {
           >
             ◀
           </button>
-          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+          {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
+            const totalP = pagination.pages;
             let p =
-              totalPages <= 5
+              totalP <= 5
                 ? i + 1
                 : page <= 3
                   ? i + 1
-                  : page >= totalPages - 2
-                    ? totalPages - 4 + i
+                  : page >= totalP - 2
+                    ? totalP - 4 + i
                     : page - 2 + i;
             return (
               <button
@@ -312,8 +288,8 @@ export default function Tasks() {
             );
           })}
           <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+            disabled={page === pagination.pages}
             className="px-3 py-1.5 rounded-xl text-sm bg-white border disabled:opacity-40 hover:bg-gray-50 transition"
           >
             ▶

@@ -8,8 +8,8 @@ const updateInList = (items, payload) => {
 
 export const fetchTasks = createAsyncThunk('tasks/fetchTasks', async (params, { rejectWithValue }) => {
     try { 
-        const fetchParams = params || { limit: 5000 };
-        return (await api.get('/tasks', { params: fetchParams })).data.data; 
+        const fetchParams = { limit: 10, ...params }; // Default limit to 10 for pagination
+        return (await api.get('/tasks', { params: fetchParams })).data; 
     }
     catch (e) { return rejectWithValue(e.response?.data?.message); }
 });
@@ -43,6 +43,11 @@ const taskSlice = createSlice({
     name: 'tasks',
     initialState: {
         items: [],
+        pagination: {
+            total: 0,
+            page: 1,
+            pages: 1
+        },
         loading: false,
         error: null,
         lastFetched: null,
@@ -62,7 +67,8 @@ const taskSlice = createSlice({
             .addCase(fetchTasks.pending, (s) => { s.loading = true; })
             .addCase(fetchTasks.fulfilled, (s, a) => {
                 s.loading = false;
-                s.items = a.payload;
+                s.items = a.payload.data;
+                s.pagination = a.payload.pagination || s.pagination;
                 s.lastFetched = Date.now();
             })
             .addCase(fetchTasks.rejected, (s, a) => { s.loading = false; s.error = a.payload; })

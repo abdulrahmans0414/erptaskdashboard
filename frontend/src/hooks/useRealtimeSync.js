@@ -65,13 +65,18 @@ export const useRealtimeSync = (isAuthenticated) => {
                 try {
                     const { tasks, stats } = JSON.parse(e.data);
                     // Directly update Redux store with fresh data
-                    dispatch({ type: 'tasks/fetchTasks/fulfilled', payload: tasks });
-                    if (stats) {
-                        dispatch({
-                            type: 'tasks/fetchDashboardStats/fulfilled',
-                            payload: { summary: stats },
-                        });
-                    }
+                    // Adapt SSE data to the new paginated store structure
+                    dispatch({ 
+                        type: 'tasks/fetchTasks/fulfilled', 
+                        payload: { 
+                            data: tasks,
+                            pagination: {
+                                total: tasks.length,
+                                page: 1,
+                                pages: 1
+                            }
+                        } 
+                    });
                 } catch (err) {
                     console.error('SSE tasks parse error:', err);
                 }
