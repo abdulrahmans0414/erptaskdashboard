@@ -33,10 +33,11 @@ export const addTaskComment = createAsyncThunk('tasks/addComment', async ({ task
 
 const taskSlice = createSlice({
     name: 'tasks',
-    initialState: { items: [], loading: false, error: null, lastFetched: null },
+    initialState: { items: [], loading: false, error: null, lastFetched: null, isPolling: false },
     reducers: {
         clearTaskError: (s) => { s.error = null; },
         updateTaskLocally: (s, a) => { updateInList(s.items, a.payload); },
+        setPollingStatus: (s, a) => { s.isPolling = a.payload; },
     },
     extraReducers: (b) => {
         b
@@ -50,5 +51,5 @@ const taskSlice = createSlice({
     },
 });
 
-export const { clearTaskError, updateTaskLocally } = taskSlice.actions;
+export const { clearTaskError, updateTaskLocally, setPollingStatus } = taskSlice.actions;
 export default taskSlice.reducer;

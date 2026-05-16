@@ -199,7 +199,8 @@ export const getTasks = async (req, res) => {
     try {
         let query = {};
         const { role, _id, department, branch } = req.user;
-        const { page = 1, limit = 50, search, status, priority } = req.query;
+        const { page = 1, limit = 50, search, status, priority, startDate, endDate } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
         
         if (role === 'admin') {
             query = {};
@@ -218,7 +219,7 @@ export const getTasks = async (req, res) => {
             };
         }
 
-        // Apply filters
+        // Apply filters only if they are valid
         if (status && status !== 'all') query.status = status;
         if (priority && priority !== 'all') query.priority = priority;
         if (search) {
@@ -227,13 +228,29 @@ export const getTasks = async (req, res) => {
                 { description: { $regex: search, $options: 'i' } }
             ];
         }
+
+        // Robust Date Filtering
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate && !isNaN(new Date(startDate))) {
+                query.createdAt.$gte = new Date(startDate);
+            }
+            if (endDate && !isNaN(new Date(endDate))) {
+                // End of day
+                const d = new Date(endDate);
+                d.setHours(23, 59, 59, 999);
+                query.createdAt.$lte = d;
+            }
+            if (Object.keys(query.createdAt).length === 0) delete query.createdAt;
+        }
         
+        // Optimized population with pagination to handle large datasets
         const tasks = await Task.find(query)
-            .populate('assignedTo assignedBy assignedTeam', 'name email department role branch')
+            .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
             .populate('individualProgress.userId', 'name email')
             .sort({ createdAt: -1 })
+            .skip(skip)
             .limit(parseInt(limit))
-            .skip((parseInt(page) - 1) * parseInt(limit))
             .lean();
 
         const total = await Task.countDocuments(query);
@@ -241,12 +258,9 @@ export const getTasks = async (req, res) => {
         res.json({ 
             success: true, 
             data: tasks,
-            pagination: {
-                total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(total / limit)
-            }
+            totalCount: total,
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(total / parseInt(limit))
         });
     } catch (error) {
         console.error('Get tasks error:', error);
@@ -931,16 +945,25 @@ export const getDashboardStats = async (req, res) => {
         }
 
         // Apply filters from query if allowed
-        if (department && (role === 'admin' || role === 'branch-head' || role === 'hr')) {
+        if (department && department !== 'all' && (role === 'admin' || role === 'branch-head' || role === 'hr')) {
             match.department = department;
         }
-        if (branch && (role === 'admin')) {
+        if (branch && branch !== 'all' && (role === 'admin')) {
             match.branch = branch;
         }
+        
+        // Robust Date Filtering
         if (startDate || endDate) {
             match.createdAt = {};
-            if (startDate) match.createdAt.$gte = new Date(startDate);
-            if (endDate) match.createdAt.$lte = new Date(endDate);
+            if (startDate && !isNaN(new Date(startDate))) {
+                match.createdAt.$gte = new Date(startDate);
+            }
+            if (endDate && !isNaN(new Date(endDate))) {
+                const d = new Date(endDate);
+                d.setHours(23, 59, 59, 999);
+                match.createdAt.$lte = d;
+            }
+            if (Object.keys(match.createdAt).length === 0) delete match.createdAt;
         }
 
         const stats = await Task.aggregate([

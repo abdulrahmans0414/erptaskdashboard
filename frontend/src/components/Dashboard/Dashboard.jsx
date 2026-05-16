@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTasks } from "../../store/slices/taskSlice";
 import {
-  getTasks,
   getUsers,
   getUsersByBranch,
   getUsersByDepartment,
@@ -11,7 +10,6 @@ import { reviewTask } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
 import { useNavigate } from "react-router-dom";
-import DepartmentCard from "./DepartmentCard";
 import { Bar, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -527,8 +525,7 @@ const Dashboard = () => {
   const searchInputRef = useRef(null);
 
   const dispatch = useDispatch();
-  const allTasks = useSelector(state => state.tasks.items);
-  const tasksLoading = useSelector(state => state.tasks.loading);
+  const allTasks = useSelector((state) => state.tasks.items);
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -632,19 +629,26 @@ const Dashboard = () => {
     } catch {
       showToast("Failed to load employees", "error");
     }
-  }, [showToast, user?.role, user?.branch, user?.department]);
+  }, [showToast, user]);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      if (allTasks.length === 0) {
-        dispatch(fetchTasks());
-      }
+      dispatch(fetchTasks());
       await loadEmployees();
       setLoading(false);
     };
     loadData();
   }, [dispatch, loadEmployees]);
+
+  // Real-time polling for data updates
+  useEffect(() => {
+    const pollingInterval = setInterval(() => {
+      dispatch(fetchTasks());
+    }, 30000); // Poll every 30 seconds
+
+    return () => clearInterval(pollingInterval);
+  }, [dispatch]);
 
   // When branch changes, reset department filter — departments vary per branch
   useEffect(() => {
@@ -652,7 +656,7 @@ const Dashboard = () => {
       setSelectedDepartment("all");
     }
     setCurrentPage(1);
-  }, [selectedBranch]);
+  }, [selectedBranch, user]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -674,8 +678,6 @@ const Dashboard = () => {
     return () => document.head.removeChild(style);
   }, []);
 
-
-
   const getFilteredTasks = useMemo(() => {
     const now = new Date();
     let filtered = [...allTasks];
@@ -683,42 +685,53 @@ const Dashboard = () => {
     // ── Time filter ────────────────────────────────────────────────
     switch (timeFilter) {
       case "daily": {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        filtered = filtered.filter(x => new Date(x.createdAt) >= today);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        filtered = filtered.filter((x) => new Date(x.createdAt) >= today);
         break;
       }
       case "weekly": {
-        const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7); weekAgo.setHours(0, 0, 0, 0);
-        filtered = filtered.filter(x => new Date(x.createdAt) >= weekAgo);
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        weekAgo.setHours(0, 0, 0, 0);
+        filtered = filtered.filter((x) => new Date(x.createdAt) >= weekAgo);
         break;
       }
       case "monthly": {
-        const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1); monthAgo.setHours(0, 0, 0, 0);
-        filtered = filtered.filter(x => new Date(x.createdAt) >= monthAgo);
+        const monthAgo = new Date(now);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        monthAgo.setHours(0, 0, 0, 0);
+        filtered = filtered.filter((x) => new Date(x.createdAt) >= monthAgo);
         break;
       }
       case "custom": {
         if (customStart && customEnd) {
-          const start = new Date(customStart); start.setHours(0, 0, 0, 0);
-          const end = new Date(customEnd); end.setHours(23, 59, 59, 999);
-          filtered = filtered.filter(x => { const d = new Date(x.createdAt); return d >= start && d <= end; });
+          const start = new Date(customStart);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(customEnd);
+          end.setHours(23, 59, 59, 999);
+          filtered = filtered.filter((x) => {
+            const d = new Date(x.createdAt);
+            return d >= start && d <= end;
+          });
         }
         break;
       }
-      default: break; // "all" — no filter
+      default:
+        break; // "all" — no filter
     }
 
     // ── Department & Branch filter ─────────────────────────────────
     if (selectedDepartment !== "all")
-      filtered = filtered.filter(t => t.department === selectedDepartment);
+      filtered = filtered.filter((t) => t.department === selectedDepartment);
     if (selectedBranch !== "all")
-      filtered = filtered.filter(t => t.branch === selectedBranch);
+      filtered = filtered.filter((t) => t.branch === selectedBranch);
 
     // ── Search filter ──────────────────────────────────────────────
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        t =>
+        (t) =>
           t.title?.toLowerCase().includes(q) ||
           t.assignedTo?.name?.toLowerCase().includes(q) ||
           t.assignedTo?.employeeId?.toLowerCase().includes(q),
@@ -726,7 +739,15 @@ const Dashboard = () => {
     }
 
     return filtered;
-  }, [allTasks, timeFilter, customStart, customEnd, selectedDepartment, selectedBranch, searchQuery]);
+  }, [
+    allTasks,
+    timeFilter,
+    customStart,
+    customEnd,
+    selectedDepartment,
+    selectedBranch,
+    searchQuery,
+  ]);
 
   const filteredTasks = getFilteredTasks;
   const totalTasks = filteredTasks.length;
@@ -806,20 +827,6 @@ const Dashboard = () => {
       pending: bt.filter((t) => t.status === "pending").length,
       inProgress: bt.filter((t) => t.status === "in-progress").length,
       submitted: bt.filter((t) => t.status === "submitted").length,
-    };
-  });
-
-  const departmentStats = visibleDepartments.map((dn) => {
-    const dt = filteredTasks.filter((t) => t.department === dn);
-    return {
-      name: dn,
-      total: dt.length,
-      completed: dt.filter(
-        (t) => t.status === "completed" || t.status === "approved",
-      ).length,
-      pending: dt.filter((t) => t.status === "pending").length,
-      inProgress: dt.filter((t) => t.status === "in-progress").length,
-      submitted: dt.filter((t) => t.status === "submitted").length,
     };
   });
 
