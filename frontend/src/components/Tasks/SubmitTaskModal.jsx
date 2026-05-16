@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { submitTaskWithAttachments } from "../../services/api";
+import toast from "react-hot-toast";
 
 const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
   const [note, setNote] = useState("");
@@ -92,21 +93,24 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
       const result = await submitTaskWithAttachments(task._id, formData);
 
       if (result?.data?.success !== false) {
+        toast.success("Task submitted successfully!");
         onSubmitted();
         onClose();
         setNote("");
         setAttachments([]);
       } else {
-        setError(result?.data?.message || "Failed to submit task");
+        const msg = result?.data?.message || "Failed to submit task";
+        toast.error(msg);
+        setError(msg);
       }
     } catch (error) {
       console.error("Error submitting task:", error);
-      setError(
-        error.response?.data?.message ||
-          "Failed to submit task. Please try again.",
-      );
+      const msg = error.response?.data?.message || "Failed to submit task. Please try again.";
+      toast.error(msg);
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const getTimeColor = () => {

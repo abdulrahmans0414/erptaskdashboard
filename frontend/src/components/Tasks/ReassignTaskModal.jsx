@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { updateTask, getUsers } from "../../services/api";
+import { reassignTask, getUsers } from "../../services/api";
+import toast from "react-hot-toast";
 
 const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   const [users, setUsers] = useState([]);
@@ -35,17 +36,20 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
     setLoading(true);
     setError("");
     try {
-      await updateTask(task._id, {
+      await reassignTask(task._id, {
         assignedTo: selectedUser,
-        status: "pending",
-        adminComments: reason || "Task reassigned",
+        reason: reason || "Task reassigned",
       });
+      toast.success("Task reassigned successfully!");
       if (onUpdated) onUpdated();
       onClose();
     } catch (e) {
-      setError(e.response?.data?.message || "Failed");
+      const msg = e.response?.data?.message || "Failed to reassign";
+      toast.error(msg);
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (!isOpen) return null;

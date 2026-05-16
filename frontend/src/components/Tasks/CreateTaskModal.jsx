@@ -18,8 +18,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    taskFormName: "",
-    taskFormType: "other",
     branch: branches[0] || "Gaurabagh",
     department: departments[0] || "IT",
     assignedTo: "",
@@ -28,6 +26,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     estimatedHours: "",
     estimatedMinutes: "",
   });
+
+  const [userSearch, setUserSearch] = useState("");
 
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -98,16 +98,15 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     setFormData({
       title: "",
       description: "",
-      taskFormName: "",
-      taskFormType: "other",
-      branch: lockedBranch,
       department: lockedDept,
+      branch: lockedBranch,
       assignedTo: "",
       dueDate: "",
       priority: "medium",
       estimatedHours: "",
       estimatedMinutes: "",
     });
+    setUserSearch("");
     setIsTeamTask(false);
     setSelectedTeam([]);
     setCollaboratingDepts([]);
@@ -149,8 +148,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       ? {
           title: formData.title,
           description: formData.description,
-          taskFormName: formData.taskFormName,
-          taskFormType: formData.taskFormType,
           department: formData.department,
           branch: formData.branch,
           dueDate: formData.dueDate,
@@ -164,8 +161,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       : {
           title: formData.title,
           description: formData.description,
-          taskFormName: formData.taskFormName,
-          taskFormType: formData.taskFormType,
           department: formData.department,
           branch: formData.branch,
           assignedTo: formData.assignedTo,
@@ -194,10 +189,12 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       onClose();
       resetForm();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create task");
-      setError(err.response?.data?.message || "Failed");
+      const msg = err.response?.data?.message || "Failed to create task";
+      toast.error(msg);
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (!isOpen) return null;
@@ -252,40 +249,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 rows="2"
                 placeholder="Optional description"
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium mb-1">
-                  📄 Task Form Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.taskFormName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, taskFormName: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                  placeholder="e.g. PDF Application Form"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">
-                  📄 Form Type
-                </label>
-                <select
-                  value={formData.taskFormType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, taskFormType: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                >
-                  <option value="pdf">PDF</option>
-                  <option value="image">Image</option>
-                  <option value="doc">DOC</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
             </div>
 
             <div>
@@ -414,20 +377,61 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 <label className="block text-xs font-medium mb-1">
                   Assign To *
                 </label>
-                <select
-                  value={formData.assignedTo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, assignedTo: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                >
-                  <option value="">Select Employee</option>
-                  {filteredUsers.map((u) => (
-                    <option key={u._id} value={u._id}>
-                      {u.name} ({u.role})
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => {
+                        setUserSearch(e.target.value);
+                        if (formData.assignedTo) setFormData(p => ({ ...p, assignedTo: "" }));
+                      }}
+                      placeholder="Search by name or employee ID..."
+                      className="w-full pl-8 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
+                    />
+                  </div>
+                  
+                  <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-xl divide-y bg-white shadow-inner">
+                    {filteredUsers
+                      .filter(u => 
+                        !userSearch || 
+                        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                        u.employeeId?.toLowerCase().includes(userSearch.toLowerCase())
+                      )
+                      .map((u) => (
+                        <div 
+                          key={u._id}
+                          onClick={() => {
+                            setFormData({ ...formData, assignedTo: u._id });
+                            setUserSearch(u.name);
+                          }}
+                          className={`p-3 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
+                            formData.assignedTo === u._id 
+                              ? "bg-blue-50 ring-1 ring-inset ring-blue-200" 
+                              : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span className={`font-medium ${formData.assignedTo === u._id ? "text-blue-700" : "text-gray-700"}`}>
+                              {u.name}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              ID: {u.employeeId || "N/A"} • {u.role}
+                            </span>
+                          </div>
+                          {formData.assignedTo === u._id && (
+                            <span className="text-blue-600 text-xs">✓ Selected</span>
+                          )}
+                        </div>
+                      ))}
+                    {filteredUsers.length === 0 && (
+                      <div className="p-4 text-center text-gray-400 text-xs italic">
+                        No employees found in this department.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

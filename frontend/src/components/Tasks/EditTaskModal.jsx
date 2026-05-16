@@ -16,6 +16,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [userSearch, setUserSearch] = useState("");
 
   useEffect(() => {
     if (task && isOpen) {
@@ -31,6 +32,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
         estimatedHours: task.estimatedHours || "",
         estimatedMinutes: task.estimatedMinutes || "",
       });
+      setUserSearch(task.assignedTo?.name || "");
       loadUsers();
     }
   }, [task, isOpen]);
@@ -57,8 +59,9 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
       console.error("Error updating task:", error);
       toast.error(error.response?.data?.message || "Failed to update task");
       setError(error.response?.data?.message || "Failed to update task");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (!isOpen) return null;
@@ -143,22 +146,58 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
 
           <div>
             <label className="block text-sm font-medium mb-1">Assign To</label>
-            <select
-              value={formData.assignedTo}
-              onChange={(e) =>
-                setFormData({ ...formData, assignedTo: e.target.value })
-              }
-              className="w-full px-3 py-2 border rounded-lg"
-            >
-              <option value="">Select Employee</option>
-              {users
-                .filter((u) => u.role !== "admin")
-                .map((u) => (
-                  <option key={u._id} value={u._id}>
-                    {u.name} ({u.department})
-                  </option>
-                ))}
-            </select>
+            <div className="space-y-2">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => {
+                    setUserSearch(e.target.value);
+                    if (formData.assignedTo) setFormData(p => ({ ...p, assignedTo: "" }));
+                  }}
+                  placeholder="Search by name or employee ID..."
+                  className="w-full pl-8 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
+                />
+              </div>
+              
+              <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-xl divide-y bg-white shadow-inner">
+                {users
+                  .filter(u => u.role !== "admin")
+                  .filter(u => 
+                    !userSearch || 
+                    u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.employeeId?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.department?.toLowerCase().includes(userSearch.toLowerCase())
+                  )
+                  .map((u) => (
+                    <div 
+                      key={u._id}
+                      onClick={() => {
+                        setFormData({ ...formData, assignedTo: u._id });
+                        setUserSearch(u.name);
+                      }}
+                      className={`p-3 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
+                        formData.assignedTo === u._id 
+                          ? "bg-blue-50 ring-1 ring-inset ring-blue-200" 
+                          : "hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className={`font-medium ${formData.assignedTo === u._id ? "text-blue-700" : "text-gray-700"}`}>
+                          {u.name}
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          {u.department} • {u.role}
+                        </span>
+                      </div>
+                      {formData.assignedTo === u._id && (
+                        <span className="text-blue-600 text-xs">✓ Selected</span>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
 
           <div>

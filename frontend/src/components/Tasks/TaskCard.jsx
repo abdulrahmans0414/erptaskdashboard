@@ -166,9 +166,14 @@ function ReviewModal({ task, stage, onClose, onDone }) {
                     reviewStage: stage
                 })
             ).unwrap();
+            toast.success(`Task ${status} successfully!`);
             onDone();
-        } catch (e) { console.error(e); }
-        setLoading(false);
+        } catch (e) { 
+            toast.error(e || "Failed to review task");
+            console.error(e); 
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -176,11 +181,7 @@ function ReviewModal({ task, stage, onClose, onDone }) {
             <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2 text-sm">
                 <p className="font-semibold text-gray-800">{task.title}</p>
                 <p className="text-gray-500 text-xs">👤 {task.assignedTo?.name} · 🏢 {task.department} · 📍 {task.branch}</p>
-                {task.taskFormName && (
-                    <div className="text-gray-500 text-xs flex items-center gap-2">
-                        <span>🧾 Form: <span className="font-medium text-gray-700">{task.taskFormName}</span></span>
-                    </div>
-                )}
+
                 {task.taskFormAttachments && task.taskFormAttachments.length > 0 && (
                     <div className="text-gray-500 text-xs flex flex-wrap gap-1 mt-1">
                         <span className="font-semibold text-blue-600">📎 Task Attachments:</span>
@@ -242,8 +243,16 @@ function EditModal({ task, onClose, onDone }) {
     const [loading, setLoading] = useState(false);
     const handle = async () => {
         setLoading(true);
-        try { await updateTask(task._id, form); onDone(); } catch (e) { console.error(e); }
-        setLoading(false);
+        try { 
+            await updateTask(task._id, form); 
+            toast.success("Task updated successfully!");
+            onDone(); 
+        } catch (e) { 
+            toast.error(e.response?.data?.message || "Failed to update task");
+            console.error(e); 
+        } finally {
+            setLoading(false);
+        }
     };
     return (
         <Modal title="✏️ Edit Task" onClose={onClose}>
@@ -301,9 +310,15 @@ function ReassignModal({ task, onClose, onDone }) {
         setLoading(true);
         try {
             await reassignTask(task._id, { assignedTo: selected, reason });
+            toast.success("Task reassigned successfully!");
             onDone();
-        } catch (e) { setError(e.response?.data?.message || "Reassign failed"); }
-        setLoading(false);
+        } catch (e) { 
+            const msg = e.response?.data?.message || "Reassign failed";
+            toast.error(msg);
+            setError(msg); 
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -316,17 +331,38 @@ function ReassignModal({ task, onClose, onDone }) {
 
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1.5">Select New Assignee</label>
-                    <input type="text" placeholder="Search by name or department..." 
-                        className="w-full px-3 py-2 border rounded-xl text-sm mb-2"
-                        value={search} onChange={e => setSearch(e.target.value)} />
-                    <div className="max-h-40 overflow-y-auto border rounded-xl divide-y">
+                    <div className="relative mb-2">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                        <input type="text" placeholder="Search by name, ID or department..." 
+                            className="w-full pl-8 pr-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
+                            value={search} onChange={e => setSearch(e.target.value)} />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-xl divide-y bg-white shadow-inner">
                         {filtered.map(u => (
                             <div key={u._id} onClick={() => setSelected(u._id)}
-                                className={`p-2.5 text-xs cursor-pointer hover:bg-blue-50 transition ${selected === u._id ? 'bg-blue-100 border-l-4 border-blue-600' : ''}`}>
-                                <p className="font-bold">{u.name}</p>
-                                <p className="text-gray-500">{u.department} • {u.branch}</p>
+                                className={`p-3 text-sm cursor-pointer transition-colors flex items-center justify-between group ${
+                                    selected === u._id 
+                                        ? "bg-blue-50 ring-1 ring-inset ring-blue-200" 
+                                        : "hover:bg-slate-50"
+                                }`}>
+                                <div className="flex flex-col">
+                                    <span className={`font-medium ${selected === u._id ? "text-blue-700" : "text-gray-700"}`}>
+                                        {u.name}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400">
+                                        ID: {u.employeeId || "N/A"} • {u.department} • {u.role}
+                                    </span>
+                                </div>
+                                {selected === u._id && (
+                                    <span className="text-blue-600 text-xs">✓ Selected</span>
+                                )}
                             </div>
                         ))}
+                        {filtered.length === 0 && (
+                            <div className="p-4 text-center text-gray-400 text-xs italic">
+                                No matching employees found.
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -378,11 +414,6 @@ function ActivityDrawer({ task, onClose }) {
             <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 text-xs space-y-2">
                 <div className="font-semibold text-gray-800">Overall Workflow</div>
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-gray-600">
-                    {task.taskFormName ? (
-                        <span>🧾 Form: <span className="font-medium text-gray-800">{task.taskFormName}</span>{task.taskFormType ? <span className="text-gray-400">({task.taskFormType})</span> : null}</span>
-                    ) : (
-                        <span className="text-gray-400">🧾 No form specified</span>
-                    )}
                     <span>▶ Start: <span className="font-medium text-gray-800">{task.startedAt ? new Date(task.startedAt).toLocaleString() : '—'}</span></span>
                     <span>📤 Submit: <span className="font-medium text-gray-800">{task.submittedAt ? new Date(task.submittedAt).toLocaleString() : '—'}</span></span>
                     <span>🏢 Dept: <span className="font-medium text-gray-800">{task.workflow?.departmentReview?.status || 'pending'}</span></span>

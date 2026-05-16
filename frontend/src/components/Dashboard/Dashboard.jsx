@@ -86,58 +86,7 @@ const animations = `
   .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
 `;
 
-// ==================== TOAST COMPONENT ====================
-const Toast = ({ message, type, onClose }) => {
-  useEffect(() => {
-    const t = setTimeout(onClose, 4000);
-    return () => clearTimeout(t);
-  }, [onClose]);
-
-  const icons = {
-    success: "✓",
-    error: "✕",
-    warning: "⚠",
-    info: "ℹ",
-  };
-
-  const colors = {
-    success: "from-emerald-500 to-emerald-600",
-    error: "from-rose-500 to-rose-600",
-    warning: "from-amber-500 to-amber-600",
-    info: "from-sky-500 to-sky-600",
-  };
-
-  return (
-    <div className="fixed bottom-6 right-6 z-50 animate-slideInRight">
-      <div
-        className={`bg-gradient-to-r ${colors[type]} text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px]`}
-      >
-        <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg">
-          {icons[type]}
-        </span>
-        <span className="text-sm font-medium flex-1">{message}</span>
-        <button
-          onClick={onClose}
-          className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
-    </div>
-  );
-};
+import toast from "react-hot-toast";
 
 // ==================== SKELETON LOADER ====================
 const Skeleton = ({ className = "" }) => (
@@ -530,7 +479,6 @@ const Dashboard = () => {
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
   const [selectedTaskForReview, setSelectedTaskForReview] = useState(null);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -599,7 +547,9 @@ const Dashboard = () => {
   ];
 
   const showToast = useCallback((message, type = "success") => {
-    setToast({ message, type });
+    if (type === "success") toast.success(message);
+    else if (type === "error") toast.error(message);
+    else toast(message);
   }, []);
 
   const loadTasks = useCallback(async () => {
@@ -1253,6 +1203,8 @@ const Dashboard = () => {
 
   // ==================== EMPLOYEE VIEW ====================
   if (!isManagerRole) {
+    if (loading && allTasks.length === 0) return <DashboardSkeleton />;
+
     const myTasks = allTasks;
     const myPending = myTasks.filter((t) => t.status === "pending").length;
     const myInProgress = myTasks.filter(
@@ -1274,7 +1226,6 @@ const Dashboard = () => {
 
     return (
       <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto animate-fadeIn">
-        {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
         {/* Welcome Card */}
         <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 md:p-8 text-white shadow-xl shadow-blue-500/20">
@@ -1405,11 +1356,11 @@ const Dashboard = () => {
   }
 
   // ==================== MANAGER VIEW ====================
-  if (loading) return <DashboardSkeleton />;
+  if (loading && (!dashboardStats || allTasks.length === 0))
+    return <DashboardSkeleton />;
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
       {/* Header */}
       <div className="bg-gradient-to-br from-slate-800 to-gray-900 rounded-2xl p-6 text-white shadow-xl animate-fadeIn">

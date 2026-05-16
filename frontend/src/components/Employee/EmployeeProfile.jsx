@@ -361,7 +361,7 @@ const EmployeeProfile = () => {
   ];
 
   /* ---------------- Loading skeleton ---------------- */
-  if (loading) {
+  if (loading && !employee) {
     return (
       <div className="max-w-7xl mx-auto p-4 space-y-5">
         <SkeletonCard className="h-40" />
