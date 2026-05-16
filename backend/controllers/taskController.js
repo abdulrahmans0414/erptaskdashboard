@@ -925,94 +925,84 @@ export const getDashboardStats = async (req, res) => {
         const { department, branch, startDate, endDate } = req.query;
         
         // Base query from middleware
-        let match = req.taskFilter ? { ...req.taskFilter } : {};
+        let query = req.taskFilter ? { ...req.taskFilter } : {};
 
         // Managers can refine their view
         if (department && department !== 'all' && ['admin', 'branch-head', 'hr', 'it', 'department-head'].includes(role)) {
-            match.department = department;
+            query.department = department;
         }
         if (branch && branch !== 'all' && ['admin'].includes(role)) {
-            match.branch = branch;
+            query.branch = branch;
         }
         
         // Date Filtering
         if (startDate || endDate) {
-            match.createdAt = match.createdAt || {};
+            query.createdAt = query.createdAt || {};
             if (startDate && !isNaN(new Date(startDate))) {
-                match.createdAt.$gte = new Date(startDate);
+                query.createdAt.$gte = new Date(startDate);
             }
             if (endDate && !isNaN(new Date(endDate))) {
                 const d = new Date(endDate);
                 d.setHours(23, 59, 59, 999);
-                match.createdAt.$lte = d;
+                query.createdAt.$lte = d;
             }
         }
 
         const now = new Date();
 
-        // Perform aggregation with safe now value
-        const stats = await Task.aggregate([
-            { $match: match },
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: 1 },
-                    completed: { $sum: { $cond: [{ $in: ["$status", ["completed", "approved"]] }, 1, 0] } },
-                    pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
-                    inProgress: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
-                    submitted: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } },
-                    rejected: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
-                    urgent: { $sum: { $cond: [{ $eq: ["$priority", "urgent"] }, 1, 0] } },
-                    high: { $sum: { $cond: [{ $eq: ["$priority", "high"] }, 1, 0] } },
-                    overdue: {
-                        $sum: {
-                            $cond: [
-                                {
-                                    $and: [
-                                        { $lt: ["$dueDate", now] },
-                                        { $nin: ["$status", ["completed", "approved"]] }
-                                    ]
-                                },
-                                1, 0
-                            ]
-                        }
-                    }
-                }
-            }
+        // Use Promise.all with simple counts for maximum stability
+        const [
+            totalTasks,
+            completedTasks,
+            pendingTasks,
+            inProgressTasks,
+            submittedTasks,
+            rejectedTasks,
+            urgentTasks,
+            highPriorityTasks,
+            overdueTasks,
+            recentTasks
+        ] = await Promise.all([
+            Task.countDocuments(query),
+            Task.countDocuments({ ...query, status: { $in: ['completed', 'approved'] } }),
+            Task.countDocuments({ ...query, status: 'pending' }),
+            Task.countDocuments({ ...query, status: 'in-progress' }),
+            Task.countDocuments({ ...query, status: 'submitted' }),
+            Task.countDocuments({ ...query, status: 'rejected' }),
+            Task.countDocuments({ ...query, priority: 'urgent' }),
+            Task.countDocuments({ ...query, priority: 'high' }),
+            Task.countDocuments({ 
+                ...query, 
+                dueDate: { $lt: now }, 
+                status: { $nin: ['completed', 'approved'] } 
+            }),
+            Task.find(query)
+                .sort({ updatedAt: -1 })
+                .limit(10)
+                .select('title status priority updatedAt dueDate assignedTo')
+                .populate('assignedTo', 'name avatar')
+                .lean()
         ]);
-
-        const data = stats[0] || {
-            total: 0, completed: 0, pending: 0, inProgress: 0,
-            submitted: 0, rejected: 0, urgent: 0, high: 0, overdue: 0
-        };
-
-        const recentTasks = await Task.find(match)
-            .sort({ updatedAt: -1 })
-            .limit(10)
-            .select('title status priority updatedAt dueDate assignedTo')
-            .populate('assignedTo', 'name avatar')
-            .lean();
 
         res.json({
             success: true,
             data: {
                 summary: {
-                    totalTasks: data.total,
-                    completedTasks: data.completed,
-                    pendingTasks: data.pending,
-                    inProgressTasks: data.inProgress,
-                    submittedTasks: data.submitted,
-                    rejectedTasks: data.rejected,
-                    urgentTasks: data.urgent,
-                    highPriorityTasks: data.high,
-                    overdueTasks: data.overdue
+                    totalTasks,
+                    completedTasks,
+                    pendingTasks,
+                    inProgressTasks,
+                    submittedTasks,
+                    rejectedTasks,
+                    urgentTasks,
+                    highPriorityTasks,
+                    overdueTasks
                 },
                 recentTasks
             }
         });
     } catch (error) {
         console.error('Stats error:', error);
-        // Temporarily return actual error message to diagnose Render environment issue
         res.status(500).json({ success: false, message: error.message || 'Error loading stats' });
     }
 };
