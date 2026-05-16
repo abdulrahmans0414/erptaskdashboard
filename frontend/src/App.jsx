@@ -74,7 +74,7 @@ function AppRoutes() {
       <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
-      <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
+      <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ManagerRoute>} />
       
       {/* Admin-only */}
       <Route path="/admin/users" element={<AdminRoute><Layout><UserManagement /></Layout></AdminRoute>} />
