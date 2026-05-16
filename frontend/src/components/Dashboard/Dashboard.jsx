@@ -553,9 +553,25 @@ const Dashboard = () => {
   }, []);
 
   const loadTasks = useCallback(async () => {
-    dispatch(fetchTasks());
-    dispatch(fetchDashboardStats());
-  }, [dispatch]);
+    const statsParams = {
+      department: selectedDepartment,
+      branch: selectedBranch,
+      timeFilter
+    };
+    if (timeFilter === 'custom') {
+      statsParams.startDate = customStart;
+      statsParams.endDate = customEnd;
+    }
+    
+    // Dashboard only needs a few recent tasks for the list
+    dispatch(fetchTasks({ limit: 10 })); 
+    // Stats should be filtered by the selection
+    dispatch(fetchDashboardStats(statsParams));
+  }, [dispatch, selectedDepartment, selectedBranch, timeFilter, customStart, customEnd]);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -695,41 +711,15 @@ const Dashboard = () => {
 
   const filteredTasks = getFilteredTasks;
 
-  // Use live MongoDB stats from API when no client-side filters active (most accurate)
-  const hasClientFilter =
-    timeFilter !== "all" ||
-    selectedDepartment !== "all" ||
-    selectedBranch !== "all" ||
-    searchQuery;
+  // Use live MongoDB stats from API (Most accurate for Dashboard)
   const apiStats = dashboardStats?.summary;
 
-  const totalTasks = hasClientFilter
-    ? filteredTasks.length
-    : (apiStats?.totalTasks ?? filteredTasks.length);
-  const completedTasks = hasClientFilter
-    ? filteredTasks.filter(
-        (t) => t.status === "completed" || t.status === "approved",
-      ).length
-    : (apiStats?.completedTasks ??
-      filteredTasks.filter(
-        (t) => t.status === "completed" || t.status === "approved",
-      ).length);
-  const inProgressTasks = hasClientFilter
-    ? filteredTasks.filter((t) => t.status === "in-progress").length
-    : (apiStats?.inProgressTasks ??
-      filteredTasks.filter((t) => t.status === "in-progress").length);
-  const submittedTasks = hasClientFilter
-    ? filteredTasks.filter((t) => t.status === "submitted").length
-    : (apiStats?.submittedTasks ??
-      filteredTasks.filter((t) => t.status === "submitted").length);
-  const pendingTasks = hasClientFilter
-    ? filteredTasks.filter((t) => t.status === "pending").length
-    : (apiStats?.pendingTasks ??
-      filteredTasks.filter((t) => t.status === "pending").length);
-  const rejectedTasks = hasClientFilter
-    ? filteredTasks.filter((t) => t.status === "rejected").length
-    : (apiStats?.rejectedTasks ??
-      filteredTasks.filter((t) => t.status === "rejected").length);
+  const totalTasks = apiStats?.totalTasks ?? 0;
+  const completedTasks = apiStats?.completedTasks ?? 0;
+  const inProgressTasks = apiStats?.inProgressTasks ?? 0;
+  const submittedTasks = apiStats?.submittedTasks ?? 0;
+  const pendingTasks = apiStats?.pendingTasks ?? 0;
+  const rejectedTasks = apiStats?.rejectedTasks ?? 0;
 
   const pendingSubmissions = allTasks.filter((t) => t.status === "submitted");
   const canReview =
