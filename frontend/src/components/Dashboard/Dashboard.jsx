@@ -483,7 +483,7 @@ const Dashboard = () => {
   const [reviewComment, setReviewComment] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
 
-  const [timeFilter, setTimeFilter] = useState("weekly");
+  const [timeFilter, setTimeFilter] = useState("all");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
@@ -565,7 +565,7 @@ const Dashboard = () => {
     
     // Both tasks and stats should be filtered by the selection
     dispatch(fetchTasks({ 
-      limit: 10,
+      limit: 1000, // Increased for dashboard charts & performance stats
       department: selectedDepartment,
       branch: selectedBranch,
       timeFilter
@@ -579,12 +579,10 @@ const Dashboard = () => {
 
   const loadEmployees = useCallback(async () => {
     try {
-      // Users endpoint is role-protected in backend. Use the right endpoint per role.
       const role = user?.role;
       const branch = user?.branch;
       const department = user?.department;
 
-      // Regular employees shouldn't load org-wide employee lists.
       if (!["admin", "hr", "department-head", "branch-head"].includes(role)) {
         setEmployees([]);
         return;
@@ -594,11 +592,15 @@ const Dashboard = () => {
       if (role === "branch-head" && branch) r = await getUsersByBranch(branch);
       else if (role === "department-head" && department)
         r = await getUsersByDepartment(department);
-      else r = await getUsers(); // admin/hr/others allowed by backend
+      else r = await getUsers({ limit: 1000 });
 
-      if (r?.data?.success)
-        setEmployees((r.data.data || []).filter((e) => e.role !== "admin"));
-    } catch {
+      if (r?.data?.success) {
+        const fetchedUsers = (r.data.data || []).filter((e) => e.role !== "admin");
+        console.log(`Loaded ${fetchedUsers.length} employees for dashboard`);
+        setEmployees(fetchedUsers);
+      }
+    } catch (error) {
+      console.error("Failed to load employees:", error);
       showToast("Failed to load employees", "error");
     }
   }, [showToast, user]);
@@ -763,6 +765,7 @@ const Dashboard = () => {
   );
 
   const getEmpStats = (eid) => {
+    if (!allTasks || allTasks.length === 0) return { totalTasks: 0, completed: 0, pending: 0, inProgress: 0 };
     const et = allTasks.filter((t) => t.assignedTo?._id === eid);
     return {
       totalTasks: et.length,
@@ -1636,6 +1639,70 @@ const Dashboard = () => {
         )}
       </div>
 
+        </div>
+      </div>
+
+      {/* Recent Tasks Table */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-semibold text-sm">📋 Recent Tasks</h2>
+          <button onClick={() => navigate("/tasks")} className="text-xs text-blue-600 hover:underline">View All</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="text-[11px] text-gray-400 uppercase tracking-wider border-b">
+                <th className="pb-2 font-medium">Task</th>
+                <th className="pb-2 font-medium">Assignee</th>
+                <th className="pb-2 font-medium">Status</th>
+                <th className="pb-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {(dashboardStats?.recentTasks || []).length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="py-8 text-center text-gray-400 text-sm">No recent tasks found</td>
+                </tr>
+              ) : (
+                (dashboardStats?.recentTasks || []).map((t) => (
+                  <tr key={t._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-3 pr-4">
+                      <p className="text-sm font-semibold text-gray-800 line-clamp-1">{t.title}</p>
+                      <p className="text-[10px] text-gray-400">{new Date(t.updatedAt).toLocaleDateString()}</p>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-[10px] font-bold">
+                          {t.assignedTo?.name?.charAt(0)}
+                        </div>
+                        <span className="text-xs text-gray-600">{t.assignedTo?.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize
+                        ${t.status === 'completed' || t.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 
+                          t.status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                          t.status === 'submitted' ? 'bg-purple-100 text-purple-700' :
+                          'bg-amber-100 text-amber-700'}`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <button 
+                        onClick={() => navigate(`/tasks`)} 
+                        className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition"
+                      >
+                        👁️
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Branches */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
         <h2 className="font-semibold text-sm mb-4">📍 Branch Performance</h2>
@@ -1644,7 +1711,7 @@ const Dashboard = () => {
             <BranchCard
               key={b.name}
               branch={b}
-              color={branchColors[i]}
+              color={branchColors[i % branchColors.length]}
               isSelected={selectedBranch === b.name}
               onClick={() =>
                 setSelectedBranch(selectedBranch === b.name ? "all" : b.name)
@@ -1653,8 +1720,6 @@ const Dashboard = () => {
           ))}
         </div>
       </div>
-
-      {/* Pending Reviews */}
       {canReview && (
         <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-5 border border-orange-200 animate-fadeInUp">
           <h2 className="font-semibold text-sm mb-3">
