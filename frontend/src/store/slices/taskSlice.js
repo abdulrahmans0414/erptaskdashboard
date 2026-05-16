@@ -6,8 +6,13 @@ const updateInList = (items, payload) => {
     if (i !== -1) items[i] = payload;
 };
 
-export const fetchTasks = createAsyncThunk('tasks/fetchTasks', async (_, { rejectWithValue }) => {
-    try { return (await api.get('/tasks')).data.data; }
+export const fetchTasks = createAsyncThunk('tasks/fetchTasks', async (params, { rejectWithValue }) => {
+    try { return (await api.get('/tasks', { params })).data.data; }
+    catch (e) { return rejectWithValue(e.response?.data?.message); }
+});
+
+export const fetchDashboardStats = createAsyncThunk('tasks/fetchDashboardStats', async (params, { rejectWithValue }) => {
+    try { return (await api.get('/tasks/dashboard/stats', { params })).data.data; }
     catch (e) { return rejectWithValue(e.response?.data?.message); }
 });
 
@@ -33,17 +38,40 @@ export const addTaskComment = createAsyncThunk('tasks/addComment', async ({ task
 
 const taskSlice = createSlice({
     name: 'tasks',
-    initialState: { items: [], loading: false, error: null, lastFetched: null, isPolling: false },
+    initialState: {
+        items: [],
+        loading: false,
+        error: null,
+        lastFetched: null,
+        isPolling: false,
+        dashboardStats: null,
+        statsLoading: false,
+        statsLastFetched: null,
+    },
     reducers: {
         clearTaskError: (s) => { s.error = null; },
         updateTaskLocally: (s, a) => { updateInList(s.items, a.payload); },
         setPollingStatus: (s, a) => { s.isPolling = a.payload; },
+        clearStats: (s) => { s.dashboardStats = null; },
     },
     extraReducers: (b) => {
         b
             .addCase(fetchTasks.pending, (s) => { s.loading = true; })
-            .addCase(fetchTasks.fulfilled, (s, a) => { s.loading = false; s.items = a.payload; s.lastFetched = Date.now(); })
+            .addCase(fetchTasks.fulfilled, (s, a) => {
+                s.loading = false;
+                s.items = a.payload;
+                s.lastFetched = Date.now();
+            })
             .addCase(fetchTasks.rejected, (s, a) => { s.loading = false; s.error = a.payload; })
+
+            .addCase(fetchDashboardStats.pending, (s) => { s.statsLoading = true; })
+            .addCase(fetchDashboardStats.fulfilled, (s, a) => {
+                s.statsLoading = false;
+                s.dashboardStats = a.payload;
+                s.statsLastFetched = Date.now();
+            })
+            .addCase(fetchDashboardStats.rejected, (s) => { s.statsLoading = false; })
+
             .addCase(startTask.fulfilled, (s, a) => { updateInList(s.items, a.payload); })
             .addCase(submitTask.fulfilled, (s, a) => { updateInList(s.items, a.payload); })
             .addCase(reviewTask.fulfilled, (s, a) => { updateInList(s.items, a.payload); })
@@ -51,5 +79,5 @@ const taskSlice = createSlice({
     },
 });
 
-export const { clearTaskError, updateTaskLocally, setPollingStatus } = taskSlice.actions;
+export const { clearTaskError, updateTaskLocally, setPollingStatus, clearStats } = taskSlice.actions;
 export default taskSlice.reducer;

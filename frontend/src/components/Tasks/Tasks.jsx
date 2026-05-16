@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTasks, setPollingStatus } from "../../store/slices/taskSlice";
 import { useAuth } from "../../context/AuthContext";
@@ -28,8 +28,6 @@ export default function Tasks() {
   });
   const [page, setPage] = useState(1);
   const PER_PAGE = 8;
-  const pollingIntervalRef = useRef(null);
-
   const canManage = ["admin", "department-head", "branch-head"].includes(
     user?.role,
   );
@@ -39,22 +37,13 @@ export default function Tasks() {
 
   const load = () => dispatch(fetchTasks());
 
-  // Real-time polling for data updates
+  // Real-time sync handled centrally by useRealtimeSync in App.jsx
+  // Just mark polling status and trigger initial load if store is empty
   useEffect(() => {
-    // Initial load
-    load();
     dispatch(setPollingStatus(true));
-
-    // Set up polling every 30 seconds
-    pollingIntervalRef.current = setInterval(() => {
-      load();
-    }, 30000);
-
-    // Cleanup on unmount
+    // Trigger a load in case the central hook hasn't fired yet
+    load();
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
       dispatch(setPollingStatus(false));
     };
   }, []);

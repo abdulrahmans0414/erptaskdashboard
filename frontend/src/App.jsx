@@ -1,6 +1,11 @@
 import { Provider } from "react-redux";
 import { store } from "./store/store";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout/Layout";
 import Dashboard from "./components/Dashboard/Dashboard";
@@ -45,28 +50,125 @@ const ManagerRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
-  return ['admin','branch-head','department-head'].includes(user.role) ? children : <Navigate to="/" replace />;
+  return ["admin", "branch-head", "department-head"].includes(user.role) ? (
+    children
+  ) : (
+    <Navigate to="/" replace />
+  );
 };
 
 import { SettingsProvider } from "./context/SettingsContext";
+import { useRealtimeSync } from "./hooks/useRealtimeSync";
 
 function AppRoutes() {
+  const { isAuthenticated } = useAuth();
+  // 🔴 Central realtime sync: SSE push + fallback polling for tasks, stats, profile
+  useRealtimeSync(isAuthenticated);
+
   return (
     <Routes>
-      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
 
       {/* Main pages */}
-      <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-      <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
-      <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ManagerRoute>} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tasks"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Tasks />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Reports />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <EmployeeProfile />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/employee/:id"
+        element={
+          <ManagerRoute>
+            <Layout>
+              <EmployeeProfile />
+            </Layout>
+          </ManagerRoute>
+        }
+      />
 
       {/* Admin-only */}
-      <Route path="/admin/users"         element={<AdminRoute><Layout><UserManagement /></Layout></AdminRoute>} />
-      <Route path="/admin/branches"      element={<AdminRoute><Layout><BranchManagement /></Layout></AdminRoute>} />
-      <Route path="/admin/registrations" element={<AdminRoute><Layout><PendingRegistrations /></Layout></AdminRoute>} />
-      <Route path="/admin/settings"      element={<AdminRoute><Layout><SystemSettings /></Layout></AdminRoute>} />
+      <Route
+        path="/admin/users"
+        element={
+          <AdminRoute>
+            <Layout>
+              <UserManagement />
+            </Layout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/branches"
+        element={
+          <AdminRoute>
+            <Layout>
+              <BranchManagement />
+            </Layout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/registrations"
+        element={
+          <AdminRoute>
+            <Layout>
+              <PendingRegistrations />
+            </Layout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/settings"
+        element={
+          <AdminRoute>
+            <Layout>
+              <SystemSettings />
+            </Layout>
+          </AdminRoute>
+        }
+      />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

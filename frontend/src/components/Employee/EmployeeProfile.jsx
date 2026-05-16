@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   getTasks,
@@ -15,8 +15,9 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5000/api")
-  .replace(/\/api\/?$/, "");
+const API_ORIGIN = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+).replace(/\/api\/?$/, "");
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -71,6 +72,7 @@ const EmployeeProfile = () => {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { settings } = useSettings();
+  const pollingRef = useRef(null);
 
   const [employee, setEmployee] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -103,7 +105,25 @@ const EmployeeProfile = () => {
   const effectiveId = id || currentUser?._id || currentUser?.id;
 
   useEffect(() => {
-    if (effectiveId) loadData();
+    if (effectiveId) {
+      loadData();
+
+      // Realtime polling: refresh profile + tasks every 10 seconds from MongoDB
+      // Skip poll if edit modal is open to avoid disrupting user input
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      pollingRef.current = setInterval(() => {
+        if (!showEditModal) {
+          loadData();
+        }
+      }, 10000);
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveId, currentUser]);
 
@@ -404,7 +424,7 @@ const EmployeeProfile = () => {
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-5 animate-fade-in">
         {/* ---------------- Profile Header ---------------- */}
-        <ProfileHeader 
+        <ProfileHeader
           employee={employee}
           profileImage={profileImage}
           handleImageUpload={handleImageUpload}
@@ -603,10 +623,14 @@ const EmployeeProfile = () => {
                         ],
                       ]
                     : []),
-                  ...Object.entries(employee.customFields || {}).map(([key, val]) => {
-                    const label = settings?.userCustomFields?.find(f => f.id === key)?.label || key;
-                    return [label, val];
-                  }),
+                  ...Object.entries(employee.customFields || {}).map(
+                    ([key, val]) => {
+                      const label =
+                        settings?.userCustomFields?.find((f) => f.id === key)
+                          ?.label || key;
+                      return [label, val];
+                    },
+                  ),
                   ["Since", new Date(employee.createdAt).toLocaleDateString()],
                 ].map(([k, v], i) => (
                   <div
@@ -1078,7 +1102,7 @@ const EmployeeProfile = () => {
           setEditForm={setEditForm}
           handleEditSubmit={handleEditSubmit}
           editLoading={editLoading}
-          isAdmin={currentUser?.role === 'admin'}
+          isAdmin={currentUser?.role === "admin"}
         />
       </div>
     </div>

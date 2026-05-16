@@ -12,6 +12,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import departmentRoutes from './routes/departmentRoutes.js';
 import branchRoutes from './routes/branchRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import realtimeRoutes from './routes/realtimeRoutes.js';
 
 // DNS Configuration - Fix for MongoDB Atlas SRV lookup
 dns.setServers(['1.1.1.1', '8.8.8.8']);
@@ -63,6 +64,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/realtime', realtimeRoutes);
 
 // 404 Handler
 app.use((req, res) => {

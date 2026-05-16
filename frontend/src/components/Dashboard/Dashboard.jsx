@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchTasks } from "../../store/slices/taskSlice";
+import { fetchTasks, fetchDashboardStats } from "../../store/slices/taskSlice";
 import {
   getUsers,
   getUsersByBranch,
@@ -526,6 +526,7 @@ const Dashboard = () => {
 
   const dispatch = useDispatch();
   const allTasks = useSelector((state) => state.tasks.items);
+  const dashboardStats = useSelector((state) => state.tasks.dashboardStats);
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -603,6 +604,7 @@ const Dashboard = () => {
 
   const loadTasks = useCallback(async () => {
     dispatch(fetchTasks());
+    dispatch(fetchDashboardStats());
   }, [dispatch]);
 
   const loadEmployees = useCallback(async () => {
@@ -631,24 +633,16 @@ const Dashboard = () => {
     }
   }, [showToast, user]);
 
+  // Real-time polling handled centrally by useRealtimeSync in App.jsx
+  // Local effect only loads employees (not handled by central hook)
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      dispatch(fetchTasks());
       await loadEmployees();
       setLoading(false);
     };
     loadData();
   }, [dispatch, loadEmployees]);
-
-  // Real-time polling for data updates
-  useEffect(() => {
-    const pollingInterval = setInterval(() => {
-      dispatch(fetchTasks());
-    }, 30000); // Poll every 30 seconds
-
-    return () => clearInterval(pollingInterval);
-  }, [dispatch]);
 
   // When branch changes, reset department filter — departments vary per branch
   useEffect(() => {
@@ -750,22 +744,42 @@ const Dashboard = () => {
   ]);
 
   const filteredTasks = getFilteredTasks;
-  const totalTasks = filteredTasks.length;
-  const completedTasks = filteredTasks.filter(
-    (t) => t.status === "completed" || t.status === "approved",
-  ).length;
-  const inProgressTasks = filteredTasks.filter(
-    (t) => t.status === "in-progress",
-  ).length;
-  const submittedTasks = filteredTasks.filter(
-    (t) => t.status === "submitted",
-  ).length;
-  const pendingTasks = filteredTasks.filter(
-    (t) => t.status === "pending",
-  ).length;
-  const rejectedTasks = filteredTasks.filter(
-    (t) => t.status === "rejected",
-  ).length;
+
+  // Use live MongoDB stats from API when no client-side filters active (most accurate)
+  const hasClientFilter =
+    timeFilter !== "all" ||
+    selectedDepartment !== "all" ||
+    selectedBranch !== "all" ||
+    searchQuery;
+  const apiStats = dashboardStats?.summary;
+
+  const totalTasks = hasClientFilter
+    ? filteredTasks.length
+    : (apiStats?.totalTasks ?? filteredTasks.length);
+  const completedTasks = hasClientFilter
+    ? filteredTasks.filter(
+        (t) => t.status === "completed" || t.status === "approved",
+      ).length
+    : (apiStats?.completedTasks ??
+      filteredTasks.filter(
+        (t) => t.status === "completed" || t.status === "approved",
+      ).length);
+  const inProgressTasks = hasClientFilter
+    ? filteredTasks.filter((t) => t.status === "in-progress").length
+    : (apiStats?.inProgressTasks ??
+      filteredTasks.filter((t) => t.status === "in-progress").length);
+  const submittedTasks = hasClientFilter
+    ? filteredTasks.filter((t) => t.status === "submitted").length
+    : (apiStats?.submittedTasks ??
+      filteredTasks.filter((t) => t.status === "submitted").length);
+  const pendingTasks = hasClientFilter
+    ? filteredTasks.filter((t) => t.status === "pending").length
+    : (apiStats?.pendingTasks ??
+      filteredTasks.filter((t) => t.status === "pending").length);
+  const rejectedTasks = hasClientFilter
+    ? filteredTasks.filter((t) => t.status === "rejected").length
+    : (apiStats?.rejectedTasks ??
+      filteredTasks.filter((t) => t.status === "rejected").length);
 
   const pendingSubmissions = allTasks.filter((t) => t.status === "submitted");
   const canReview =
