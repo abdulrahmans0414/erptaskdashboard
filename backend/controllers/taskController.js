@@ -197,74 +197,68 @@ export const createTask = async (req, res) => {
 // ============ GET TASKS ============
 export const getTasks = async (req, res) => {
     try {
-        let query = {};
-        const { role, _id, department, branch } = req.user;
-        const { page = 1, limit = 50, search, status, priority, startDate, endDate } = req.query;
+        const { role, _id } = req.user;
+        const { page = 1, limit = 50, search, status, priority, startDate, endDate, department, branch } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
         
-        if (role === 'admin') {
-            query = {};
-        } else if (role === 'department-head') {
-            query = { department, branch };
-        } else if (role === 'hr') {
-            query = { department: 'HR', branch };
-        } else if (role === 'branch-head') {
-            query = { branch };
-        } else {
-            query = {
-                $or: [
-                    { assignedTo: _id },
-                    { assignedTeam: _id }
-                ]
-            };
+        // Base query from auth middleware
+        let query = { ...(req.taskFilter || {}) };
+
+        // Additional filter drills for management
+        if (department && department !== 'all' && ['admin', 'branch-head', 'hr', 'it'].includes(role)) {
+            query.department = department;
+        }
+        if (branch && branch !== 'all' && role === 'admin') {
+            query.branch = branch;
         }
 
-        // Apply filters only if they are valid
         if (status && status !== 'all') query.status = status;
         if (priority && priority !== 'all') query.priority = priority;
+        
         if (search) {
-            query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } }
-            ];
+            query.$and = query.$and || [];
+            query.$and.push({
+                $or: [
+                    { title: { $regex: search, $options: 'i' } },
+                    { description: { $regex: search, $options: 'i' } }
+                ]
+            });
         }
 
         // Robust Date Filtering
         if (startDate || endDate) {
-            query.createdAt = {};
+            query.createdAt = query.createdAt || {};
             if (startDate && !isNaN(new Date(startDate))) {
                 query.createdAt.$gte = new Date(startDate);
             }
             if (endDate && !isNaN(new Date(endDate))) {
-                // End of day
                 const d = new Date(endDate);
                 d.setHours(23, 59, 59, 999);
                 query.createdAt.$lte = d;
             }
-            if (Object.keys(query.createdAt).length === 0) delete query.createdAt;
         }
         
-        // Optimized population with pagination to handle large datasets
         const tasks = await Task.find(query)
-            .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
-            .populate('individualProgress.userId', 'name email')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit))
+            .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
             .lean();
 
         const total = await Task.countDocuments(query);
-        
+
         res.json({ 
             success: true, 
             data: tasks,
-            totalCount: total,
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(total / parseInt(limit))
+            pagination: {
+                total,
+                page: parseInt(page),
+                pages: Math.ceil(total / parseInt(limit))
+            }
         });
     } catch (error) {
         console.error('Get tasks error:', error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: 'Error fetching tasks' });
     }
 };
 
@@ -927,34 +921,23 @@ export const updateTeamProgress = async (req, res) => {
 
 export const getDashboardStats = async (req, res) => {
     try {
-        const { role, _id, department: userDept, branch: userBranch } = req.user;
+        const { role } = req.user;
         const { department, branch, startDate, endDate } = req.query;
-        let match = {};
+        
+        // Base query from middleware
+        let match = req.taskFilter ? { ...req.taskFilter } : {};
 
-        // Base access control
-        if (role === 'admin') {
-            match = {};
-        } else if (role === 'department-head') {
-            match = { department: userDept, branch: userBranch };
-        } else if (role === 'branch-head') {
-            match = { branch: userBranch };
-        } else if (role === 'hr') {
-            match = { department: 'HR' };
-        } else {
-            match = { $or: [{ assignedTo: _id }, { assignedTeam: _id }] };
-        }
-
-        // Apply filters from query if allowed
-        if (department && department !== 'all' && (role === 'admin' || role === 'branch-head' || role === 'hr')) {
+        // Managers can refine their view
+        if (department && department !== 'all' && ['admin', 'branch-head', 'hr', 'it', 'department-head'].includes(role)) {
             match.department = department;
         }
-        if (branch && branch !== 'all' && (role === 'admin')) {
+        if (branch && branch !== 'all' && ['admin'].includes(role)) {
             match.branch = branch;
         }
         
-        // Robust Date Filtering
+        // Date Filtering
         if (startDate || endDate) {
-            match.createdAt = {};
+            match.createdAt = match.createdAt || {};
             if (startDate && !isNaN(new Date(startDate))) {
                 match.createdAt.$gte = new Date(startDate);
             }
@@ -963,9 +946,11 @@ export const getDashboardStats = async (req, res) => {
                 d.setHours(23, 59, 59, 999);
                 match.createdAt.$lte = d;
             }
-            if (Object.keys(match.createdAt).length === 0) delete match.createdAt;
         }
 
+        const now = new Date();
+
+        // Perform aggregation with safe now value
         const stats = await Task.aggregate([
             { $match: match },
             {
@@ -984,7 +969,7 @@ export const getDashboardStats = async (req, res) => {
                             $cond: [
                                 {
                                     $and: [
-                                        { $lt: ["$dueDate", new Date()] },
+                                        { $lt: ["$dueDate", now] },
                                         { $nin: ["$status", ["completed", "approved"]] }
                                     ]
                                 },
@@ -1001,10 +986,10 @@ export const getDashboardStats = async (req, res) => {
             submitted: 0, rejected: 0, urgent: 0, high: 0, overdue: 0
         };
 
-        // Get recent tasks
         const recentTasks = await Task.find(match)
             .sort({ updatedAt: -1 })
-            .limit(5)
+            .limit(10)
+            .select('title status priority updatedAt dueDate assignedTo')
             .populate('assignedTo', 'name avatar')
             .lean();
 
@@ -1027,7 +1012,8 @@ export const getDashboardStats = async (req, res) => {
         });
     } catch (error) {
         console.error('Stats error:', error);
-        res.status(500).json({ success: false, message: error.message });
+        // Temporarily return actual error message to diagnose Render environment issue
+        res.status(500).json({ success: false, message: error.message || 'Error loading stats' });
     }
 };
 
@@ -1129,6 +1115,8 @@ export const getEmployeeSummary = async (req, res) => {
 
         // Use aggregation to count tasks for these employees
         const employeeIds = employees.map(e => e._id);
+        const now = new Date();
+
         const taskStats = await Task.aggregate([
             {
                 $match: {
@@ -1146,7 +1134,7 @@ export const getEmployeeSummary = async (req, res) => {
                     assignedTeam: 1,
                     isOverdue: {
                         $and: [
-                            { $lt: ["$dueDate", new Date()] },
+                            { $lt: ["$dueDate", now] },
                             { $nin: ["$status", ["completed", "approved"]] }
                         ]
                     }
@@ -1274,10 +1262,16 @@ export const updateTaskStatus = async (req, res) => {
 export const getTimeReport = async (req, res) => {
     try {
         const { startDate, endDate, department } = req.query;
-        let query = {};
+        let query = { ...(req.taskFilter || {}) };
         
-        if (startDate && endDate) {
-            query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+        if (startDate || endDate) {
+            query.createdAt = query.createdAt || {};
+            if (startDate && !isNaN(new Date(startDate))) query.createdAt.$gte = new Date(startDate);
+            if (endDate && !isNaN(new Date(endDate))) {
+                const d = new Date(endDate);
+                d.setHours(23, 59, 59, 999);
+                query.createdAt.$lte = d;
+            }
         }
         if (department && department !== 'all') {
             query.department = department;
@@ -1285,10 +1279,12 @@ export const getTimeReport = async (req, res) => {
         
         const tasks = await Task.find(query)
             .populate('assignedTo assignedBy', 'name email department')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
         
         res.json({ success: true, data: tasks });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error('Time report error:', error);
+        res.status(500).json({ success: false, message: 'Error generating time report' });
     }
 };

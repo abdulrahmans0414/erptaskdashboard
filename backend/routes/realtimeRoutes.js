@@ -57,9 +57,9 @@ router.get('/stream', protect, async (req, res) => {
 
             const [tasks, userDoc] = await Promise.all([
                 Task.find(taskFilter)
-                    .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
+                    .select('title status priority dueDate createdAt updatedAt assignedTo department branch')
                     .sort({ updatedAt: -1 })
-                    .limit(5000)
+                    .limit(500) 
                     .lean(),
                 User.findById(req.user._id).select('-password').lean(),
             ]);
@@ -85,23 +85,35 @@ router.get('/stream', protect, async (req, res) => {
     };
 
     await pushData();
+    
+    let isConnected = true;
+    let timeoutId;
 
-    // Keep-alive heartbeat + data push every 8 seconds
-    const interval = setInterval(async () => {
-        if (res.writableEnded) {
-            clearInterval(interval);
-            return;
-        }
-        // Heartbeat
-        res.write(`: heartbeat\n\n`);
-        await pushData();
-    }, 8000);
+    const scheduleNextPush = () => {
+        if (!isConnected) return;
+        timeoutId = setTimeout(async () => {
+            if (res.writableEnded) {
+                isConnected = false;
+                return;
+            }
+            try {
+                res.write(`: heartbeat\n\n`);
+                await pushData();
+                scheduleNextPush();
+            } catch (err) {
+                console.error('SSE retry error:', err.message);
+                isConnected = false;
+            }
+        }, 10000);
+    };
 
-    // Cleanup on client disconnect
+    scheduleNextPush();
+
     req.on('close', () => {
-        clearInterval(interval);
+        isConnected = false;
+        clearTimeout(timeoutId);
         removeClient(userId, res);
-        res.end();
+        try { res.end(); } catch (e) {}
     });
 });
 
