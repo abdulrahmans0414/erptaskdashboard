@@ -7,7 +7,10 @@ const updateInList = (items, payload) => {
 };
 
 export const fetchTasks = createAsyncThunk('tasks/fetchTasks', async (params, { rejectWithValue }) => {
-    try { return (await api.get('/tasks', { params })).data.data; }
+    try { 
+        const fetchParams = params || { limit: 5000 };
+        return (await api.get('/tasks', { params: fetchParams })).data.data; 
+    }
     catch (e) { return rejectWithValue(e.response?.data?.message); }
 });
 
