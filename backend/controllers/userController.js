@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import eventBus, { EVENTS } from '../utils/eventBus.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -107,6 +108,7 @@ export const createUser = async (req, res) => {
         
         const { password: _, ...userWithoutPassword } = user.toObject();
         res.status(201).json({ success: true, data: userWithoutPassword });
+        eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
@@ -145,6 +147,7 @@ export const updateUser = async (req, res) => {
         
         const { password: _, ...userWithoutPassword } = user.toObject();
         res.json({ success: true, data: userWithoutPassword });
+        eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
@@ -162,20 +165,13 @@ export const deleteUser = async (req, res) => {
         if (user._id.toString() === req.user._id.toString()) {
             return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
         }
-        
-        if (user.avatar) {
-            try {
-                const oldImagePath = path.join(__dirname, '..', '..', user.avatar);
-                if (fs.existsSync(oldImagePath)) {
-                    fs.unlinkSync(oldImagePath);
-                }
-            } catch (err) {
-                console.error("Error deleting avatar:", err);
-            }
-        }
 
-        await user.deleteOne();
-        res.json({ success: true, message: 'User deleted successfully' });
+        // ✅ FIX: SOFT DELETE instead of HARD DELETE for data integrity
+        user.isActive = false;
+        await user.save();
+        
+        res.json({ success: true, message: 'User deactivated successfully (Soft Delete)' });
+        eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -239,6 +235,7 @@ export const uploadAvatar = async (req, res) => {
             },
             message: 'Avatar updated successfully' 
         });
+        eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

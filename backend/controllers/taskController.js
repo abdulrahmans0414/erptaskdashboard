@@ -2,6 +2,7 @@ import Task from '../models/Task.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { sendEmailNotification } from '../utils/emailService.js';
+import eventBus, { emitDataChange, EVENTS } from '../utils/eventBus.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -188,6 +189,7 @@ export const createTask = async (req, res) => {
             .populate('individualProgress.userId', 'name email');
         
         res.status(201).json({ success: true, data: populatedTask });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         console.error('Create task error:', error);
         res.status(400).json({ success: false, message: error.message });
@@ -294,6 +296,7 @@ export const getTaskById = async (req, res) => {
         }
         
         res.json({ success: true, data: task });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -335,6 +338,7 @@ export const updateTask = async (req, res) => {
             .populate('assignedTo assignedBy assignedTeam', 'name email department');
         
         res.json({ success: true, data: updatedTask });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
@@ -933,6 +937,7 @@ export const updateTeamProgress = async (req, res) => {
         }
         
         res.json({ success: true, data: task });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

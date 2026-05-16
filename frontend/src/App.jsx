@@ -17,6 +17,10 @@ import UserManagement from "./components/Admin/UserManagement";
 import BranchManagement from "./components/Admin/BranchManagement";
 import PendingRegistrations from "./components/Admin/PendingRegistrations";
 import SystemSettings from "./components/Admin/SystemSettings";
+import { Toaster } from 'react-hot-toast';
+import ErrorBoundary from "./components/Common/ErrorBoundary";
+import { SettingsProvider } from "./context/SettingsContext";
+import { useRealtimeSync } from "./hooks/useRealtimeSync";
 
 const Spinner = () => (
   <div className="flex justify-center items-center h-screen bg-slate-50">
@@ -57,154 +61,56 @@ const ManagerRoute = ({ children }) => {
   );
 };
 
-import { SettingsProvider } from "./context/SettingsContext";
-import { useRealtimeSync } from "./hooks/useRealtimeSync";
-
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
-  // 🔴 Central realtime sync: SSE push + fallback polling for tasks, stats, profile
   useRealtimeSync(isAuthenticated);
 
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-
-      {/* Main pages */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Dashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tasks"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Tasks />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/reports"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Reports />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <EmployeeProfile />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/employee/:id"
-        element={
-          <ManagerRoute>
-            <Layout>
-              <EmployeeProfile />
-            </Layout>
-          </ManagerRoute>
-        }
-      />
-
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+      <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
+      <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
+      
       {/* Admin-only */}
-      <Route
-        path="/admin/users"
-        element={
-          <AdminRoute>
-            <Layout>
-              <UserManagement />
-            </Layout>
-          </AdminRoute>
-        }
-      />
-      <Route
-        path="/admin/branches"
-        element={
-          <AdminRoute>
-            <Layout>
-              <BranchManagement />
-            </Layout>
-          </AdminRoute>
-        }
-      />
-      <Route
-        path="/admin/registrations"
-        element={
-          <AdminRoute>
-            <Layout>
-              <PendingRegistrations />
-            </Layout>
-          </AdminRoute>
-        }
-      />
-      <Route
-        path="/admin/settings"
-        element={
-          <AdminRoute>
-            <Layout>
-              <SystemSettings />
-            </Layout>
-          </AdminRoute>
-        }
-      />
-
+      <Route path="/admin/users" element={<AdminRoute><Layout><UserManagement /></Layout></AdminRoute>} />
+      <Route path="/admin/branches" element={<AdminRoute><Layout><BranchManagement /></Layout></AdminRoute>} />
+      <Route path="/admin/registrations" element={<AdminRoute><Layout><PendingRegistrations /></Layout></AdminRoute>} />
+      <Route path="/admin/settings" element={<AdminRoute><Layout><SystemSettings /></Layout></AdminRoute>} />
+      
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
-import { Toaster } from 'react-hot-toast';
-
 export default function App() {
   return (
-    <Provider store={store}>
-      <SettingsProvider>
-        <AuthProvider>
-          <Toaster 
-            position="bottom-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                borderRadius: '10px',
-                background: '#333',
-                color: '#fff',
-                fontSize: '14px',
-              },
-              success: {
-                style: { background: '#10b981' }
-              },
-              error: {
-                style: { background: '#ef4444' }
-              }
-            }}
-          />
-          <Router>
-            <AppRoutes />
-          </Router>
-        </AuthProvider>
-      </SettingsProvider>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <SettingsProvider>
+          <AuthProvider>
+            <Toaster 
+              position="bottom-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  borderRadius: '10px',
+                  background: '#333',
+                  color: '#fff',
+                  fontSize: '14px',
+                },
+                success: { style: { background: '#10b981' } },
+                error: { style: { background: '#ef4444' } }
+              }}
+            />
+            <Router>
+              <AppRoutes />
+            </Router>
+          </AuthProvider>
+        </SettingsProvider>
+      </Provider>
+    </ErrorBoundary>
   );
 }

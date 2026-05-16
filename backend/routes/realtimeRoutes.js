@@ -7,6 +7,7 @@ import express from 'express';
 import { protect } from '../middleware/auth.js';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
+import eventBus from '../utils/eventBus.js';
 
 const router = express.Router();
 
@@ -47,24 +48,20 @@ router.get('/stream', protect, async (req, res) => {
     const userId = req.user._id.toString();
     addClient(userId, res);
 
-    // Send initial ping
-    res.write(`event: connected\ndata: ${JSON.stringify({ message: 'Connected to realtime stream' })}\n\n`);
-
-    // Push data immediately on connect
+    // Helper: Push data to client
     const pushData = async () => {
+        if (res.writableEnded) return;
         try {
             const taskFilter = buildTaskFilter(req.user);
-
             const [tasks, userDoc] = await Promise.all([
                 Task.find(taskFilter)
                     .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
                     .sort({ updatedAt: -1 })
-                    .limit(5000) // Restore full capacity for large teams
+                    .limit(5000)
                     .lean(),
                 User.findById(req.user._id).select('-password').lean(),
             ]);
 
-            // Task stats
             const stats = {
                 total: tasks.length,
                 completed: tasks.filter(t => ['completed', 'approved'].includes(t.status)).length,
@@ -84,34 +81,26 @@ router.get('/stream', protect, async (req, res) => {
         }
     };
 
-    await pushData();
-    
-    let isConnected = true;
-    let timeoutId;
-
-    const scheduleNextPush = () => {
-        if (!isConnected) return;
-        timeoutId = setTimeout(async () => {
-            if (res.writableEnded) {
-                isConnected = false;
-                return;
-            }
-            try {
-                res.write(`: heartbeat\n\n`);
-                await pushData();
-                scheduleNextPush();
-            } catch (err) {
-                console.error('SSE retry error:', err.message);
-                isConnected = false;
-            }
-        }, 10000);
+    // Listen for data changes
+    const onChange = async () => {
+        await pushData();
     };
 
-    scheduleNextPush();
+    eventBus.on('data_change', onChange);
+
+    // Initial push
+    await pushData();
+    
+    // Heartbeat to keep connection alive
+    const heartbeatId = setInterval(() => {
+        if (!res.writableEnded) {
+            res.write(': heartbeat\n\n');
+        }
+    }, 30000);
 
     req.on('close', () => {
-        isConnected = false;
-        clearTimeout(timeoutId);
+        eventBus.off('data_change', onChange);
+        clearInterval(heartbeatId);
         removeClient(userId, res);
         try { res.end(); } catch (e) {}
     });

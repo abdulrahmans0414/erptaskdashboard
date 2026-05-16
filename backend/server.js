@@ -15,6 +15,8 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import realtimeRoutes from './routes/realtimeRoutes.js';
 import User from './models/User.js';
 import { seedDatabase } from './seed.js';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 
 // DNS Configuration - Fix for MongoDB Atlas SRV lookup
 dns.setServers(['1.1.1.1', '8.8.8.8']);
@@ -24,6 +26,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Security Middlewares
+app.use(helmet({
+    crossOriginResourcePolicy: false, // Allow cross-origin images/uploads
+}));
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 500, // Limit each IP to 500 requests per window
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+});
+app.use('/api/', limiter);
+
 const PORT = process.env.PORT || 5000;
 
 // CORS Configuration - PRODUCTION UPDATE
