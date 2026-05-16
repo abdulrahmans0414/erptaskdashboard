@@ -94,10 +94,13 @@ const UserManagement = () => {
   ];
 
   const [users, setUsers] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -105,33 +108,39 @@ const UserManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  useEffect(() => {
-    if (!showModal) return;
-    const onKey = (e) => e.key === "Escape" && setShowModal(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showModal]);
-
-  const showToast = (message, type = "success") => {
-    if (type === "success") toast.success(message);
-    else toast.error(message);
-  };
-
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const response = await getUsers();
-      if (response.data.success) setUsers(response.data.data);
+      const response = await getUsers({
+        page,
+        limit: 10,
+        search,
+        role: roleFilter,
+        branch: branchFilter
+      });
+      if (response.data.success) {
+        setUsers(response.data.data);
+        setPagination(response.data.pagination || { page: 1, pages: 1, total: response.data.data.length });
+      }
     } catch (error) {
       console.error("Error loading users:", error);
       showToast("Failed to load users", "error");
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    loadUsers();
+  }, [page, roleFilter, branchFilter]);
+
+  // Debounced search for users
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (page !== 1) setPage(1);
+      else loadUsers();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -203,23 +212,7 @@ const UserManagement = () => {
     setShowModal(true);
   };
 
-  const filtered = useMemo(() => {
-    return users.filter((u) => {
-      if (roleFilter !== "all" && u.role !== roleFilter) return false;
-      if (branchFilter !== "all" && (u.branch || "Gaurabagh") !== branchFilter)
-        return false;
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return (
-        u.name?.toLowerCase().includes(q) ||
-        u.email?.toLowerCase().includes(q) ||
-        u.employeeId?.toLowerCase().includes(q) ||
-        u.department?.toLowerCase().includes(q) ||
-        u.branch?.toLowerCase().includes(q) ||
-        u.role?.toLowerCase().includes(q)
-      );
-    });
-  }, [users, search, roleFilter, branchFilter]);
+  const filtered = users; // Server-side filtering is active
 
   const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all";
 
@@ -436,6 +429,39 @@ const UserManagement = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination Controls */}
+              {pagination.pages > 1 && (
+                <div className="p-4 border-t bg-slate-50/50 flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 hover:bg-slate-50 transition-colors"
+                  >
+                    ◀
+                  </button>
+                  {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
+                    const totalP = pagination.pages;
+                    let p = totalP <= 5 ? i + 1 : page <= 3 ? i + 1 : page >= totalP - 2 ? totalP - 4 + i : page - 2 + i;
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${page === p ? "bg-blue-600 text-white shadow-md" : "bg-white border hover:border-blue-300"}`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                    disabled={page === pagination.pages}
+                    className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 hover:bg-slate-50 transition-colors"
+                  >
+                    ▶
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="md:hidden space-y-3">

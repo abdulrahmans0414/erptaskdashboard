@@ -6,13 +6,47 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// @desc    Get all users (with data isolation via req.userFilter)
+// @desc    Get all users (with pagination, search, and data isolation)
 export const getAllUsers = async (req, res) => {
     try {
-        // ✅ FIX: Use userFilter set by filterUsersByAccess middleware
-        const filter = req.userFilter || {};
-        const users = await User.find(filter).select('-password').sort({ name: 1 }).lean();
-        res.json({ success: true, data: users });
+        const { page = 1, limit = 10, search, department, branch, role: filterRole } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Base query from middleware
+        let query = req.userFilter ? { ...req.userFilter } : {};
+
+        // Search logic
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } },
+                { employeeId: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        // Additional filters
+        if (department && department !== 'all') query.department = department;
+        if (branch && branch !== 'all') query.branch = branch;
+        if (filterRole && filterRole !== 'all') query.role = filterRole;
+
+        const users = await User.find(query)
+            .select('-password')
+            .sort({ name: 1 })
+            .skip(skip)
+            .limit(parseInt(limit))
+            .lean();
+
+        const total = await User.countDocuments(query);
+
+        res.json({ 
+            success: true, 
+            data: users,
+            pagination: {
+                total,
+                page: parseInt(page),
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
