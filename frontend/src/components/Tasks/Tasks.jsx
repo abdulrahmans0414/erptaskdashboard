@@ -255,7 +255,7 @@ export default function Tasks() {
             <TaskCard key={t._id} task={t} onUpdate={load} />
           ))}
         </div>
-      );}
+      )}
 
       {/* Pagination */}
       {pagination.pages > 1 && (
