@@ -563,9 +563,13 @@ const Dashboard = () => {
       statsParams.endDate = customEnd;
     }
     
-    // Dashboard only needs a few recent tasks for the list
-    dispatch(fetchTasks({ limit: 10 })); 
-    // Stats should be filtered by the selection
+    // Both tasks and stats should be filtered by the selection
+    dispatch(fetchTasks({ 
+      limit: 10,
+      department: selectedDepartment,
+      branch: selectedBranch,
+      timeFilter
+    })); 
     dispatch(fetchDashboardStats(statsParams));
   }, [dispatch, selectedDepartment, selectedBranch, timeFilter, customStart, customEnd]);
 
