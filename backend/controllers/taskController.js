@@ -952,46 +952,61 @@ export const getDashboardStats = async (req, res) => {
         let query = req.taskFilter ? { ...req.taskFilter } : {};
 
         // Managers can refine their view
-        if (department && department !== 'all' && ['admin', 'branch-head', 'hr', 'it', 'department-head'].includes(role)) {
+        if (department && department !== 'all') {
             query.department = department;
         }
-        if (branch && branch !== 'all' && ['admin'].includes(role)) {
+        if (branch && branch !== 'all') {
             query.branch = branch;
         }
         
         // Date Filtering (Named filters like daily, weekly, monthly or custom dates)
         const timeFilter = req.query.timeFilter;
+        let dateQuery = {};
         if (timeFilter && timeFilter !== 'all') {
-            query.createdAt = query.createdAt || {};
             const now = new Date();
             if (timeFilter === 'daily') {
                 const start = new Date(now);
                 start.setHours(0, 0, 0, 0);
-                query.createdAt.$gte = start;
+                dateQuery.createdAt = { $gte: start };
             } else if (timeFilter === 'weekly') {
                 const start = new Date(now);
                 start.setDate(now.getDate() - 7);
                 start.setHours(0, 0, 0, 0);
-                query.createdAt.$gte = start;
+                dateQuery.createdAt = { $gte: start };
             } else if (timeFilter === 'monthly') {
                 const start = new Date(now);
                 start.setMonth(now.getMonth() - 1);
                 start.setHours(0, 0, 0, 0);
-                query.createdAt.$gte = start;
+                dateQuery.createdAt = { $gte: start };
             }
         } else if (startDate || endDate) {
-            query.createdAt = query.createdAt || {};
+            dateQuery.createdAt = {};
             if (startDate && !isNaN(new Date(startDate))) {
-                query.createdAt.$gte = new Date(startDate);
+                dateQuery.createdAt.$gte = new Date(startDate);
             }
             if (endDate && !isNaN(new Date(endDate))) {
                 const d = new Date(endDate);
                 d.setHours(23, 59, 59, 999);
-                query.createdAt.$lte = d;
+                dateQuery.createdAt.$lte = d;
             }
         }
 
         const now = new Date();
+        const queryWithDate = { ...query, ...dateQuery };
+
+        // 📊 NEW: Aggregate branch-wise stats on the server
+        const branchAgg = await Task.aggregate([
+            { $match: queryWithDate },
+            { $group: {
+                _id: "$branch",
+                total: { $sum: 1 },
+                completed: { $sum: { $cond: [{ $in: ["$status", ["completed", "approved"]] }, 1, 0] } },
+                pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+                inProgress: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
+                submitted: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } }
+            }},
+            { $sort: { total: -1 } }
+        ]);
 
         // Use Promise.all with simple counts for maximum stability
         const [
@@ -1006,20 +1021,20 @@ export const getDashboardStats = async (req, res) => {
             overdueTasks,
             recentTasks
         ] = await Promise.all([
-            Task.countDocuments(query),
-            Task.countDocuments({ ...query, status: { $in: ['completed', 'approved'] } }),
-            Task.countDocuments({ ...query, status: 'pending' }),
-            Task.countDocuments({ ...query, status: 'in-progress' }),
-            Task.countDocuments({ ...query, status: 'submitted' }),
-            Task.countDocuments({ ...query, status: 'rejected' }),
-            Task.countDocuments({ ...query, priority: 'urgent' }),
-            Task.countDocuments({ ...query, priority: 'high' }),
+            Task.countDocuments(queryWithDate),
+            Task.countDocuments({ ...queryWithDate, status: { $in: ['completed', 'approved'] } }),
+            Task.countDocuments({ ...queryWithDate, status: 'pending' }),
+            Task.countDocuments({ ...queryWithDate, status: 'in-progress' }),
+            Task.countDocuments({ ...queryWithDate, status: 'submitted' }),
+            Task.countDocuments({ ...queryWithDate, status: 'rejected' }),
+            Task.countDocuments({ ...queryWithDate, priority: 'urgent' }),
+            Task.countDocuments({ ...queryWithDate, priority: 'high' }),
             Task.countDocuments({ 
                 ...query, 
                 dueDate: { $lt: now }, 
                 status: { $nin: ['completed', 'approved'] } 
             }),
-            Task.find(query)
+            Task.find(queryWithDate)
                 .sort({ updatedAt: -1 })
                 .limit(10)
                 .select('title status priority updatedAt dueDate assignedTo')
@@ -1041,6 +1056,14 @@ export const getDashboardStats = async (req, res) => {
                     highPriorityTasks,
                     overdueTasks
                 },
+                branchStats: branchAgg.map(b => ({
+                    name: b._id || 'Unknown',
+                    total: b.total,
+                    completed: b.completed,
+                    pending: b.pending,
+                    inProgress: b.inProgress,
+                    submitted: b.submitted
+                })),
                 recentTasks
             }
         });

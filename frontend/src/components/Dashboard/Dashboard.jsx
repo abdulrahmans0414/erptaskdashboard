@@ -774,19 +774,7 @@ const Dashboard = () => {
     };
   };
 
-  const branchStats = visibleBranches.map((bn) => {
-    const bt = filteredTasks.filter((t) => t.branch === bn);
-    return {
-      name: bn,
-      total: bt.length,
-      completed: bt.filter(
-        (t) => t.status === "completed" || t.status === "approved",
-      ).length,
-      pending: bt.filter((t) => t.status === "pending").length,
-      inProgress: bt.filter((t) => t.status === "in-progress").length,
-      submitted: bt.filter((t) => t.status === "submitted").length,
-    };
-  });
+  const branchStats = dashboardStats?.branchStats || [];
 
   // ==================== CHART DATA GENERATION ====================
   const getMonthlyChartData = (tasks, startDate, endDate) => {
@@ -1199,24 +1187,17 @@ const Dashboard = () => {
   if (!isManagerRole) {
     if (loading && allTasks.length === 0) return <DashboardSkeleton />;
 
-    const myTasks = allTasks;
-    const myPending = myTasks.filter((t) => t.status === "pending").length;
-    const myInProgress = myTasks.filter(
-      (t) => t.status === "in-progress",
-    ).length;
-    const mySubmitted = myTasks.filter((t) => t.status === "submitted").length;
-    const myCompleted = myTasks.filter(
-      (t) => t.status === "completed" || t.status === "approved",
-    ).length;
-    const myOverdue = myTasks.filter(
-      (t) =>
-        new Date(t.dueDate) < new Date() &&
-        !["completed", "approved"].includes(t.status),
-    ).length;
-    const completionRate =
-      myTasks.length > 0
-        ? ((myCompleted / myTasks.length) * 100).toFixed(0)
-        : 0;
+    const stats = dashboardStats?.summary || {
+        totalTasks: 0,
+        completedTasks: 0,
+        pendingTasks: 0,
+        inProgressTasks: 0,
+        submittedTasks: 0,
+        rejectedTasks: 0,
+        overdueTasks: 0
+    };
+
+    const completionRate = stats.totalTasks > 0 ? ((stats.completedTasks / stats.totalTasks) * 100).toFixed(0) : 0;
 
     return (
       <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto animate-fadeIn">
@@ -1241,31 +1222,31 @@ const Dashboard = () => {
           {[
             {
               label: "Total Tasks",
-              value: myTasks.length,
+              value: stats.totalTasks,
               icon: "📋",
               color: "bg-slate-100 text-slate-600",
             },
             {
               label: "Pending",
-              value: myPending,
+              value: stats.pendingTasks,
               icon: "⏳",
               color: "bg-amber-100 text-amber-600",
             },
             {
               label: "In Progress",
-              value: myInProgress,
+              value: stats.inProgressTasks,
               icon: "🔄",
               color: "bg-blue-100 text-blue-600",
             },
             {
               label: "Submitted",
-              value: mySubmitted,
+              value: stats.submittedTasks,
               icon: "📤",
               color: "bg-purple-100 text-purple-600",
             },
             {
               label: "Completed",
-              value: myCompleted,
+              value: stats.completedTasks,
               icon: "✅",
               color: "bg-emerald-100 text-emerald-600",
             },
@@ -1302,13 +1283,13 @@ const Dashboard = () => {
         </div>
 
         {/* Overdue */}
-        {myOverdue > 0 && (
+        {stats.overdueTasks > 0 && (
           <div className="bg-gradient-to-r from-rose-50 to-red-50 border border-rose-200 rounded-xl p-5 flex items-center gap-4">
             <span className="text-2xl">⚠️</span>
             <div className="flex-1">
               <p className="font-semibold text-rose-700">Overdue Tasks!</p>
               <p className="text-sm text-rose-600">
-                You have {myOverdue} overdue task{myOverdue > 1 ? "s" : ""}.
+                You have {stats.overdueTasks} overdue task{stats.overdueTasks > 1 ? "s" : ""}.
               </p>
             </div>
             <button

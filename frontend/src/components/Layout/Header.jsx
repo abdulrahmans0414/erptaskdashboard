@@ -163,7 +163,7 @@ const Header = ({
                   <div className="flex items-center gap-3">
                     {user?.avatar ? (
                       <img
-                        src={`http://localhost:5000${user.avatar}`}
+                        src={`${API_ORIGIN}${user.avatar}`}
                         alt=""
                         className="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow"
                       />

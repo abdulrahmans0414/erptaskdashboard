@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+
+const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5000/api")
+  .replace(/\/api\/?$/, "");
 
 export default function Sidebar({
   collapsed,
@@ -10,6 +13,7 @@ export default function Sidebar({
   isMobile = false,
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [performanceOpen, setPerformanceOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
@@ -270,6 +274,43 @@ export default function Sidebar({
           </>
         )} */}
       </nav>
+      
+      {/* User Profile Section at Bottom */}
+      <div className="p-3 border-t border-white/10 mt-auto bg-black/20">
+        <div 
+          className={`flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-white/5 cursor-pointer
+          ${collapsed && !isMobile ? "justify-center" : ""}`}
+          onClick={() => {
+            navigate("/profile");
+            closeMobile();
+          }}
+        >
+          {user?.avatar ? (
+            <img
+              src={`${API_ORIGIN}${user.avatar}`}
+              alt=""
+              className="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow"
+            />
+          ) : (
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg">
+              {user?.name?.charAt(0)?.toUpperCase()}
+            </div>
+          )}
+          
+          {(!collapsed || isMobile) && (
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-white truncate">{user?.name}</p>
+              <p className="text-[10px] text-gray-500 truncate capitalize">
+                {user?.role?.replace(/-/g, " ")}
+              </p>
+            </div>
+          )}
+          
+          {(!collapsed || isMobile) && (
+             <span className="text-gray-600 text-[10px]">👤</span>
+          )}
+        </div>
+      </div>
     </aside>
   );
 }
