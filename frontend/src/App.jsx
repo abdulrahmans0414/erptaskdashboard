@@ -33,26 +33,28 @@ const Spinner = () => (
 
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <Spinner />;
+  // Only show spinner on initial load if no user data yet
+  if (loading && !user) return <Spinner />;
   return user ? <Navigate to="/" replace /> : children;
 };
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <Spinner />;
+  // Silent refresh: don't block UI if user data already exists
+  if (loading && !user) return <Spinner />;
   return user ? children : <Navigate to="/login" replace />;
 };
 
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <Spinner />;
+  if (loading && !user) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
   return user.role === "admin" ? children : <Navigate to="/" replace />;
 };
 
 const ManagerRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <Spinner />;
+  if (loading && !user) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
   return ["admin", "branch-head", "department-head"].includes(user.role) ? (
     children
