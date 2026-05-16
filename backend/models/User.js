@@ -27,17 +27,36 @@ const userSchema = new mongoose.Schema({
     },
     department: {
         type: String,
-        enum: ['IT', 'HR', 'Graphic', 'Academic', 'Finance', 'Marketing', 'Legal', 'Transport', 'Operations'],
         required: [true, 'Department is required']
     },
     branch: {
         type: String,
-        enum: ['Gaurabagh', 'Vikas Nagar', 'Kalyanpur', 'Kursi', 'Hive', 'Ring Road', 'Muazzam Nagar', 'Aziz Nagar'],
         default: 'Gaurabagh'
     },
     avatar: {
         type: String,
         default: null
+    },
+    phone: {
+        type: String,
+        default: null
+    },
+    dateOfJoining: {
+        type: Date,
+        default: Date.now
+    },
+    address: {
+        type: String,
+        default: null
+    },
+    bloodGroup: {
+        type: String,
+        default: null
+    },
+    customFields: {
+        type: Map,
+        of: String,
+        default: {}
     },
     isActive: {
         type: Boolean,
@@ -82,5 +101,7 @@ userSchema.index(
     { role: 1, department: 1, branch: 1 },
     { unique: true, partialFilterExpression: { role: 'department-head' } }
 );
+
+userSchema.index({ name: 'text', email: 'text', employeeId: 'text' });
 
 export default mongoose.model('User', userSchema);

@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchTasks } from "../../store/slices/taskSlice";
 import {
   getTasks,
   getUsers,
@@ -7,7 +9,9 @@ import {
 } from "../../services/api";
 import { reviewTask } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useSettings } from "../../context/SettingsContext";
 import { useNavigate } from "react-router-dom";
+import DepartmentCard from "./DepartmentCard";
 import { Bar, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -518,10 +522,14 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel, loading }) => {
 // ==================== MAIN DASHBOARD ====================
 const Dashboard = () => {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
 
-  const [allTasks, setAllTasks] = useState([]);
+  const dispatch = useDispatch();
+  const allTasks = useSelector(state => state.tasks.items);
+  const tasksLoading = useSelector(state => state.tasks.loading);
+
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
@@ -549,7 +557,7 @@ const Dashboard = () => {
       setSelectedDepartment(user.department);
   }, [user]);
 
-  const branches = [
+  const branches = settings?.branches || [
     "Gaurabagh",
     "Vikas Nagar",
     "Kalyanpur",
@@ -560,7 +568,7 @@ const Dashboard = () => {
     "Aziz Nagar",
   ];
 
-  const departments = [
+  const departments = settings?.departments || [
     "IT",
     "HR",
     "Graphic",
@@ -579,18 +587,7 @@ const Dashboard = () => {
       ? [user.department]
       : departments;
 
-  const departmentsForSelectedBranch = (() => {
-    // When a branch is selected, show only departments that actually exist in that branch
-    // (based on employee list already filtered by access).
-    if (selectedBranch === "all") return visibleDepartments;
-    const set = new Set(
-      employees
-        .filter((e) => e.branch === selectedBranch)
-        .map((e) => e.department)
-        .filter(Boolean),
-    );
-    return visibleDepartments.filter((d) => set.has(d));
-  })();
+  const departmentsForSelectedBranch = visibleDepartments;
 
   const branchColors = [
     "bg-gradient-to-br from-blue-500 to-blue-600",
@@ -608,13 +605,8 @@ const Dashboard = () => {
   }, []);
 
   const loadTasks = useCallback(async () => {
-    try {
-      const r = await getTasks();
-      if (r.data.success) setAllTasks(r.data.data);
-    } catch {
-      showToast("Failed to load tasks", "error");
-    }
-  }, [showToast]);
+    dispatch(fetchTasks());
+  }, [dispatch]);
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -645,20 +637,26 @@ const Dashboard = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([loadTasks(), loadEmployees()]);
+      if (allTasks.length === 0) {
+        dispatch(fetchTasks());
+      }
+      await loadEmployees();
       setLoading(false);
     };
     loadData();
-  }, [loadTasks, loadEmployees]);
+  }, [dispatch, loadEmployees]);
 
+  // When branch changes, reset department filter — departments vary per branch
   useEffect(() => {
-    const i = setInterval(loadTasks, 30000);
-    return () => clearInterval(i);
-  }, [loadTasks]);
+    if (user?.role !== "branch-head" && user?.role !== "department-head") {
+      setSelectedDepartment("all");
+    }
+    setCurrentPage(1);
+  }, [selectedBranch]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedBranch, selectedDepartment, searchQuery, timeFilter]);
+  }, [selectedDepartment, searchQuery, timeFilter]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -676,72 +674,61 @@ const Dashboard = () => {
     return () => document.head.removeChild(style);
   }, []);
 
-  // ==================== TIME FILTER LOGIC ====================
-  const applyTimeFilter = (tasks) => {
-    let filtered = [...tasks];
-    const now = new Date();
 
+
+  const getFilteredTasks = useMemo(() => {
+    const now = new Date();
+    let filtered = [...allTasks];
+
+    // ── Time filter ────────────────────────────────────────────────
     switch (timeFilter) {
       case "daily": {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        filtered = filtered.filter((x) => new Date(x.createdAt) >= today);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(x => new Date(x.createdAt) >= today);
         break;
       }
       case "weekly": {
-        const weekAgo = new Date(now);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        weekAgo.setHours(0, 0, 0, 0);
-        filtered = filtered.filter((x) => new Date(x.createdAt) >= weekAgo);
+        const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7); weekAgo.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(x => new Date(x.createdAt) >= weekAgo);
         break;
       }
       case "monthly": {
-        const monthAgo = new Date(now);
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        monthAgo.setHours(0, 0, 0, 0);
-        filtered = filtered.filter((x) => new Date(x.createdAt) >= monthAgo);
+        const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1); monthAgo.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(x => new Date(x.createdAt) >= monthAgo);
         break;
       }
       case "custom": {
         if (customStart && customEnd) {
-          const start = new Date(customStart);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(customEnd);
-          end.setHours(23, 59, 59, 999);
-          filtered = filtered.filter((x) => {
-            const date = new Date(x.createdAt);
-            return date >= start && date <= end;
-          });
+          const start = new Date(customStart); start.setHours(0, 0, 0, 0);
+          const end = new Date(customEnd); end.setHours(23, 59, 59, 999);
+          filtered = filtered.filter(x => { const d = new Date(x.createdAt); return d >= start && d <= end; });
         }
         break;
       }
-      case "all":
-      default:
-        break;
+      default: break; // "all" — no filter
     }
 
-    return filtered;
-  };
-
-  const getFilteredTasks = () => {
-    let filtered = applyTimeFilter([...allTasks]);
+    // ── Department & Branch filter ─────────────────────────────────
     if (selectedDepartment !== "all")
-      filtered = filtered.filter((t) => t.department === selectedDepartment);
+      filtered = filtered.filter(t => t.department === selectedDepartment);
     if (selectedBranch !== "all")
-      filtered = filtered.filter((t) => t.branch === selectedBranch);
+      filtered = filtered.filter(t => t.branch === selectedBranch);
+
+    // ── Search filter ──────────────────────────────────────────────
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (t) =>
+        t =>
           t.title?.toLowerCase().includes(q) ||
           t.assignedTo?.name?.toLowerCase().includes(q) ||
           t.assignedTo?.employeeId?.toLowerCase().includes(q),
       );
     }
-    return filtered;
-  };
 
-  const filteredTasks = getFilteredTasks();
+    return filtered;
+  }, [allTasks, timeFilter, customStart, customEnd, selectedDepartment, selectedBranch, searchQuery]);
+
+  const filteredTasks = getFilteredTasks;
   const totalTasks = filteredTasks.length;
   const completedTasks = filteredTasks.filter(
     (t) => t.status === "completed" || t.status === "approved",
@@ -819,6 +806,20 @@ const Dashboard = () => {
       pending: bt.filter((t) => t.status === "pending").length,
       inProgress: bt.filter((t) => t.status === "in-progress").length,
       submitted: bt.filter((t) => t.status === "submitted").length,
+    };
+  });
+
+  const departmentStats = visibleDepartments.map((dn) => {
+    const dt = filteredTasks.filter((t) => t.department === dn);
+    return {
+      name: dn,
+      total: dt.length,
+      completed: dt.filter(
+        (t) => t.status === "completed" || t.status === "approved",
+      ).length,
+      pending: dt.filter((t) => t.status === "pending").length,
+      inProgress: dt.filter((t) => t.status === "in-progress").length,
+      submitted: dt.filter((t) => t.status === "submitted").length,
     };
   });
 
@@ -1631,6 +1632,26 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Department Health (Hidden per user request) */}
+      {/* {visibleDepartments.length > 0 && selectedDepartment === "all" && (
+        <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
+          <h2 className="font-semibold text-sm mb-4">🏢 Department Health</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {departmentStats.map((d, index) => (
+              <DepartmentCard
+                key={d.name}
+                department={{
+                  name: d.name,
+                  icon: "🏢",
+                }}
+                stats={d}
+                onClick={() => setSelectedDepartment(d.name)}
+              />
+            ))}
+          </div>
+        </div>
+      )} */}
 
       {/* Employees */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">

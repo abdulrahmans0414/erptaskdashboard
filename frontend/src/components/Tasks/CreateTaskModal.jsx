@@ -6,22 +6,28 @@ import {
   getUsersByDepartment,
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useSettings } from "../../context/SettingsContext";
 
 const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const { user } = useAuth();
+  const { settings } = useSettings();
+  const branches = settings?.branches || ["Gaurabagh"];
+  const departments = settings?.departments || ["IT"];
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     taskFormName: "",
     taskFormType: "other",
-    branch: "Gaurabagh",
-    department: "IT",
+    branch: branches[0] || "Gaurabagh",
+    department: departments[0] || "IT",
     assignedTo: "",
     dueDate: "",
     priority: "medium",
     estimatedHours: "",
     estimatedMinutes: "",
   });
+
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,28 +36,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [selectedTeam, setSelectedTeam] = useState([]);
   const [collaboratingDepts, setCollaboratingDepts] = useState([]);
   const [taskFormFiles, setTaskFormFiles] = useState([]);
-
-  const branches = [
-    "Gaurabagh",
-    "Vikas Nagar",
-    "Kalyanpur",
-    "Kursi",
-    "Hive",
-    "Ring Road",
-    "Muazzam Nagar",
-    "Aziz Nagar",
-  ];
-  const departments = [
-    "IT",
-    "HR",
-    "Graphic",
-    "Academic",
-    "Finance",
-    "Marketing",
-    "Legal",
-    "Transport",
-    "Operations",
-  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -98,17 +82,17 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
   const resetForm = () => {
     const role = user?.role;
-    const branch = user?.branch || "Gaurabagh";
-    const department = user?.department || "IT";
+    const branch = user?.branch || branches[0] || "Gaurabagh";
+    const department = user?.department || departments[0] || "IT";
 
     const lockedBranch =
-      role === "branch-head" || role === "department-head" ? branch : "Gaurabagh";
+      role === "branch-head" || role === "department-head" ? branch : (branches[0] || "Gaurabagh");
     const lockedDept =
       role === "department-head"
         ? department
         : role === "hr"
           ? "HR"
-          : "IT";
+          : (departments[0] || "IT");
 
     setFormData({
       title: "",

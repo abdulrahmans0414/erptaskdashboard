@@ -1,47 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { useSettings } from "../../context/SettingsContext";
 import {
   getUsers,
   createUser,
   updateUser,
   deleteUser,
 } from "../../services/api";
-
-const DEPARTMENTS = [
-  "IT",
-  "HR",
-  "Graphic",
-  "Academic",
-  "Finance",
-  "Marketing",
-  "Legal",
-  "Transport",
-  "Operations",
-];
-
-const ROLES = [
-  "admin",
-  "department-head",
-  "hr",
-  "it",
-  "graphic",
-  "employee",
-  "branch-head",
-  "coordinator",
-  "mentor",
-  "teacher",
-  "student",
-];
-
-const BRANCHES = [
-  "Gaurabagh",
-  "Vikas Nagar",
-  "Kalyanpur",
-  "Kursi",
-  "Hive",
-  "Ring Road",
-  "Muazzam Nagar",
-  "Aziz Nagar",
-];
 
 const ROLE_LABELS = {
   admin: "Admin",
@@ -90,6 +55,12 @@ const EMPTY_FORM = {
   role: "employee",
   department: "IT",
   branch: "Gaurabagh",
+  phone: "",
+  address: "",
+  bloodGroup: "",
+  dateOfJoining: new Date().toISOString().split('T')[0],
+  employeeId: "",
+  customFields: {},
   isActive: true,
 };
 
@@ -120,21 +91,45 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
+const Field = ({ label, children, required }) => (
+  <div className="space-y-1.5">
+    <label className="block text-sm font-semibold text-slate-700 ml-0.5">
+      {label} {required && <span className="text-rose-500">*</span>}
+    </label>
+    {children}
+  </div>
+);
+
 const UserManagement = () => {
+  const { settings } = useSettings();
+  const departments = settings?.departments || ["IT"];
+  const branches = settings?.branches || ["Gaurabagh"];
+  const roles = [
+    "admin",
+    "department-head",
+    "hr",
+    "it",
+    "graphic",
+    "employee",
+    "branch-head",
+    "coordinator",
+    "mentor",
+    "teacher",
+    "student",
+  ];
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  const [formData, setFormData] = useState(EMPTY_FORM);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
+  const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [showPwd, setShowPwd] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [showPwd, setShowPwd] = useState(false);
-
-  const showToast = (m, t = "success") => setToast({ message: m, type: t });
 
   useEffect(() => {
     loadUsers();
@@ -146,6 +141,10 @@ const UserManagement = () => {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [showModal]);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -174,7 +173,6 @@ const UserManagement = () => {
       }
       setShowModal(false);
       setEditingUser(null);
-      setFormData(EMPTY_FORM);
       loadUsers();
     } catch (error) {
       console.error("Error saving user:", error);
@@ -200,20 +198,30 @@ const UserManagement = () => {
 
   const openCreate = () => {
     setEditingUser(null);
-    setFormData(EMPTY_FORM);
+    setFormData({
+        ...EMPTY_FORM,
+        department: departments[0] || "IT",
+        branch: branches[0] || "Gaurabagh"
+    });
     setShowPwd(false);
     setShowModal(true);
   };
 
-  const openEdit = (user) => {
+  const handleEditClick = (user) => {
     setEditingUser(user);
     setFormData({
-      name: user.name,
-      email: user.email,
-      password: "",
-      role: user.role,
+      name: user.name || "",
+      email: user.email || "",
+      password: "", 
+      role: user.role || "employee",
       department: user.department || "IT",
       branch: user.branch || "Gaurabagh",
+      phone: user.phone || "",
+      address: user.address || "",
+      bloodGroup: user.bloodGroup || "",
+      dateOfJoining: user.dateOfJoining ? user.dateOfJoining.split('T')[0] : new Date().toISOString().split('T')[0],
+      employeeId: user.employeeId || "",
+      customFields: user.customFields || {},
       isActive: user.isActive !== false,
     });
     setShowPwd(false);
@@ -230,12 +238,15 @@ const UserManagement = () => {
       return (
         u.name?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
+        u.employeeId?.toLowerCase().includes(q) ||
         u.department?.toLowerCase().includes(q) ||
         u.branch?.toLowerCase().includes(q) ||
         u.role?.toLowerCase().includes(q)
       );
     });
   }, [users, search, roleFilter, branchFilter]);
+
+  const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
@@ -248,7 +259,6 @@ const UserManagement = () => {
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
       <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white grid place-items-center text-xl shadow-lg shadow-blue-200">
@@ -271,34 +281,13 @@ const UserManagement = () => {
           </button>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            {
-              label: "Total Users",
-              value: users.length,
-              color: "text-slate-900",
-            },
-            {
-              label: "Active",
-              value: users.filter((u) => u.isActive !== false).length,
-              color: "text-emerald-600",
-            },
-            {
-              label: "Departments",
-              value: DEPARTMENTS.length,
-              color: "text-blue-600",
-            },
-            {
-              label: "Branches",
-              value: BRANCHES.length,
-              color: "text-indigo-600",
-            },
-            {
-              label: "Admins",
-              value: users.filter((u) => u.role === "admin").length,
-              color: "text-purple-600",
-            },
+            { label: "Total Users", value: users.length, color: "text-slate-900" },
+            { label: "Active", value: users.filter((u) => u.isActive !== false).length, color: "text-emerald-600" },
+            { label: "Departments", value: departments.length, color: "text-blue-600" },
+            { label: "Branches", value: branches.length, color: "text-indigo-600" },
+            { label: "Admins", value: users.filter((u) => u.role === "admin").length, color: "text-purple-600" },
           ].map((s) => (
             <div
               key={s.label}
@@ -312,7 +301,6 @@ const UserManagement = () => {
           ))}
         </div>
 
-        {/* Filters */}
         <div className="bg-white border border-slate-200/70 rounded-2xl p-3 flex flex-col md:flex-row gap-2 shadow-sm">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -331,7 +319,7 @@ const UserManagement = () => {
             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
           >
             <option value="all">All Roles</option>
-            {ROLES.map((r) => (
+            {roles.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
               </option>
@@ -343,7 +331,7 @@ const UserManagement = () => {
             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
           >
             <option value="all">All Branches</option>
-            {BRANCHES.map((b) => (
+            {branches.map((b) => (
               <option key={b} value={b}>
                 {b}
               </option>
@@ -351,7 +339,6 @@ const UserManagement = () => {
           </select>
         </div>
 
-        {/* Content */}
         {loading ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="space-y-3">
@@ -373,14 +360,16 @@ const UserManagement = () => {
           </div>
         ) : (
           <>
-            {/* Desktop Table */}
             <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200/70 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-slate-50/70 border-b border-slate-200">
                     <tr>
                       <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
-                        User
+                        User Info
+                      </th>
+                      <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
+                        Employee ID
                       </th>
                       <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
                         Department
@@ -421,6 +410,9 @@ const UserManagement = () => {
                             </div>
                           </div>
                         </td>
+                        <td className="py-3 px-4 text-sm font-medium text-slate-700">
+                          {user.employeeId || "—"}
+                        </td>
                         <td className="py-3 px-4">
                           <span
                             className={`text-xs px-2.5 py-1 rounded-full font-medium border ${DEPT_BADGE[user.department] || "bg-slate-100 text-slate-700 border-slate-200"}`}
@@ -454,7 +446,7 @@ const UserManagement = () => {
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <button
-                            onClick={() => openEdit(user)}
+                            onClick={() => handleEditClick(user)}
                             className="inline-flex items-center gap-1 text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg text-sm font-medium transition mr-1"
                           >
                             ✏️ Edit
@@ -473,7 +465,6 @@ const UserManagement = () => {
               </div>
             </div>
 
-            {/* Mobile Cards */}
             <div className="md:hidden space-y-3">
               {filtered.map((user, i) => (
                 <div
@@ -492,7 +483,7 @@ const UserManagement = () => {
                             {user.name}
                           </p>
                           <p className="text-xs text-slate-500 truncate">
-                            {user.email}
+                            {user.email} {user.employeeId && `· ${user.employeeId}`}
                           </p>
                         </div>
                         <span
@@ -522,7 +513,7 @@ const UserManagement = () => {
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button
-                          onClick={() => openEdit(user)}
+                          onClick={() => handleEditClick(user)}
                           className="flex-1 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 transition"
                         >
                           ✏️ Edit
@@ -543,7 +534,6 @@ const UserManagement = () => {
         )}
       </div>
 
-      {/* Confirm delete */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-[fadeIn_.15s_ease-out]">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-[scaleIn_.2s_ease-out]">
@@ -571,7 +561,6 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* User Modal */}
       {showModal && (
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-[fadeIn_.15s_ease-out]"
@@ -579,18 +568,13 @@ const UserManagement = () => {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-hidden flex flex-col animate-[scaleIn_.2s_ease-out]"
+            className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-hidden flex flex-col animate-[scaleIn_.2s_ease-out]"
           >
             <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
                   {editingUser ? "Edit User" : "Add New User"}
                 </h2>
-                <p className="text-xs text-slate-500">
-                  {editingUser
-                    ? "Update user details"
-                    : "Create a new employee account"}
-                </p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
@@ -604,26 +588,33 @@ const UserManagement = () => {
               onSubmit={handleSubmit}
               className="overflow-y-auto px-6 py-5 space-y-4"
             >
-              <Field label="Name" required>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Name" required>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Email" required>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Employee ID">
                 <input
                   type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Email" required>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  placeholder="e.g. EMP123"
+                  value={formData.employeeId}
+                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                   className={inputClass}
                 />
               </Field>
@@ -635,9 +626,7 @@ const UserManagement = () => {
                       type={showPwd ? "text" : "password"}
                       required
                       value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       className={`${inputClass} pr-10`}
                     />
                     <button
@@ -652,94 +641,168 @@ const UserManagement = () => {
                 </Field>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="Branch" required>
+              {editingUser && (
+                <Field label="Update Password">
+                  <div className="relative">
+                    <input
+                      type={showPwd ? "text" : "password"}
+                      placeholder="Leave blank to keep current"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className={`${inputClass} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwd((s) => !s)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 px-2 py-1 text-sm"
+                      tabIndex={-1}
+                    >
+                      {showPwd ? "🙈" : "👁️"}
+                    </button>
+                  </div>
+                </Field>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Phone Number">
+                  <input
+                    type="text"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Blood Group">
+                  <input
+                    type="text"
+                    value={formData.bloodGroup}
+                    onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Home Address">
+                <textarea
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className={inputClass}
+                  rows="2"
+                />
+              </Field>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Role" required>
                   <select
-                    value={formData.branch}
-                    onChange={(e) =>
-                      setFormData({ ...formData, branch: e.target.value })
-                    }
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                     className={inputClass}
                   >
-                    {BRANCHES.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
+                    {roles.map((r) => (
+                      <option key={r} value={r}>
+                        {ROLE_LABELS[r]}
                       </option>
                     ))}
                   </select>
                 </Field>
-                <Field label="Department">
+                <Field label="Date of Joining" required>
+                  <input
+                    type="date"
+                    value={formData.dateOfJoining}
+                    onChange={(e) => setFormData({ ...formData, dateOfJoining: e.target.value })}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Department" required>
                   <select
                     value={formData.department}
-                    onChange={(e) =>
-                      setFormData({ ...formData, department: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     className={inputClass}
                   >
-                    {DEPARTMENTS.map((d) => (
+                    {departments.map((d) => (
                       <option key={d} value={d}>
                         {d}
                       </option>
                     ))}
                   </select>
                 </Field>
+                <Field label="Branch" required>
+                  <select
+                    value={formData.branch}
+                    onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                    className={inputClass}
+                  >
+                    {branches.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
               </div>
 
-              <Field label="Role">
-                <select
-                  value={formData.role}
-                  onChange={(e) =>
-                    setFormData({ ...formData, role: e.target.value })
-                  }
-                  className={inputClass}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              {/* Dynamic Custom Fields */}
+              {settings?.userCustomFields?.length > 0 && (
+                <div className="pt-4 border-t border-slate-100 space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800">
+                    Additional Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {settings.userCustomFields.map((field) => (
+                      <Field key={field.id} label={field.label} required={field.required}>
+                        <input
+                          type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+                          required={field.required}
+                          value={formData?.customFields?.[field.id] || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              customFields: {
+                                ...(formData.customFields || {}),
+                                [field.id]: e.target.value,
+                              },
+                            })
+                          }
+                          className={inputClass}
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {editingUser && (
-                <label className="flex items-center justify-between gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                <label className="flex items-center justify-between gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-700">
-                      Account Active
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      User can log in when active
-                    </p>
+                    <p className="text-sm font-bold text-slate-700">Account Active</p>
+                    <p className="text-xs text-slate-500">User can log in when active</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={formData.isActive}
-                    onChange={(e) =>
-                      setFormData({ ...formData, isActive: e.target.checked })
-                    }
-                    className="w-5 h-5 accent-blue-600"
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
                 </label>
               )}
 
-              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-3 sticky bottom-0 bg-white">
+              <div className="flex gap-3 pt-6 sticky bottom-0 bg-white border-t border-slate-100 py-4 mt-auto">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-medium transition"
+                  className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-2.5 rounded-xl font-medium transition shadow-lg shadow-blue-200/70"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-lg shadow-blue-200 transition-all active:scale-[.98] disabled:opacity-50"
                 >
-                  {submitting
-                    ? "Saving..."
-                    : editingUser
-                      ? "Update User"
-                      : "Create User"}
+                  {submitting ? "Saving..." : editingUser ? "Update User" : "Create User"}
                 </button>
               </div>
             </form>
@@ -749,17 +812,5 @@ const UserManagement = () => {
     </div>
   );
 };
-
-const inputClass =
-  "w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition";
-
-const Field = ({ label, required, children }) => (
-  <div>
-    <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    {children}
-  </div>
-);
 
 export default UserManagement;

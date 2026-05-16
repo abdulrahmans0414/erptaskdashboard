@@ -7,6 +7,7 @@ import {
   checkRegStatus,
   login as loginApi,
 } from "../../services/api";
+import { useSettings } from "../../context/SettingsContext";
 
 // ─── Constants ────────────────────────────────────────────────
 const DEPARTMENTS = [
@@ -263,7 +264,12 @@ const PasswordStrength = ({ password }) => {
 // ═══════════════════════════════════════════════════════════════
 export default function AuthPage() {
   const { login: authLogin } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
+  
+  const departments = settings?.departments || [];
+  const branches = settings?.branches || [];
+
   const otpInputRefs = useRef([]);
 
   // State
@@ -285,8 +291,8 @@ export default function AuthPage() {
     employeeId: "",
     designation: "",
     role: "employee",
-    department: "IT",
-    branch: "Gaurabagh",
+    department: departments[0] || "IT",
+    branch: branches[0] || "Gaurabagh",
     requestHighPrivilege: "no",
     requestedPrivilegeRole: "department-head",
     privilegeRequestReason: "",
@@ -533,12 +539,21 @@ export default function AuthPage() {
       <div className="w-full max-w-md animate-fade-in">
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-xl shadow-blue-200 mb-4">
-            <span className="text-3xl">📊</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl shadow-blue-200 mb-4 overflow-hidden border border-gray-100">
+            <img 
+              src="/spis-logo.jpeg" 
+              alt="SPIS Logo" 
+              className="w-full h-full object-contain p-2"
+              onError={(e) => {
+                e.target.onerror = null; 
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = '<span class="text-3xl">📊</span>';
+              }}
+            />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">TaskGrid ERP</h1>
-          <p className="text-sm text-gray-500 mt-1 font-medium">
-            Performance Management System
+          <h1 className="text-2xl font-bold text-gray-900">SPIS Task Controller</h1>
+          <p className="text-sm text-gray-500 mt-1 font-medium" title="Scholars Paradise International School">
+            Scholars Paradise International School
           </p>
         </div>
 
@@ -567,10 +582,10 @@ export default function AuthPage() {
             <>
               <form onSubmit={handleLogin} className="space-y-4">
                 <Input
-                  label="Email Address"
-                  type="email"
-                  icon="📧"
-                  placeholder="you@company.com"
+                  label="Email or Employee ID"
+                  type="text"
+                  icon="👤"
+                  placeholder="you@company.com or EMP-123"
                   value={loginData.email}
                   onChange={(e) =>
                     setLoginData((prev) => ({ ...prev, email: e.target.value }))
@@ -755,7 +770,7 @@ export default function AuthPage() {
                         label="Department *"
                         value={form.department}
                         onChange={updateForm("department")}
-                        options={DEPARTMENTS.map((d) => ({
+                        options={departments.map((d) => ({
                           value: d,
                           label: d,
                         }))}
@@ -764,7 +779,7 @@ export default function AuthPage() {
                         label="Branch"
                         value={form.branch}
                         onChange={updateForm("branch")}
-                        options={BRANCHES.map((b) => ({ value: b, label: b }))}
+                        options={branches.map((b) => ({ value: b, label: b }))}
                       />
                     </div>
                     <Select

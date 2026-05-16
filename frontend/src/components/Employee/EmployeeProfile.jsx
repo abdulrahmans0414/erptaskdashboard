@@ -9,6 +9,7 @@ import {
   uploadAvatar,
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useSettings } from "../../context/SettingsContext";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 
@@ -20,64 +21,9 @@ const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5000/api")
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
-const BRANCHES = [
-  "Gaurabagh",
-  "Vikas Nagar",
-  "Kalyanpur",
-  "Kursi",
-  "Hive",
-  "Ring Road",
-  "Muazzam Nagar",
-  "Aziz Nagar",
-];
-
-const DEPARTMENTS = [
-  "IT",
-  "HR",
-  "Graphic",
-  "Academic",
-  "Finance",
-  "Marketing",
-  "Legal",
-  "Transport",
-  "Operations",
-];
-
-const ROLES = [
-  "admin",
-  "department-head",
-  "hr",
-  "it",
-  "graphic",
-  "employee",
-  "branch-head",
-];
-
-const STATUS_BADGE = {
-  pending: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
-  "in-progress": "bg-sky-50 text-sky-700 ring-1 ring-sky-200",
-  submitted: "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
-  completed: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
-  approved: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
-  rejected: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
-};
-
-const PRIORITY_BADGE = {
-  low: "bg-slate-50 text-slate-600 ring-1 ring-slate-200",
-  medium: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
-  high: "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
-  urgent: "bg-red-50 text-red-700 ring-1 ring-red-200",
-};
-
-const ROLE_PILL = {
-  admin: "bg-purple-100 text-purple-700",
-  "branch-head": "bg-indigo-100 text-indigo-700",
-  "department-head": "bg-blue-100 text-blue-700",
-  hr: "bg-pink-100 text-pink-700",
-  it: "bg-cyan-100 text-cyan-700",
-  graphic: "bg-fuchsia-100 text-fuchsia-700",
-  employee: "bg-slate-100 text-slate-700",
-};
+import { STATUS_BADGE, PRIORITY_BADGE, ROLE_PILL } from "../../utils/constants";
+import EditProfileModal from "./Profile/EditProfileModal";
+import ProfileHeader from "./Profile/ProfileHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Reusable bits                                                      */
@@ -124,6 +70,7 @@ const EmployeeProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const { settings } = useSettings();
 
   const [employee, setEmployee] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -273,9 +220,15 @@ const EmployeeProfile = () => {
     setEditForm({
       name: employee.name || "",
       email: employee.email || "",
+      phone: employee.phone || "",
+      address: employee.address || "",
+      bloodGroup: employee.bloodGroup || "",
+      dateOfJoining: employee.dateOfJoining || "",
       department: employee.department || "IT",
       branch: employee.branch || "Gaurabagh",
       role: employee.role || "employee",
+      customFields: employee.customFields || {},
+      password: "", // Always start with empty password
     });
     setShowEditModal(true);
   };
@@ -451,92 +404,16 @@ const EmployeeProfile = () => {
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-5 animate-fade-in">
         {/* ---------------- Profile Header ---------------- */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 p-5 sm:p-7 text-white shadow-xl">
-          <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-          <div className="absolute -bottom-20 -left-10 w-56 h-56 bg-purple-300/20 rounded-full blur-3xl" />
-
-          <button
-            onClick={() => navigate(-1)}
-            className="relative mb-4 inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium transition-all hover:gap-2"
-          >
-            <span>←</span> Back
-          </button>
-
-          <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
-            <div className="relative group flex-shrink-0 mx-auto sm:mx-0">
-              {profileImage ? (
-                <img
-                  src={
-                    profileImage.startsWith("http")
-                      ? profileImage
-                      : `${API_ORIGIN}${profileImage}`
-                  }
-                  alt={employee.name}
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover ring-4 ring-white/30 shadow-2xl"
-                />
-              ) : (
-                <div className="w-24 h-24 sm:w-28 sm:h-28 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold ring-4 ring-white/30 shadow-2xl">
-                  {employee.name?.charAt(0)?.toUpperCase()}
-                </div>
-              )}
-              <button
-                onClick={() =>
-                  document.getElementById("profileImageInput").click()
-                }
-                className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full flex items-center justify-center text-slate-600 shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
-                title="Change photo"
-              >
-                📷
-              </button>
-              <input
-                id="profileImageInput"
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-            </div>
-
-            <div className="flex-1 min-w-0 text-center sm:text-left">
-              <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
-                <h1 className="text-2xl sm:text-3xl font-bold truncate">
-                  {employee.name}
-                </h1>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-sm capitalize">
-                  {employee.role}
-                </span>
-              </div>
-              <p className="opacity-90 text-sm mt-1 truncate">
-                {employee.email}
-              </p>
-              <div className="flex flex-wrap gap-3 mt-2 text-xs opacity-80 justify-center sm:justify-start">
-                <span className="inline-flex items-center gap-1">
-                  🏢 {employee.department}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  📍 {employee.branch}
-                </span>
-                <span className="inline-flex items-center gap-1 font-mono">
-                  ID: {employee.employeeId || employee._id?.slice(-6)}
-                </span>
-              </div>
-            </div>
-
-            {userRole === "admin" && (
-              <div className="flex sm:flex-col gap-2 flex-shrink-0 justify-center">
-                <span className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-center">
-                  👑 Admin View
-                </span>
-                <button
-                  onClick={handleEditClick}
-                  className="bg-white text-blue-700 px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-50 transition shadow-md hover:shadow-lg"
-                >
-                  ✏️ Edit
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <ProfileHeader 
+          employee={employee}
+          profileImage={profileImage}
+          handleImageUpload={handleImageUpload}
+          userRole={userRole}
+          effectiveId={effectiveId}
+          currentUser={currentUser}
+          handleEditClick={handleEditClick}
+          API_ORIGIN={API_ORIGIN}
+        />
 
         {/* ---------------- Stats Cards ---------------- */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
@@ -726,6 +603,10 @@ const EmployeeProfile = () => {
                         ],
                       ]
                     : []),
+                  ...Object.entries(employee.customFields || {}).map(([key, val]) => {
+                    const label = settings?.userCustomFields?.find(f => f.id === key)?.label || key;
+                    return [label, val];
+                  }),
                   ["Since", new Date(employee.createdAt).toLocaleDateString()],
                 ].map(([k, v], i) => (
                   <div
@@ -1189,105 +1070,16 @@ const EmployeeProfile = () => {
         )}
 
         {/* ---------------- Edit Profile Modal ---------------- */}
-        {showEditModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
-              <div className="sticky top-0 bg-white border-b border-slate-100 p-5 flex justify-between items-center rounded-t-2xl">
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm">
-                    ✏️
-                  </span>
-                  Edit Profile
-                </h3>
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 text-xl flex items-center justify-center transition"
-                >
-                  ×
-                </button>
-              </div>
-              <form onSubmit={handleEditSubmit} className="p-5 space-y-4">
-                {[
-                  { label: "Name", key: "name", type: "text", required: true },
-                  {
-                    label: "Email",
-                    key: "email",
-                    type: "email",
-                    required: true,
-                  },
-                ].map((f) => (
-                  <div key={f.key}>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      {f.label}{" "}
-                      {f.required && <span className="text-rose-500">*</span>}
-                    </label>
-                    <input
-                      type={f.type}
-                      required={f.required}
-                      value={editForm[f.key]}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, [f.key]: e.target.value })
-                      }
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition"
-                    />
-                  </div>
-                ))}
-
-                {[
-                  {
-                    label: "Department",
-                    key: "department",
-                    options: DEPARTMENTS,
-                  },
-                  { label: "Branch", key: "branch", options: BRANCHES },
-                  { label: "Role", key: "role", options: ROLES },
-                ].map((f) => (
-                  <div key={f.key}>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      {f.label}
-                    </label>
-                    <select
-                      value={editForm[f.key]}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, [f.key]: e.target.value })
-                      }
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition capitalize"
-                    >
-                      {f.options.map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-
-                <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
-                  <p className="text-xs text-amber-800">
-                    ⚠️ Changes will be saved to backend immediately.
-                  </p>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(false)}
-                    className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-200 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={editLoading}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:shadow-lg disabled:opacity-50 transition"
-                  >
-                    {editLoading ? "Saving..." : "💾 Save Changes"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        {/* ---------------- Edit Profile Modal ---------------- */}
+        <EditProfileModal
+          showEditModal={showEditModal}
+          setShowEditModal={setShowEditModal}
+          editForm={editForm}
+          setEditForm={setEditForm}
+          handleEditSubmit={handleEditSubmit}
+          editLoading={editLoading}
+          isAdmin={currentUser?.role === 'admin'}
+        />
       </div>
     </div>
   );

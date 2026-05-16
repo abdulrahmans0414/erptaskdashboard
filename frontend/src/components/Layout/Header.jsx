@@ -95,7 +95,7 @@ const Header = ({
             </svg>
           </button>
           <span className="lg:hidden text-sm font-bold text-gray-800 truncate">
-            TaskGrid
+            SPIS Task Controller
           </span>
         </div>
 
@@ -245,6 +245,15 @@ const Header = ({
                         }
                       >
                         Pending Approvals
+                      </MenuItem>
+                      <MenuItem
+                        icon="⚙️"
+                        onClick={() => {
+                          navigate("/admin/settings");
+                          setShowMenu(false);
+                        }}
+                      >
+                        System Settings
                       </MenuItem>
                     </>
                   )}

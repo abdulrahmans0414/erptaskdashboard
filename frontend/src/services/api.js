@@ -50,7 +50,7 @@ export const uploadAvatar       = (id, formData) =>
     api.put(`/users/avatar/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
 // ── TASKS ─────────────────────────────────────────────────────────
-export const getDashboardStats  = () => api.get('/tasks/dashboard/stats');
+export const getDashboardStats  = (params) => api.get('/tasks/dashboard/stats', { params });
 export const getTasks           = (params) => api.get('/tasks', { params });
 export const getTaskById        = (id) => api.get(`/tasks/${id}`);
 export const createTask         = (data) => {
@@ -70,6 +70,7 @@ export const submitTaskWithAttachments = (id, formData) =>
 export const reviewTask         = (id, status, adminComments, reviewStage) =>
     api.put(`/tasks/${id}/review`, { status, adminComments, reviewStage });
 export const addComment         = (id, comment) => api.put(`/tasks/${id}/comment`, { comment });
+export const reassignTask      = (id, data) => api.put(`/tasks/${id}/reassign`, data);
 export const getTimeReport      = (params) => {
     const q = new URLSearchParams(params).toString();
     return api.get(`/tasks/reports/time${q ? `?${q}` : ''}`);

@@ -63,12 +63,10 @@ const taskSchema = new mongoose.Schema({
     description: String,
 department: { 
     type: String, 
-    required: true, 
-    enum: ['IT', 'HR', 'Graphic', 'Academic', 'Finance', 'Marketing', 'Legal', 'Transport', 'Operations'] 
+    required: true 
 },
     branch: {
         type: String,
-        enum: ['Gaurabagh', 'Vikas Nagar', 'Kalyanpur', 'Kursi', 'Hive', 'Ring Road', 'Muazzam Nagar', 'Aziz Nagar'],
         default: 'Gaurabagh'
     },
 
@@ -95,8 +93,8 @@ department: {
     branchHead: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // For escalation
     
     // Cross-department collaboration
-    collaboratingDepartments: [{ type: String, enum: ['IT', 'HR', 'Graphic', 'Academic', 'Finance', 'Marketing', 'Legal', 'Transport'] }],
-    collaboratingBranches: [{ type: String, enum: ['Gaurabagh', 'Vikas Nagar', 'Kalyanpur', 'Kursi', 'Hive', 'Ring Road', 'Muazzam Nagar', 'Aziz Nagar'] }],
+    collaboratingDepartments: [{ type: String }],
+    collaboratingBranches: [{ type: String }],
     
     // Time Estimates
     estimatedHours: { type: Number, default: 0, min: 0 },
@@ -339,5 +337,15 @@ taskSchema.methods.reassignTask = function(newAssigneeId, reason, attachments = 
     
     return this;
 };
+
+
+// Indexes for optimized query performance
+taskSchema.index({ assignedTo: 1, status: 1 });
+taskSchema.index({ assignedTeam: 1, status: 1 });
+taskSchema.index({ department: 1, branch: 1, status: 1 });
+taskSchema.index({ branch: 1, status: 1 });
+taskSchema.index({ createdAt: -1 });
+taskSchema.index({ dueDate: 1 });
+taskSchema.index({ status: 1 });
 
 export default mongoose.model('Task', taskSchema);

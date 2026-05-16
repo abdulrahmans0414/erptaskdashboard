@@ -1,11 +1,17 @@
 import User from '../models/User.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // @desc    Get all users (with data isolation via req.userFilter)
 export const getAllUsers = async (req, res) => {
     try {
         // ✅ FIX: Use userFilter set by filterUsersByAccess middleware
         const filter = req.userFilter || {};
-        const users = await User.find(filter).select('-password').sort({ name: 1 });
+        const users = await User.find(filter).select('-password').sort({ name: 1 }).lean();
         res.json({ success: true, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -39,7 +45,7 @@ export const getUserById = async (req, res) => {
 // ✅ FIX: Do NOT manually hash – User model pre-save hook handles it
 export const createUser = async (req, res) => {
     try {
-        const { name, email, password, role, department, branch } = req.body;
+        const { name, email, password, role, department, branch, phone, address, bloodGroup, dateOfJoining, customFields } = req.body;
         
         if (!name || !email || !password) {
             return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
@@ -57,6 +63,11 @@ export const createUser = async (req, res) => {
             role: role || 'employee',
             department: department || 'IT',
             branch: branch || 'Gaurabagh',
+            phone: phone || null,
+            address: address || null,
+            bloodGroup: bloodGroup || null,
+            dateOfJoining: dateOfJoining || Date.now(),
+            customFields: customFields || {},
             isActive: true
         });
         
@@ -70,7 +81,10 @@ export const createUser = async (req, res) => {
 // @desc    Update user (Admin only)
 export const updateUser = async (req, res) => {
     try {
-        const { name, email, role, department, branch, isActive, avatar, password } = req.body;
+        const { 
+            name, email, role, department, branch, isActive, avatar, password,
+            phone, address, bloodGroup, dateOfJoining, customFields 
+        } = req.body;
         const user = await User.findById(req.params.id);
         
         if (!user) {
@@ -84,6 +98,12 @@ export const updateUser = async (req, res) => {
         if (branch) user.branch = branch;
         if (isActive !== undefined) user.isActive = isActive;
         if (avatar) user.avatar = avatar;
+        if (phone !== undefined) user.phone = phone;
+        if (address !== undefined) user.address = address;
+        if (bloodGroup !== undefined) user.bloodGroup = bloodGroup;
+        if (dateOfJoining) user.dateOfJoining = dateOfJoining;
+        if (customFields) user.customFields = customFields;
+
         // ✅ FIX: Allow password update - pre-save hook will hash it
         if (password && password.trim()) user.password = password;
         
@@ -109,6 +129,17 @@ export const deleteUser = async (req, res) => {
             return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
         }
         
+        if (user.avatar) {
+            try {
+                const oldImagePath = path.join(__dirname, '..', '..', user.avatar);
+                if (fs.existsSync(oldImagePath)) {
+                    fs.unlinkSync(oldImagePath);
+                }
+            } catch (err) {
+                console.error("Error deleting avatar:", err);
+            }
+        }
+
         await user.deleteOne();
         res.json({ success: true, message: 'User deleted successfully' });
     } catch (error) {
@@ -148,6 +179,18 @@ export const uploadAvatar = async (req, res) => {
         
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'No image uploaded' });
+        }
+
+        // Delete old avatar if it exists
+        if (user.avatar) {
+            try {
+                const oldImagePath = path.join(__dirname, '..', '..', user.avatar);
+                if (fs.existsSync(oldImagePath)) {
+                    fs.unlinkSync(oldImagePath);
+                }
+            } catch (err) {
+                console.error("Error deleting old avatar:", err);
+            }
         }
         
         user.avatar = `/uploads/avatars/${req.file.filename}`;

@@ -1,6 +1,13 @@
 import Task from '../models/Task.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import { sendEmailNotification } from '../utils/emailService.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ============ HELPER FUNCTIONS ============
 const createNotification = async (userId, title, message, type, taskId) => {
@@ -149,6 +156,7 @@ export const createTask = async (req, res) => {
                 'task_assigned',
                 task._id
             );
+            // Optional: send email to team (skip for brevity or implement if needed)
         } else {
             await createNotification(
                 assignedTo,
@@ -157,6 +165,22 @@ export const createTask = async (req, res) => {
                 'task_assigned',
                 task._id
             );
+            // Send Email to the assignee
+            const assignee = await User.findById(assignedTo).select('email name');
+            if (assignee && assignee.email) {
+                await sendEmailNotification(
+                    assignee.email,
+                    'TASK_ASSIGNED',
+                    {
+                        employeeName: assignee.name,
+                        taskTitle: task.title,
+                        dueDate: task.dueDate,
+                        priority: task.priority,
+                        department: task.department
+                    },
+                    task.taskFormAttachments
+                );
+            }
         }
         
         const populatedTask = await Task.findById(task._id)
@@ -175,6 +199,7 @@ export const getTasks = async (req, res) => {
     try {
         let query = {};
         const { role, _id, department, branch } = req.user;
+        const { page = 1, limit = 50, search, status, priority } = req.query;
         
         if (role === 'admin') {
             query = {};
@@ -192,13 +217,37 @@ export const getTasks = async (req, res) => {
                 ]
             };
         }
+
+        // Apply filters
+        if (status && status !== 'all') query.status = status;
+        if (priority && priority !== 'all') query.priority = priority;
+        if (search) {
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } }
+            ];
+        }
         
         const tasks = await Task.find(query)
             .populate('assignedTo assignedBy assignedTeam', 'name email department role branch')
             .populate('individualProgress.userId', 'name email')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
+            .skip((parseInt(page) - 1) * parseInt(limit))
+            .lean();
+
+        const total = await Task.countDocuments(query);
         
-        res.json({ success: true, data: tasks });
+        res.json({ 
+            success: true, 
+            data: tasks,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(total / limit)
+            }
+        });
     } catch (error) {
         console.error('Get tasks error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -210,7 +259,8 @@ export const getTaskById = async (req, res) => {
     try {
         const task = await Task.findById(req.params.id)
             .populate('assignedTo assignedBy assignedTeam', 'name email department role')
-            .populate('individualProgress.userId', 'name email');
+            .populate('individualProgress.userId', 'name email')
+            .lean();
         
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
@@ -270,8 +320,37 @@ export const deleteTask = async (req, res) => {
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
+
+        // Cleanup form attachments
+        if (task.taskFormAttachments && task.taskFormAttachments.length > 0) {
+            task.taskFormAttachments.forEach(att => {
+                try {
+                    const filePath = path.join(__dirname, '..', '..', att.fileUrl);
+                    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                } catch (e) {
+                    console.error("Error deleting form attachment:", e);
+                }
+            });
+        }
+
+        // Cleanup attempt attachments
+        if (task.attempts && task.attempts.length > 0) {
+            task.attempts.forEach(attempt => {
+                if (attempt.attachments && attempt.attachments.length > 0) {
+                    attempt.attachments.forEach(att => {
+                        try {
+                            const filePath = path.join(__dirname, '..', '..', att.fileUrl);
+                            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                        } catch (e) {
+                            console.error("Error deleting attempt attachment:", e);
+                        }
+                    });
+                }
+            });
+        }
+
         await task.deleteOne();
-        res.json({ success: true, message: 'Task deleted successfully' });
+        res.json({ success: true, message: 'Task and associated files deleted successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -296,10 +375,10 @@ export const startTask = async (req, res) => {
         const isDeptReviewer = isDeptHead && (!task.departmentManager || task.departmentManager.toString() === req.user._id.toString());
         const isBranchReviewer = isBranchHead && (!task.branchHead || task.branchHead.toString() === req.user._id.toString());
         
-        if (!isAssigned && !isTeamMember && !isAdmin && !isDeptHead && !isBranchHead) {
+        if (!isAssigned && !isTeamMember) {
             return res.status(403).json({ 
                 success: false, 
-                message: 'You are not authorized to start this task' 
+                message: 'Only the assigned employee or team members can start this task' 
             });
         }
         
@@ -335,6 +414,32 @@ export const startTask = async (req, res) => {
         });
         
         await task.save();
+
+        // Notify the Assigner that the task has started
+        if (task.assignedBy) {
+            const assigner = await User.findById(task.assignedBy).select('email name');
+            if (assigner) {
+                await createNotification(
+                    assigner._id,
+                    'Task Started',
+                    `${req.user.name} has started working on "${task.title}"`,
+                    'task_updated',
+                    task._id
+                );
+                
+                if (assigner.email) {
+                    await sendEmailNotification(
+                        assigner.email,
+                        'TASK_UPDATED',
+                        {
+                            employeeName: assigner.name,
+                            taskTitle: task.title,
+                            feedback: `${req.user.name} has started working on this task.`
+                        }
+                    );
+                }
+            }
+        }
         
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo assignedBy assignedTeam', 'name email department');
@@ -362,7 +467,7 @@ export const submitTaskWithTime = async (req, res) => {
         if (!isAssigned && !isTeamMember) {
             return res.status(403).json({ 
                 success: false, 
-                message: 'Only assigned employee can submit this task' 
+                message: 'Only the assigned employee or team members can submit this task' 
             });
         }
         
@@ -458,23 +563,89 @@ export const submitTaskWithTime = async (req, res) => {
         
         await task.save();
         
-        // Notify department reviewer (department head)
-        const deptReviewerId = task.departmentManager
-            ? task.departmentManager
-            : (await User.findOne({
-                role: 'department-head',
-                department: task.department,
-                branch: task.branch
-            }).select('_id'))?._id;
+        // Determine the appropriate reviewer based on 1-step hierarchy
+        let reviewerId = null;
+        if (req.user.role === 'employee' || req.user.role === 'graphic' || req.user.role === 'hr' || req.user.role === 'it') {
+            reviewerId = task.departmentManager
+                ? task.departmentManager
+                : (await User.findOne({
+                    role: 'department-head',
+                    department: task.department,
+                    branch: task.branch
+                }).select('_id'))?._id;
+        } else if (req.user.role === 'department-head') {
+            reviewerId = task.branchHead
+                ? task.branchHead
+                : (await User.findOne({
+                    role: 'branch-head',
+                    branch: task.branch
+                }).select('_id'))?._id;
+        } else if (task.assignedBy && task.assignedBy.toString() !== req.user._id.toString()) {
+            // Fallback to assigner
+            reviewerId = task.assignedBy;
+        }
 
-        if (deptReviewerId) {
-            await createNotification(
-                deptReviewerId,
-                'Task Submitted for Review',
-                `${req.user.name} submitted "${task.title}" for review`,
-                'task_submitted',
-                task._id
+        const uploadedFiles = task.attempts[task.attempts.length - 1]?.submissionAttachments || [];
+        
+        if (reviewerId) {
+            const reviewer = await User.findById(reviewerId).select('email name');
+            if (reviewer) {
+                await createNotification(
+                    reviewer._id,
+                    'Task Submitted for Review',
+                    `${req.user.name} submitted "${task.title}" for review`,
+                    'task_submitted',
+                    task._id
+                );
+                
+                if (reviewer.email) {
+                    const attachmentNames = uploadedFiles.map(f => f.filename).join(', ');
+                    await sendEmailNotification(
+                        reviewer.email,
+                        'TASK_SUBMITTED',
+                        {
+                            employeeName: reviewer.name,
+                            taskTitle: task.title,
+                            feedback: `${req.user.name} has submitted this task for your review.\n\nSubmission Note: ${submissionNote}${attachmentNames ? `\n\nAttachments: ${attachmentNames}` : ''}`,
+                            taskId: task._id,
+                            senderId: req.user._id
+                        },
+                        uploadedFiles
+                    );
+                }
+            }
+        }
+
+        // ── Confirmation to the submitting employee ───────────────────
+        await createNotification(
+            req.user._id,
+            'Task Submitted Successfully',
+            `Your task "${task.title}" has been submitted for review.`,
+            'task_updated',
+            task._id
+        );
+        if (req.user.email) {
+            const feedback = `Your task has been submitted successfully for review. We will notify you once it is reviewed.${uploadedFiles.length > 0 ? `\n\nYou attached ${uploadedFiles.length} file(s): ${uploadedFiles.map(f => f.filename).join(', ')}` : ''}`;
+            await sendEmailNotification(
+                req.user.email,
+                'TASK_UPDATED',
+                {
+                    employeeName: req.user.name,
+                    taskTitle: task.title,
+                    feedback,
+                    taskId: task._id,
+                    senderId: req.user._id
+                }
             );
+            
+            // Add to activity log for transparency (visible to employee/reviewer)
+            task.activityLog.push({
+                action: 'status_changed',
+                userId: req.user._id,
+                userName: 'System',
+                details: `Confirmation email sent to ${req.user.email}.`
+            });
+            await task.save();
         }
         
         const populatedTask = await Task.findById(task._id)
@@ -514,10 +685,12 @@ export const reviewTask = async (req, res) => {
             isBranchHead &&
             (!task.branchHead || task.branchHead.toString() === req.user._id.toString());
         
-        if (!isAdmin && !isDeptReviewer && !isBranchReviewer) {
+        const isAssigner = task.assignedBy?.toString() === req.user._id.toString();
+
+        if (!isAdmin && !isDeptReviewer && !isBranchReviewer && !isAssigner) {
             return res.status(403).json({ 
                 success: false, 
-                message: 'Only Department Head, Branch Head, or Admin can review tasks' 
+                message: 'Only Department Head, Branch Head, Assigner, or Admin can review tasks' 
             });
         }
         
@@ -528,221 +701,94 @@ export const reviewTask = async (req, res) => {
             });
         }
 
-        const stage = reviewStage || (
-            req.user.role === 'department-head' ? 'department' :
-            req.user.role === 'branch-head' ? 'branch' :
-            'department'
-        );
+        // --- Multi-Step Review Implementation ---
+        const reviewData = {
+            status: status,
+            reviewedBy: req.user._id,
+            reviewedAt: new Date(),
+            comments: adminComments || (status === 'approved' ? 'Approved' : 'Rejected')
+        };
 
-        const hasWorkflow = Boolean(task.workflow?.departmentReview && task.workflow?.branchReview);
 
-        if (!task.workflow) task.workflow = {};
-        if (!task.workflow.departmentReview) task.workflow.departmentReview = {};
-        if (!task.workflow.branchReview) task.workflow.branchReview = {};
-
-        // Default statuses (also used for backward compatibility when workflow is missing).
-        const deptStatus = task.workflow.departmentReview.status || 'pending';
-        const branchStatus = task.workflow.branchReview.status || 'pending';
-
-        if (stage === 'department') {
-            if (!isAdmin && !isDeptReviewer) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Only Department Head (or Admin) can perform Department Review'
-                });
-            }
-            if (deptStatus !== 'pending') {
-                return res.status(400).json({
-                    success: false,
-                    message: `Department review is not pending (current: ${deptStatus})`
-                });
-            }
-
+        // 1. If reviewer is the ASSIGNER, they can finalize the review immediately
+        if (isAssigner || isAdmin) {
             if (status === 'approved') {
-                task.workflow.departmentReview.status = 'approved';
-                task.workflow.departmentReview.reviewedAt = new Date();
-                task.workflow.departmentReview.reviewedBy = req.user._id;
-                task.workflow.departmentReview.comments = adminComments || 'Department approved.';
-
-                // Next stage for branch head
-                task.workflow.branchReview.status = 'pending';
-                task.workflow.branchReview.reviewedAt = null;
-                task.workflow.branchReview.reviewedBy = null;
-                task.workflow.branchReview.comments = '';
-
-                await task.save();
-
-                // Notify branch head for this branch
-                const branchHead = await User.findOne({
-                    role: 'branch-head',
-                    branch: task.branch
-                });
-                if (branchHead) {
-                    await createNotification(
-                        branchHead._id,
-                        '✅ Dept Approved: Branch Review Pending',
-                        `Department approved "${task.title}". Branch review is now pending.`,
-                        'task_branch_review_pending',
-                        task._id
-                    );
-                }
-
-                const populatedTask = await Task.findById(task._id)
-                    .populate('assignedTo assignedBy assignedTeam', 'name email department');
-
-                return res.json({
-                    success: true,
-                    data: populatedTask,
-                    message: 'Department approved. Branch review is now pending.'
-                });
-            }
-
-            if (status === 'rejected') {
-                task.workflow.departmentReview.status = 'rejected';
-                task.workflow.departmentReview.reviewedAt = new Date();
-                task.workflow.departmentReview.reviewedBy = req.user._id;
-                task.workflow.departmentReview.comments = adminComments || 'Department rejected. Please revise.';
-
-                // When department rejects, employee must resubmit.
+                task.status = 'approved';
+                task.workflow.departmentReview = { ...reviewData, status: 'approved' };
+                task.workflow.branchReview = { ...reviewData, status: 'approved' };
+                task.completedAt = new Date();
+                task.approvedAt = new Date();
+                task.approvedBy = req.user._id;
+            } else {
                 task.status = 'rejected';
-                task.adminComments = adminComments || 'Task needs revision.';
-
-                if (task.attempts.length > 0) {
-                    task.attempts[task.attempts.length - 1].status = 'rejected';
-                    task.attempts[task.attempts.length - 1].adminFeedback = adminComments;
-                }
-
-                // Reset branch stage for next submission
-                task.workflow.branchReview.status = 'not-started';
-                task.workflow.branchReview.reviewedAt = null;
-                task.workflow.branchReview.reviewedBy = null;
-                task.workflow.branchReview.comments = '';
-
-                await task.save();
-
-                await createNotification(
-                    task.assignedTo,
-                    '❌ Dept Review Rejected',
-                    `Your task "${task.title}" was rejected by Department Head. Reason: ${adminComments || 'Please check feedback'}`,
-                    'task_rejected',
-                    task._id
-                );
-
-                const populatedTask = await Task.findById(task._id)
-                    .populate('assignedTo assignedBy assignedTeam', 'name email department');
-
-                return res.json({
-                    success: true,
-                    data: populatedTask,
-                    message: 'Department rejected. Employee notified.'
-                });
             }
-        }
-
-        if (stage === 'branch') {
-            if (!isAdmin && !isBranchReviewer) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Only Branch Head (or Admin) can perform Branch Review'
-                });
-            }
-
-            if (hasWorkflow && deptStatus !== 'approved') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Branch review cannot start until Department review is approved.'
-                });
-            }
-
-            if (branchStatus !== 'pending') {
-                return res.status(400).json({
-                    success: false,
-                    message: `Branch review is not pending (current: ${branchStatus})`
-                });
-            }
-
+        } 
+        // 2. Standard Workflow: Dept Head -> Branch Head
+        else if (isDeptReviewer && task.workflow.departmentReview.status === 'pending') {
             if (status === 'approved') {
-                task.workflow.branchReview.status = 'approved';
-                task.workflow.branchReview.reviewedAt = new Date();
-                task.workflow.branchReview.reviewedBy = req.user._id;
-                task.workflow.branchReview.comments = adminComments || 'Branch approved.';
-
-                // Final approval
+                task.workflow.departmentReview = { ...reviewData, status: 'approved' };
+                task.workflow.branchReview.status = 'pending'; // Move to next stage
+                // Task stays in 'submitted' status but progress is tracked
+            } else {
+                task.status = 'rejected';
+                task.workflow.departmentReview = { ...reviewData, status: 'rejected' };
+            }
+        } else if (isBranchReviewer && task.workflow.branchReview.status === 'pending') {
+            if (status === 'approved') {
+                task.workflow.branchReview = { ...reviewData, status: 'approved' };
                 task.status = 'approved';
                 task.completedAt = new Date();
                 task.approvedAt = new Date();
                 task.approvedBy = req.user._id;
-                task.adminComments = adminComments || 'Task approved! Good work.';
-
-                if (task.attempts.length > 0) {
-                    task.attempts[task.attempts.length - 1].status = 'approved';
-                    task.attempts[task.attempts.length - 1].adminFeedback = adminComments;
-                }
-
-                await task.save();
-
-                await createNotification(
-                    task.assignedTo,
-                    '✅ Task Approved',
-                    `Your task "${task.title}" has been approved by ${req.user.name}`,
-                    'task_approved',
-                    task._id
-                );
-
-                const populatedTask = await Task.findById(task._id)
-                    .populate('assignedTo assignedBy assignedTeam', 'name email department');
-
-                return res.json({
-                    success: true,
-                    data: populatedTask,
-                    message: 'Task approved successfully!'
-                });
-            }
-
-            if (status === 'rejected') {
-                task.workflow.branchReview.status = 'rejected';
-                task.workflow.branchReview.reviewedAt = new Date();
-                task.workflow.branchReview.reviewedBy = req.user._id;
-                task.workflow.branchReview.comments = adminComments || 'Branch rejected. Please revise.';
-
+            } else {
                 task.status = 'rejected';
-                task.adminComments = adminComments || 'Task needs revision.';
-
-                if (task.attempts.length > 0) {
-                    task.attempts[task.attempts.length - 1].status = 'rejected';
-                    task.attempts[task.attempts.length - 1].adminFeedback = adminComments;
-                }
-
-                // Reset department stage for next submission: department must re-review
-                task.workflow.departmentReview.status = 'pending';
-                task.workflow.departmentReview.reviewedAt = null;
-                task.workflow.departmentReview.reviewedBy = null;
-                task.workflow.departmentReview.comments = '';
-
-                await task.save();
-
-                await createNotification(
-                    task.assignedTo,
-                    '❌ Branch Review Rejected',
-                    `Your task "${task.title}" was rejected by Branch Head. Reason: ${adminComments || 'Please check feedback'}`,
-                    'task_rejected',
-                    task._id
-                );
-
-                const populatedTask = await Task.findById(task._id)
-                    .populate('assignedTo assignedBy assignedTeam', 'name email department');
-
-                return res.json({
-                    success: true,
-                    data: populatedTask,
-                    message: 'Branch rejected. Employee notified.'
-                });
+                task.workflow.branchReview = { ...reviewData, status: 'rejected' };
             }
+        } else {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid review stage or unauthorized for current stage.' 
+            });
         }
+
+        task.adminComments = adminComments || (status === 'approved' ? 'Task approved.' : 'Task needs revision.');
+        if (task.attempts.length > 0) {
+            const lastAttempt = task.attempts[task.attempts.length - 1];
+            lastAttempt.status = status;
+            lastAttempt.adminFeedback = adminComments;
+        }
+
+        await task.save();
+
+        // Notifications
+        const notifTitle = status === 'approved' ? '✅ Task Approved' : '❌ Task Rejected';
+        const notifMsg = status === 'approved' 
+            ? `Your task "${task.title}" has been approved.` 
+            : `Your task "${task.title}" was rejected. Reason: ${adminComments || 'Please check feedback'}`;
+        
+        await createNotification(task.assignedTo, notifTitle, notifMsg, status === 'approved' ? 'task_approved' : 'task_rejected', task._id);
+
+        const assignee = await User.findById(task.assignedTo).select('email name');
+        if (assignee && assignee.email) {
+            await sendEmailNotification(assignee.email, status === 'approved' ? 'TASK_APPROVED' : 'TASK_REJECTED', {
+                employeeName: assignee.name,
+                taskTitle: task.title,
+                feedback: adminComments,
+                taskId: task._id,
+                senderId: req.user._id
+            });
+        }
+
+        const populatedTask = await Task.findById(task._id).populate('assignedTo assignedBy assignedTeam', 'name email department');
+        return res.json({
+            success: true,
+            data: populatedTask,
+            message: status === 'approved' ? 'Task approved successfully!' : 'Task rejected. Employee notified.'
+        });
 
         return res.status(400).json({
             success: false,
-            message: 'Invalid review stage or status. Use reviewStage ("department"|"branch") and status ("approved"|"rejected").'
+            message: 'Invalid status. Use status ("approved"|"rejected").'
         });
     } catch (error) {
         console.error('Review error:', error);
@@ -770,6 +816,31 @@ export const addComment = async (req, res) => {
         });
         
         await task.save();
+
+        // Notify Assigner / Reviewer that an update has been posted
+        if (task.assignedBy && task.assignedBy.toString() !== req.user._id.toString()) {
+            const assigner = await User.findById(task.assignedBy).select('email name');
+            if (assigner) {
+                await createNotification(
+                    assigner._id,
+                    'Task Update',
+                    `${req.user.name} added an update to "${task.title}": ${comment.substring(0, 50)}...`,
+                    'task_updated',
+                    task._id
+                );
+                if (assigner.email) {
+                    await sendEmailNotification(
+                        assigner.email,
+                        'TASK_UPDATED',
+                        {
+                            employeeName: assigner.name,
+                            taskTitle: task.title,
+                            feedback: `${req.user.name} posted an update: "${comment}"`
+                        }
+                    );
+                }
+            }
+        }
         
         res.json({ success: true, data: task, message: 'Comment added successfully' });
     } catch (error) {
@@ -783,7 +854,8 @@ export const getDepartmentTasks = async (req, res) => {
         const { department } = req.params;
         const tasks = await Task.find({ department })
             .populate('assignedTo assignedBy assignedTeam', 'name email')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
         res.json({ success: true, data: tasks });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -801,7 +873,8 @@ export const getTeamTasks = async (req, res) => {
             ]
         })
         .populate('assignedTo assignedBy assignedTeam', 'name email')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
         res.json({ success: true, data: tasks });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -838,39 +911,172 @@ export const updateTeamProgress = async (req, res) => {
     }
 };
 
-// ============ GET DASHBOARD STATS ============
 export const getDashboardStats = async (req, res) => {
     try {
-        let query = {};
-        const { role, _id, department, branch } = req.user;
-        
+        const { role, _id, department: userDept, branch: userBranch } = req.user;
+        const { department, branch, startDate, endDate } = req.query;
+        let match = {};
+
+        // Base access control
         if (role === 'admin') {
-            query = {};
+            match = {};
         } else if (role === 'department-head') {
-            query = { department, branch };
+            match = { department: userDept, branch: userBranch };
         } else if (role === 'branch-head') {
-            query = { branch };
+            match = { branch: userBranch };
         } else if (role === 'hr') {
-            query = { department: 'HR' };
+            match = { department: 'HR' };
         } else {
-            query = { $or: [{ assignedTo: _id }, { assignedTeam: _id }] };
+            match = { $or: [{ assignedTo: _id }, { assignedTeam: _id }] };
         }
-        
-        const tasks = await Task.find(query);
-        const completedTasks = tasks.filter(t => t.status === 'approved' || t.status === 'completed');
-        
+
+        // Apply filters from query if allowed
+        if (department && (role === 'admin' || role === 'branch-head' || role === 'hr')) {
+            match.department = department;
+        }
+        if (branch && (role === 'admin')) {
+            match.branch = branch;
+        }
+        if (startDate || endDate) {
+            match.createdAt = {};
+            if (startDate) match.createdAt.$gte = new Date(startDate);
+            if (endDate) match.createdAt.$lte = new Date(endDate);
+        }
+
+        const stats = await Task.aggregate([
+            { $match: match },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    completed: { $sum: { $cond: [{ $in: ["$status", ["completed", "approved"]] }, 1, 0] } },
+                    pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+                    inProgress: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
+                    submitted: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } },
+                    rejected: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
+                    urgent: { $sum: { $cond: [{ $eq: ["$priority", "urgent"] }, 1, 0] } },
+                    high: { $sum: { $cond: [{ $eq: ["$priority", "high"] }, 1, 0] } },
+                    overdue: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $lt: ["$dueDate", new Date()] },
+                                        { $nin: ["$status", ["completed", "approved"]] }
+                                    ]
+                                },
+                                1, 0
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+
+        const data = stats[0] || {
+            total: 0, completed: 0, pending: 0, inProgress: 0,
+            submitted: 0, rejected: 0, urgent: 0, high: 0, overdue: 0
+        };
+
+        // Get recent tasks
+        const recentTasks = await Task.find(match)
+            .sort({ updatedAt: -1 })
+            .limit(5)
+            .populate('assignedTo', 'name avatar')
+            .lean();
+
         res.json({
             success: true,
             data: {
                 summary: {
-                    totalTasks: tasks.length,
-                    completedTasks: completedTasks.length,
-                    pendingTasks: tasks.filter(t => t.status === 'pending').length,
-                    inProgressTasks: tasks.filter(t => t.status === 'in-progress').length,
-                    submittedTasks: tasks.filter(t => t.status === 'submitted').length,
-                }
+                    totalTasks: data.total,
+                    completedTasks: data.completed,
+                    pendingTasks: data.pending,
+                    inProgressTasks: data.inProgress,
+                    submittedTasks: data.submitted,
+                    rejectedTasks: data.rejected,
+                    urgentTasks: data.urgent,
+                    highPriorityTasks: data.high,
+                    overdueTasks: data.overdue
+                },
+                recentTasks
             }
         });
+    } catch (error) {
+        console.error('Stats error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ============ REASSIGN TASK ============
+export const reassignTask = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { assignedTo, assignedTeam, isTeamTask, reason } = req.body;
+        
+        const task = await Task.findById(id);
+        if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+
+        const oldAssignee = task.assignedTo;
+        
+        task.isTeamTask = !!isTeamTask;
+        if (isTeamTask) {
+            task.assignedTeam = assignedTeam;
+            task.assignedTo = null;
+        } else {
+            task.assignedTo = assignedTo;
+            task.assignedTeam = [];
+        }
+
+        // Status reset if it was completed/submitted
+        if (['completed', 'approved', 'submitted'].includes(task.status)) {
+            task.status = 'pending';
+        }
+
+        // Log the reassignment
+        task.comments.push({
+            user: req.user._id,
+            text: `🔄 Task reassigned. Reason: ${reason || 'Not specified'}`,
+            createdAt: new Date()
+        });
+
+        await task.save();
+
+        // Notify NEW assignee
+        if (isTeamTask) {
+            await createBulkNotifications(
+                assignedTeam,
+                'Task Reassigned to Team',
+                `You are now part of the team for: "${task.title}"`,
+                'task_assigned',
+                task._id
+            );
+        } else {
+            await createNotification(
+                assignedTo,
+                'Task Reassigned to You',
+                `You have been assigned to: "${task.title}"`,
+                'task_assigned',
+                task._id
+            );
+            
+            const assignee = await User.findById(assignedTo).select('email name');
+            if (assignee && assignee.email) {
+                await sendEmailNotification(
+                    assignee.email,
+                    'TASK_ASSIGNED',
+                    {
+                        employeeName: assignee.name,
+                        taskTitle: task.title,
+                        dueDate: task.dueDate,
+                        priority: task.priority,
+                        department: task.department
+                    }
+                );
+            }
+        }
+
+        res.json({ success: true, message: 'Task reassigned successfully', data: task });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -879,46 +1085,102 @@ export const getDashboardStats = async (req, res) => {
 // ============ GET EMPLOYEE SUMMARY ============
 export const getEmployeeSummary = async (req, res) => {
     try {
-        let query = {};
+        let match = {};
         const { role, department, branch } = req.user;
         
         if (role === 'admin') {
-            query = {};
+            match = {};
         } else if (role === 'department-head') {
-            query = { department, branch };
+            match = { department, branch };
         } else if (role === 'branch-head') {
-            query = { branch };
+            match = { branch };
         } else {
             return res.json({ success: true, data: [] });
         }
         
-        const employees = await User.find({ ...query, role: { $in: ['employee', 'hr', 'it', 'graphic'] } });
-        const tasks = await Task.find(query);
-        
+        // Find relevant employees
+        const employees = await User.find({ 
+            ...match, 
+            role: { $in: ['employee', 'hr', 'it', 'graphic'] } 
+        }).select('name department branch role avatar').lean();
+
+        // Use aggregation to count tasks for these employees
+        const employeeIds = employees.map(e => e._id);
+        const taskStats = await Task.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { assignedTo: { $in: employeeIds } },
+                        { assignedTeam: { $in: employeeIds } }
+                    ]
+                }
+            },
+            {
+                $project: {
+                    status: 1,
+                    dueDate: 1,
+                    assignedTo: 1,
+                    assignedTeam: 1,
+                    isOverdue: {
+                        $and: [
+                            { $lt: ["$dueDate", new Date()] },
+                            { $nin: ["$status", ["completed", "approved"]] }
+                        ]
+                    }
+                }
+            },
+            {
+                // We need to handle team tasks by "unwinding" if necessary, 
+                // but simpler for now: project a list of "involvedUsers"
+                $project: {
+                    status: 1,
+                    isOverdue: 1,
+                    involvedUsers: {
+                        $cond: [
+                            { $ifNull: ["$assignedTo", false] },
+                            { $concatArrays: [["$assignedTo"], { $ifNull: ["$assignedTeam", []] }] },
+                            { $ifNull: ["$assignedTeam", []] }
+                        ]
+                    }
+                }
+            },
+            { $unwind: "$involvedUsers" },
+            { $match: { involvedUsers: { $in: employeeIds } } },
+            {
+                $group: {
+                    _id: "$involvedUsers",
+                    total: { $sum: 1 },
+                    pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+                    inProgress: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
+                    submitted: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } },
+                    completed: { $sum: { $cond: [{ $in: ["$status", ["approved", "completed"]] }, 1, 0] } },
+                    overdue: { $sum: { $cond: ["$isOverdue", 1, 0] } }
+                }
+            }
+        ]);
+
+        const statsMap = taskStats.reduce((acc, curr) => {
+            acc[curr._id.toString()] = curr;
+            return acc;
+        }, {});
+
         const summary = employees.map(emp => {
-            const empTasks = tasks.filter(t => 
-                t.assignedTo?.toString() === emp._id.toString() ||
-                t.assignedTeam?.some(m => m.toString() === emp._id.toString())
-            );
+            const stats = statsMap[emp._id.toString()] || {
+                total: 0, pending: 0, inProgress: 0, submitted: 0, completed: 0, overdue: 0
+            };
             return {
                 id: emp._id,
                 name: emp.name,
                 department: emp.department || emp.role,
                 branch: emp.branch,
-                total: empTasks.length,
-                pending: empTasks.filter(t => t.status === 'pending').length,
-                inProgress: empTasks.filter(t => t.status === 'in-progress').length,
-                submitted: empTasks.filter(t => t.status === 'submitted').length,
-                completed: empTasks.filter(t => t.status === 'approved' || t.status === 'completed').length,
-                overdue: empTasks.filter(t => 
-                    t.status !== 'completed' && t.status !== 'approved' && 
-                    new Date(t.dueDate) < new Date()
-                ).length
+                avatar: emp.avatar,
+                ...stats
             };
         });
         
         res.json({ success: true, data: summary });
     } catch (error) {
+        console.error('Employee summary error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };

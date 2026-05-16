@@ -6,14 +6,17 @@ import { useNavigate } from "react-router-dom";
 import TaskCard from "./TaskCard";
 import CreateTaskModal from "./CreateTaskModal";
 
-const BRANCHES = ["Gaurabagh","Vikas Nagar","Kalyanpur","Kursi","Hive","Ring Road","Muazzam Nagar","Aziz Nagar"];
-const DEPTS = ["IT","HR","Graphic","Academic","Finance","Marketing","Legal","Transport","Operations"];
+import { useSettings } from "../../context/SettingsContext";
 
 export default function Tasks() {
     const dispatch = useDispatch();
     const { user } = useAuth();
+    const { settings } = useSettings();
     const navigate = useNavigate();
     const { items: allTasks, loading } = useSelector(s => s.tasks);
+
+    const BRANCHES = settings?.branches || ["Gaurabagh"];
+    const DEPTS = settings?.departments || ["IT"];
 
     const [showCreate, setShowCreate] = useState(false);
     const [filters, setFilters] = useState({ search:"", status:"all", priority:"all", department:"all", branch:"all" });

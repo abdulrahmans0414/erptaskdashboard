@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { startTask, submitTask, reviewTask, addTaskComment } from "../../store/slices/taskSlice";
+import { startTask, reviewTask, addTaskComment } from "../../store/slices/taskSlice";
 import { useAuth } from "../../context/AuthContext";
-import { updateTask } from "../../services/api";
+import { updateTask, reassignTask, getUsers } from "../../services/api";
+import { useSettings } from "../../context/SettingsContext";
+
+const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
 const FMT_TIME = (m) => { if (!m) return "0m"; const h=Math.floor(m/60),r=m%60; return h>0?`${h}h ${r}m`:`${r}m`; };
 
@@ -58,21 +61,39 @@ function Stepper({ status }) {
 
 // ── SUBMIT MODAL ─────────────────────────────────────────────────
 function SubmitModal({ task, onClose, onDone }) {
-    const dispatch = useDispatch();
     const [note, setNote] = useState("");
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState("");
+    const [attachments, setAttachments] = useState([]);
     const elapsed = task.startedAt
         ? Math.floor((Date.now() - new Date(task.startedAt)) / 60000)
         : 0;
+
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files);
+        setAttachments(prev => [...prev, ...files.map(f => ({
+            file: f, name: f.name, size: f.size, type: f.type,
+            preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : null
+        }))]);
+    };
+
+    const removeAttachment = (idx) => setAttachments(prev => prev.filter((_, i) => i !== idx));
+
+    const formatSize = (bytes) => bytes < 1024*1024 ? `${(bytes/1024).toFixed(1)}KB` : `${(bytes/1024/1024).toFixed(1)}MB`;
 
     const handle = async () => {
         if (!note.trim()) { setErr("Please describe what you did."); return; }
         setLoading(true);
         try {
-            await dispatch(submitTask({ taskId: task._id, submissionNote: note, actualMinutes: elapsed })).unwrap();
-            onDone();
-        } catch (e) { setErr(e || "Submission failed"); }
+            const { submitTaskWithAttachments } = await import("../../services/api");
+            const formData = new FormData();
+            formData.append("submissionNote", note);
+            formData.append("actualMinutes", String(elapsed));
+            attachments.forEach(att => att.file && formData.append("submissionAttachments", att.file));
+            const result = await submitTaskWithAttachments(task._id, formData);
+            if (result?.data?.success !== false) { onDone(); }
+            else { setErr(result?.data?.message || "Submission failed"); }
+        } catch (e) { setErr(e?.response?.data?.message || e?.message || "Submission failed"); }
         setLoading(false);
     };
 
@@ -88,13 +109,38 @@ function SubmitModal({ task, onClose, onDone }) {
             </div>
             {err && <p className="text-red-600 text-xs mb-3 bg-red-50 px-3 py-2 rounded-lg">{err}</p>}
             <label className="block text-sm font-semibold text-gray-700 mb-2">What did you complete? <span className="text-red-500">*</span></label>
-            <textarea value={note} onChange={e=>setNote(e.target.value)}
+            <textarea value={note} onChange={e=>{setNote(e.target.value); setErr("");}}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows="4" placeholder="Describe what you completed, any challenges faced, and deliverables..." />
+            {/* File Attachments */}
+            <div className="mt-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">📎 Attachments <span className="text-gray-400 font-normal">(optional)</span></label>
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center hover:border-blue-400 transition cursor-pointer bg-gray-50"
+                    onClick={() => document.getElementById("taskcard-file-input").click()}>
+                    <input id="taskcard-file-input" type="file" multiple onChange={handleFileChange} className="hidden"
+                        accept="image/*,.pdf,.doc,.docx,.xlsx,.zip" />
+                    <p className="text-xs text-gray-500">📁 Click to upload • Images, PDFs, Docs</p>
+                </div>
+                {attachments.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                        {attachments.map((att, i) => (
+                            <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 text-xs border">
+                                {att.preview ? <img src={att.preview} alt={att.name} className="w-8 h-8 rounded object-cover" /> :
+                                    <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center text-blue-600">📄</div>}
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-700 truncate">{att.name}</p>
+                                    <p className="text-[10px] text-gray-400">{formatSize(att.size)}</p>
+                                </div>
+                                <button type="button" onClick={() => removeAttachment(i)} className="text-red-400 hover:text-red-600 p-1">✕</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
             <div className="flex gap-2 mt-4">
                 <button onClick={handle} disabled={loading}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition">
-                    {loading ? "Submitting..." : "Submit for Review"}
+                    {loading ? "Submitting..." : "📤 Submit for Review"}
                 </button>
                 <button onClick={onClose} className="px-4 py-2.5 bg-gray-100 rounded-xl text-sm font-medium hover:bg-gray-200 transition">Cancel</button>
             </div>
@@ -130,19 +176,40 @@ function ReviewModal({ task, stage, onClose, onDone }) {
                 <p className="font-semibold text-gray-800">{task.title}</p>
                 <p className="text-gray-500 text-xs">👤 {task.assignedTo?.name} · 🏢 {task.department} · 📍 {task.branch}</p>
                 {task.taskFormName && (
-                    <p className="text-gray-500 text-xs">
-                        🧾 Form: <span className="font-medium text-gray-700">{task.taskFormName}</span>
-                        {task.taskFormType ? <span className="text-gray-400">({task.taskFormType})</span> : null}
-                    </p>
+                    <div className="text-gray-500 text-xs flex items-center gap-2">
+                        <span>🧾 Form: <span className="font-medium text-gray-700">{task.taskFormName}</span></span>
+                    </div>
+                )}
+                {task.taskFormAttachments && task.taskFormAttachments.length > 0 && (
+                    <div className="text-gray-500 text-xs flex flex-wrap gap-1 mt-1">
+                        <span className="font-semibold text-blue-600">📎 Task Attachments:</span>
+                        {task.taskFormAttachments.map((att, idx) => (
+                            <a key={idx} href={`${API_ORIGIN}${att.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                [View {att.filename}]
+                            </a>
+                        ))}
+                    </div>
                 )}
                 <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                     <div className="bg-white rounded-lg p-2 border"><span className="text-gray-500">Time Spent</span><p className="font-bold mt-0.5">{FMT_TIME(task.totalTimeSpent)}</p></div>
                     <div className="bg-white rounded-lg p-2 border"><span className="text-gray-500">Attempt #</span><p className="font-bold mt-0.5">{task.currentAttempt||1}</p></div>
                 </div>
                 {task.submissionNote && (
-                    <div className="bg-blue-50 rounded-lg p-2 border border-blue-100 text-xs mt-2">
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 text-xs mt-2">
                         <p className="font-semibold text-blue-700 mb-1">Employee's Note:</p>
-                        <p className="text-gray-700">{task.submissionNote}</p>
+                        <p className="text-gray-700 whitespace-pre-wrap">{task.submissionNote}</p>
+                        {task.attempts && task.attempts.length > 0 && task.attempts[task.attempts.length - 1].submissionAttachments?.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-blue-200">
+                                <p className="font-semibold text-blue-700 mb-1">Attachments:</p>
+                                <div className="flex flex-col gap-1">
+                                    {task.attempts[task.attempts.length - 1].submissionAttachments.map((att, i) => (
+                                        <a key={i} href={`${API_ORIGIN}${att.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                            📎 {att.filename}
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -180,22 +247,104 @@ function EditModal({ task, onClose, onDone }) {
     return (
         <Modal title="✏️ Edit Task" onClose={onClose}>
             <div className="space-y-3">
-                <div><label className="label">Title</label>
-                    <input value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} className="input" /></div>
-                <div><label className="label">Description</label>
-                    <textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} className="input" rows="3" /></div>
+                <div><label className="label text-sm font-semibold">Title</label>
+                    <input value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} className="w-full px-3 py-2 border rounded-xl text-sm mt-1" /></div>
+                <div><label className="label text-sm font-semibold">Description</label>
+                    <textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} className="w-full px-3 py-2 border rounded-xl text-sm mt-1" rows="3" /></div>
                 <div className="grid grid-cols-2 gap-2">
-                    <div><label className="label">Priority</label>
-                        <select value={form.priority} onChange={e=>setForm(p=>({...p,priority:e.target.value}))} className="input">
+                    <div><label className="label text-sm font-semibold">Priority</label>
+                        <select value={form.priority} onChange={e=>setForm(p=>({...p,priority:e.target.value}))} className="w-full px-3 py-2 border rounded-xl text-sm mt-1">
                             {["low","medium","high","urgent"].map(p=><option key={p} value={p}>{p}</option>)}
                         </select></div>
-                    <div><label className="label">Due Date</label>
-                        <input type="date" value={form.dueDate} onChange={e=>setForm(p=>({...p,dueDate:e.target.value}))} className="input" /></div>
+                    <div><label className="label text-sm font-semibold">Due Date</label>
+                        <input type="date" value={form.dueDate} onChange={e=>setForm(p=>({...p,dueDate:e.target.value}))} className="w-full px-3 py-2 border rounded-xl text-sm mt-1" /></div>
                 </div>
             </div>
-            <div className="flex gap-2 mt-4">
-                <button onClick={handle} disabled={loading} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">{loading?"Saving...":"Save Changes"}</button>
-                <button onClick={onClose} className="px-4 py-2.5 bg-gray-100 rounded-xl text-sm">Cancel</button>
+            <div className="flex gap-2 mt-5">
+                <button onClick={handle} disabled={loading} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200">{loading?"Saving...":"Save Changes"}</button>
+                <button onClick={onClose} className="px-4 py-2.5 bg-gray-100 rounded-xl text-sm font-medium">Cancel</button>
+            </div>
+        </Modal>
+    );
+}
+
+// ── REASSIGN MODAL ─────────────────────────────────────────────
+function ReassignModal({ task, onClose, onDone }) {
+    const [loading, setLoading] = useState(false);
+    const [users, setUsers] = useState([]);
+    const [search, setSearch] = useState("");
+    const [selected, setSelected] = useState("");
+    const [reason, setReason] = useState("");
+    const [error, setError] = useState("");
+
+    useState(() => {
+        const load = async () => {
+            try {
+                const res = await getUsers();
+                if (res.data.success) {
+                    setUsers(res.data.data.filter(u => u.role !== 'admin' && u._id !== (task.assignedTo?._id || task.assignedTo)));
+                }
+            } catch (e) { console.error(e); }
+        };
+        load();
+    }, []);
+
+    const filtered = users.filter(u => 
+        u.name?.toLowerCase().includes(search.toLowerCase()) || 
+        u.department?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const handle = async () => {
+        if (!selected) return setError("Please select an employee");
+        if (!reason.trim()) return setError("Please provide a reason");
+        setLoading(true);
+        try {
+            await reassignTask(task._id, { assignedTo: selected, reason });
+            onDone();
+        } catch (e) { setError(e.response?.data?.message || "Reassign failed"); }
+        setLoading(false);
+    };
+
+    return (
+        <Modal title="🔄 Reassign Task" onClose={onClose}>
+            <div className="space-y-4">
+                <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl text-xs text-orange-800">
+                    <p className="font-bold mb-1">Current Assignee:</p>
+                    <p>{task.assignedTo?.name || 'Unassigned'} ({task.department} • {task.branch})</p>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Select New Assignee</label>
+                    <input type="text" placeholder="Search by name or department..." 
+                        className="w-full px-3 py-2 border rounded-xl text-sm mb-2"
+                        value={search} onChange={e => setSearch(e.target.value)} />
+                    <div className="max-h-40 overflow-y-auto border rounded-xl divide-y">
+                        {filtered.map(u => (
+                            <div key={u._id} onClick={() => setSelected(u._id)}
+                                className={`p-2.5 text-xs cursor-pointer hover:bg-blue-50 transition ${selected === u._id ? 'bg-blue-100 border-l-4 border-blue-600' : ''}`}>
+                                <p className="font-bold">{u.name}</p>
+                                <p className="text-gray-500">{u.department} • {u.branch}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Reason for Reassignment</label>
+                    <textarea value={reason} onChange={e => setReason(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                        rows="2" placeholder="e.g. Employee on leave, priority shift..." />
+                </div>
+
+                {error && <p className="text-red-600 text-[10px] bg-red-50 p-2 rounded-lg">{error}</p>}
+
+                <div className="flex gap-2 pt-2">
+                    <button onClick={handle} disabled={loading}
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200">
+                        {loading ? "Processing..." : "Confirm Reassign"}
+                    </button>
+                    <button onClick={onClose} className="px-4 py-2.5 bg-gray-100 rounded-xl text-sm font-medium">Cancel</button>
+                </div>
             </div>
         </Modal>
     );
@@ -256,7 +405,16 @@ function ActivityDrawer({ task, onClose }) {
                             {item.type==='comment' ? (
                                 <>
                                     <p className="font-semibold text-gray-800">{item.who} <span className="text-gray-400 font-normal">({item.role})</span></p>
-                                    <p className="text-gray-700 mt-0.5">{item.msg}</p>
+                                    <p className="text-gray-700 mt-0.5 whitespace-pre-wrap">{item.msg}</p>
+                                    {item.attachments && item.attachments.length > 0 && (
+                                        <div className="mt-1 flex flex-col gap-1">
+                                            {item.attachments.map((att, aIdx) => (
+                                                <a key={aIdx} href={`${API_ORIGIN}${att.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-[10px]">
+                                                    📎 {att.filename}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 <p className="text-gray-600">{item.details || item.action}</p>
@@ -302,7 +460,7 @@ function Modal({ title, onClose, children, wide }) {
 export default function TaskCard({ task, onUpdate }) {
     const dispatch = useDispatch();
     const { user } = useAuth();
-    const [modal, setModal] = useState(null); // 'submit'|'review'|'edit'|'activity'
+    const [modal, setModal] = useState(null); // 'submit'|'review'|'edit'|'activity'|'reassign'
     const [reviewStage, setReviewStage] = useState(null); // 'department'|'branch'
     const [starting, setStarting] = useState(false);
     const [toast, setToast] = useState(null);
@@ -334,7 +492,8 @@ export default function TaskCard({ task, onUpdate }) {
         );
 
     const canReview = canReviewDepartment || canReviewBranch;
-    const canManage = isAdmin || isDeptHead || isBranchHead;
+    const isAssigner = task.assignedBy?._id?.toString() === userId?.toString() || task.assignedBy?.toString() === userId?.toString();
+    const canManage = isAdmin || isDeptHead || isBranchHead || isAssigner;
     const isOverdue = new Date(task.dueDate) < new Date() && !['completed','approved'].includes(task.status);
     const isMine = isAssigned || isTeamMember;
 
@@ -380,13 +539,21 @@ export default function TaskCard({ task, onUpdate }) {
                         )}
 
                         {/* Meta */}
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-gray-400">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-gray-400 mt-1">
                             <span>📅 {new Date(task.dueDate).toLocaleDateString('en-IN')}</span>
-                            {task.assignedTo?.name && <span>👤 {task.assignedTo.name}</span>}
+                            {task.assignedBy?.name && <span className="font-medium text-gray-600">Assigned by: {task.assignedBy.name}</span>}
+                            {task.assignedTo?.name && <span>👤 Assignee: {task.assignedTo.name}</span>}
                             <span>🏢 {task.department}</span>
                             <span>📍 {task.branch}</span>
-                            {task.taskFormName && (
-                                <span>🧾 {task.taskFormName}{task.taskFormType ? ` (${task.taskFormType})` : ''}</span>
+                            {task.taskFormAttachments && task.taskFormAttachments.length > 0 && (
+                                <div className="flex gap-2">
+                                    <span className="font-semibold text-blue-600">📎 Attachments:</span>
+                                    {task.taskFormAttachments.map((att, idx) => (
+                                        <a key={idx} href={`${API_ORIGIN}${att.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                            {att.filename}
+                                        </a>
+                                    ))}
+                                </div>
                             )}
                             {task.totalTimeSpent > 0 && <span>⏱️ {FMT_TIME(task.totalTimeSpent)}</span>}
                             {task.currentAttempt > 1 && <span>🔄 Attempt #{task.currentAttempt}</span>}
@@ -399,6 +566,26 @@ export default function TaskCard({ task, onUpdate }) {
                                 <span className="text-gray-600">{task.submissionNote.slice(0,120)}{task.submissionNote.length>120?'…':''}</span>
                             </div>
                         )}
+
+                        {/* Submission attachments (visible to assignee) */}
+                        {(() => {
+                            const lastAttempt = task.attempts?.[task.attempts.length - 1];
+                            const subAtts = lastAttempt?.submissionAttachments || [];
+                            if (subAtts.length === 0) return null;
+                            return (
+                                <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl text-xs">
+                                    <p className="font-semibold text-blue-700 mb-1">📎 Submitted Files:</p>
+                                    <div className="flex flex-col gap-1">
+                                        {subAtts.map((att, i) => (
+                                            <a key={i} href={`${API_ORIGIN}${att.fileUrl}`} target="_blank" rel="noopener noreferrer"
+                                                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5">
+                                                📄 {att.filename}
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Admin feedback */}
                         {task.adminComments && (
@@ -417,15 +604,29 @@ export default function TaskCard({ task, onUpdate }) {
                             💬 {(task.comments?.length||0)+(task.activityLog?.length||0) > 0 ? `Updates (${(task.comments?.length||0)+(task.activityLog?.length||0)})` : 'Updates'}
                         </button>
 
-                        {/* Edit */}
+                        {/* Edit & Reassign */}
                         {canManage && (
-                            <button onClick={()=>setModal('edit')}
-                                className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-[10px] font-medium transition">
-                                ✏️ Edit
-                            </button>
+                            <div className="flex gap-1">
+                                <button onClick={()=>setModal('edit')}
+                                    className="flex-1 px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap">
+                                    ✏️ Edit
+                                </button>
+                                <button onClick={()=>setModal('reassign')}
+                                    className="flex-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap">
+                                    🔄 Reassign
+                                </button>
+                            </div>
                         )}
 
                         {/* Review */}
+                        {isAssigner && task.status === 'submitted' && !canReview && (
+                             <button
+                                onClick={() => { setReviewStage('assigner'); setModal('review'); }}
+                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
+                            >
+                                📋 Review Task
+                            </button>
+                        )}
                         {canReviewDepartment && (
                             <button
                                 onClick={() => { setReviewStage('department'); setModal('review'); }}
@@ -482,6 +683,7 @@ export default function TaskCard({ task, onUpdate }) {
             {modal === 'submit' && <SubmitModal task={task} onClose={()=>setModal(null)} onDone={closeModal} />}
             {modal === 'review' && <ReviewModal task={task} stage={reviewStage} onClose={()=>{setModal(null); setReviewStage(null);}} onDone={closeModal} />}
             {modal === 'edit' && <EditModal task={task} onClose={()=>setModal(null)} onDone={closeModal} />}
+            {modal === 'reassign' && <ReassignModal task={task} onClose={()=>setModal(null)} onDone={closeModal} />}
             {modal === 'activity' && <ActivityDrawer task={task} onClose={()=>setModal(null)} />}
         </>
     );

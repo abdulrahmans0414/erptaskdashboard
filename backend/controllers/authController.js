@@ -88,7 +88,19 @@ export const signup = async (req, res) => {
 export const getPendingRegistrations = async (req, res) => {
     try {
         const { status } = req.query;
-        const filter = status ? { status } : { status: { $in: ['pending', 'otp_sent'] } };
+        let filter = {};
+        if (status && status !== 'all') {
+            if (status.includes(',')) {
+                filter = { status: { $in: status.split(',') } };
+            } else {
+                filter = { status };
+            }
+        } else if (!status || status === 'pending_action') {
+            // Default to pending action if no status provided
+            filter = { status: { $in: ['pending', 'otp_sent'] } };
+        } else if (status === 'all') {
+            filter = {};
+        }
         const list = await PendingRegistration.find(filter)
             .populate('reviewedBy', 'name email')
             .sort({ createdAt: -1 });
@@ -250,11 +262,15 @@ export const checkRegistrationStatus = async (req, res) => {
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password are required' });
+        if (!email || !password) return res.status(400).json({ success: false, message: 'Email/Employee ID and password are required' });
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ 
+            $or: [{ email: email.toLowerCase() }, { employeeId: email }]
+        });
         if (!user) {
-            const pending = await PendingRegistration.findOne({ email });
+            const pending = await PendingRegistration.findOne({ 
+                $or: [{ email: email.toLowerCase() }, { employeeId: email }]
+            });
             if (pending) {
                 const msgs = {
                     pending: 'Your account is pending admin approval. You will receive an email when approved.',

@@ -16,12 +16,10 @@ const pendingRegistrationSchema = new mongoose.Schema({
     privilegeRequestReason: { type: String, default: '' },
     department: {
         type: String,
-        enum: ['IT','HR','Graphic','Academic','Finance','Marketing','Legal','Transport','Operations'],
         required: true
     },
     branch: {
         type: String,
-        enum: ['Gaurabagh','Vikas Nagar','Kalyanpur','Kursi','Hive','Ring Road','Muazzam Nagar','Aziz Nagar'],
         default: 'Gaurabagh'
     },
     otp:          { type: String, default: null },

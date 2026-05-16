@@ -1,13 +1,37 @@
 import nodemailer from 'nodemailer';
 
-// ── Transporter (Gmail with App Password) ────────────────────────
-const createTransporter = () => nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS   // Gmail App Password (16-char)
+import Settings from '../models/Settings.js';
+import EmailLog from '../models/EmailLog.js';
+
+// ── Transporter ────────────────────────
+const createTransporter = async () => {
+    let host = process.env.EMAIL_HOST || 'smtp.gmail.com';
+    let port = process.env.EMAIL_PORT || 587;
+    let user = process.env.EMAIL_USER;
+    let pass = process.env.EMAIL_PASS;
+
+    try {
+        const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
+        if (settings && settings.emailConfig && settings.emailConfig.user && settings.emailConfig.pass) {
+            host = settings.emailConfig.host || host;
+            port = settings.emailConfig.port || port;
+            user = settings.emailConfig.user;
+            pass = settings.emailConfig.pass;
+        }
+    } catch (e) {
+        console.error('Failed to load email settings from DB, using fallback.', e);
     }
-});
+
+    return nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: {
+            user,
+            pass
+        }
+    });
+};
 
 // ── Common Styles ────────────────────────────────────────────────
 const styles = {
@@ -21,44 +45,61 @@ const styles = {
     footerText: 'color:#94a3b8;font-size:11px;margin:0;',
 };
 
-// ── Reusable Email Wrapper ──────────────────────────────────────
 const createEmailTemplate = ({ 
-    headerColor = '#1e40af,#4338ca',
-    headerIcon = '📊',
-    headerTitle = 'TaskGrid ERP',
+    headerTitle = 'SPIS Task Controller',
     headerSubtitle = '',
     content = '',
-    footerText = '© 2024 TaskGrid ERP • Performance Management System'
+    footerText = '© 2024 Scholars Paradise International School'
 }) => `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${headerTitle}</title>
 </head>
-<body style="${styles.body}">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 20px;">
+<body style="margin:0;padding:0;background-color:#f4f7fa;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+    <div style="display:none;font-size:1px;color:#f4f7fa;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${headerSubtitle || headerTitle}</div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f7fa;padding:40px 20px;">
         <tr>
             <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0" style="${styles.container}">
-                    <!-- Header -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.05);border:1px solid #e1e8f0;">
+                    <!-- Branding Header -->
                     <tr>
-                        <td style="${styles.header(headerColor)}">
-                            <div style="font-size:36px;margin-bottom:10px;">${headerIcon}</div>
-                            <h1 style="${styles.headerTitle}">${headerTitle}</h1>
-                            ${headerSubtitle ? `<p style="${styles.headerSubtitle}">${headerSubtitle}</p>` : ''}
+                        <td style="padding:40px 40px 30px;background-color:#ffffff;text-align:center;">
+                            <div style="font-size:24px;font-weight:800;color:#1e40af;letter-spacing:-0.5px;margin-bottom:8px;">
+                                <span style="background:linear-gradient(135deg,#2563eb,#1e40af);-webkit-background-clip:text;color:transparent;">SPIS</span> Task Controller
+                            </div>
+                            <div style="height:4px;width:40px;background:#2563eb;margin:0 auto;border-radius:2px;"></div>
                         </td>
                     </tr>
-                    <!-- Content -->
+                    <!-- Hero Section -->
                     <tr>
-                        <td style="${styles.content}">
-                            ${content}
+                        <td style="padding:0 40px 40px;text-align:center;">
+                            <h1 style="margin:0;font-size:22px;color:#0f172a;font-weight:700;">${headerTitle}</h1>
+                            ${headerSubtitle ? `<p style="margin:10px 0 0;font-size:15px;color:#64748b;line-height:1.5;">${headerSubtitle}</p>` : ''}
+                        </td>
+                    </tr>
+                    <!-- Main Body Content -->
+                    <tr>
+                        <td style="padding:0 40px 40px;font-size:16px;line-height:1.6;color:#334155;">
+                            <div style="padding:30px;background-color:#f8fafc;border-radius:12px;border:1px solid #f1f5f9;">
+                                ${content}
+                            </div>
                         </td>
                     </tr>
                     <!-- Footer -->
                     <tr>
-                        <td style="${styles.footer}">
-                            <p style="${styles.footerText}">${footerText}</p>
+                        <td style="padding:30px 40px;background-color:#f8fafc;border-top:1px solid #f1f5f9;text-align:center;">
+                            <p style="margin:0 0 10px;font-size:12px;color:#94a3b8;font-weight:500;">Scholars Paradise International School</p>
+                            <p style="margin:0;font-size:11px;color:#cbd5e1;letter-spacing:0.5px;">${footerText}</p>
+                        </td>
+                    </tr>
+                </table>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;margin-top:20px;">
+                    <tr>
+                        <td align="center" style="font-size:11px;color:#94a3b8;line-height:1.5;">
+                            This is an automated notification from your SPIS Task Controller. Please do not reply to this email.
                         </td>
                     </tr>
                 </table>
@@ -72,7 +113,7 @@ const createEmailTemplate = ({
 // ── Send OTP Email ──────────────────────────────────────────────
 export const sendOTPEmail = async (toEmail, userName, otp, otpExpiresAt) => {
     try {
-        const transporter = createTransporter();
+        const transporter = await createTransporter();
         const expiryStr = new Date(otpExpiresAt).toLocaleTimeString('en-IN', { 
             hour: '2-digit', 
             minute: '2-digit',
@@ -133,23 +174,41 @@ export const sendOTPEmail = async (toEmail, userName, otp, otpExpiresAt) => {
             </p>
         `;
 
+        const textFallback = `Hello ${userName},\n\nYour registration has been approved.\nUse this OTP to activate your account: ${otp}\nValid until: ${expiryStr}\n\nSecurity: Never share this OTP with anyone.`;
+
         await transporter.sendMail({
-            from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>`,
+            from: `"SPIS Task Controller" <${process.env.EMAIL_USER}>`,
             to: toEmail,
-            subject: `🔐 OTP: ${otp} - Activate Your TaskGrid Account`,
+            subject: `OTP: ${otp} - Activate Your SPIS Account`,
+            text: textFallback,
             html: createEmailTemplate({
-                headerColor: '#1e40af,#4338ca',
-                headerIcon: '📊',
-                headerTitle: 'TaskGrid ERP',
+                headerTitle: 'SPIS Task Controller',
                 headerSubtitle: 'Account Activation',
                 content,
             }),
+        });
+
+        // Log the email
+        await EmailLog.create({
+            recipient: toEmail,
+            subject: `OTP: ${otp} - Activate Your SPIS Account`,
+            type: 'OTP',
+            contentSnippet: `OTP: ${otp}`,
+            status: 'sent'
         });
 
         console.log(`✅ OTP email sent to ${toEmail}`);
         return true;
     } catch (error) {
         console.error('❌ OTP email error:', error.message);
+        // Log failure
+        await EmailLog.create({
+            recipient: toEmail,
+            subject: `OTP: ${otp} - Activate Your SPIS Account`,
+            type: 'OTP',
+            status: 'failed',
+            error: error.message
+        });
         return false;
     }
 };
@@ -157,7 +216,7 @@ export const sendOTPEmail = async (toEmail, userName, otp, otpExpiresAt) => {
 // ── Send Welcome Email ──────────────────────────────────────────
 export const sendWelcomeEmail = async (toEmail, userName, role, department) => {
     try {
-        const transporter = createTransporter();
+        const transporter = await createTransporter();
 
         const content = `
             <p style="color:#334155;font-size:16px;margin:0 0 20px;">
@@ -223,6 +282,13 @@ export const sendWelcomeEmail = async (toEmail, userName, role, department) => {
             }),
         });
 
+        await EmailLog.create({
+            recipient: toEmail,
+            subject: '✅ Welcome to TaskGrid ERP – Account Activated!',
+            type: 'WELCOME',
+            status: 'sent'
+        });
+
         console.log(`✅ Welcome email sent to ${toEmail}`);
         return true;
     } catch (error) {
@@ -280,9 +346,9 @@ const taskEmailConfigs = {
     },
 };
 
-export const sendEmailNotification = async (toEmail, type, data) => {
+export const sendEmailNotification = async (toEmail, type, data, attachments = []) => {
     try {
-        const transporter = createTransporter();
+        const transporter = await createTransporter();
         const config = taskEmailConfigs[type];
         
         if (!config || !toEmail) {
@@ -347,7 +413,7 @@ export const sendEmailNotification = async (toEmail, type, data) => {
             ${data.feedback ? `
             <div style="background:#f8fafc;border-left:4px solid #64748b;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
                 <p style="color:#475569;font-size:13px;font-weight:700;margin:0 0 6px;">
-                    💬 Feedback:
+                    💬 Feedback/Note:
                 </p>
                 <p style="color:#64748b;font-size:13px;margin:0;line-height:1.5;">
                     ${data.feedback}
@@ -364,6 +430,16 @@ export const sendEmailNotification = async (toEmail, type, data) => {
 
         const subject = getTaskSubject(type, data);
 
+        // Format attachments for nodemailer
+        const mailAttachments = (attachments || []).map(att => ({
+            filename: att.filename,
+            // Assuming fileUrl is a relative path like /uploads/...
+            // Need to convert it to absolute path if we want to attach from file system,
+            // OR if it's stored on disk, we can use `path: process.cwd() + att.fileUrl`.
+            // For safety, let's use path
+            path: att.fileUrl ? process.cwd() + att.fileUrl : undefined
+        })).filter(att => att.path);
+
         await transporter.sendMail({
             from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>`,
             to: toEmail,
@@ -375,12 +451,42 @@ export const sendEmailNotification = async (toEmail, type, data) => {
                 headerSubtitle: config.headerSubtitle,
                 content,
             }),
+            attachments: mailAttachments.length > 0 ? mailAttachments : undefined
+        });
+
+        // Log the notification
+        await EmailLog.create({
+            recipient: toEmail,
+            subject,
+            type,
+            taskId: data.taskId || null,
+            senderId: data.senderId || null,
+            contentSnippet: data.feedback ? data.feedback.substring(0, 200) : '',
+            attachments: attachments.map(a => ({
+                filename: a.filename,
+                fileUrl: a.fileUrl,
+                fileSize: a.fileSize
+            })),
+            status: 'sent'
         });
 
         console.log(`✅ ${type} email sent to ${toEmail}`);
         return true;
     } catch (error) {
         console.error(`❌ ${type} email error:`, error.message);
+        // Log failure
+        try {
+            await EmailLog.create({
+                recipient: toEmail,
+                subject: getTaskSubject(type, data),
+                type,
+                taskId: data.taskId || null,
+                status: 'failed',
+                error: error.message
+            });
+        } catch (logErr) {
+            console.error('Failed to log failed email:', logErr);
+        }
         return false;
     }
 };

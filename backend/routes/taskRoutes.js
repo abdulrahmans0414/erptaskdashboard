@@ -4,7 +4,7 @@ import {
     getDepartmentTasks, getTeamTasks, updateTeamProgress,
     startTask, submitTaskWithTime, reviewTask,
     getDashboardStats, getEmployeeSummary, getTimeReport,
-    updateTaskStatus, addComment
+    updateTaskStatus, addComment, reassignTask
 } from '../controllers/taskController.js';
 import { protect, authorize, filterTasksByUserAccess, canModifyTask } from '../middleware/auth.js';
 import multer from 'multer';
@@ -84,6 +84,7 @@ router.put(
 router.put('/:id/review', authorize('admin', 'it', 'department-head', 'branch-head'), reviewTask); // Review
 router.put('/:id/status', updateTaskStatus);   // Status update
 router.put('/:id/comment', addComment);        // Add comment
+router.put('/:id/reassign', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), reassignTask); // Reassign
 
 // Then these
 router.get('/:id', getTaskById);

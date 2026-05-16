@@ -41,7 +41,7 @@ export default function Sidebar({
   };
 
   const closeMobile = () => setMobileOpen(false);
-  const logoSrc = "/spis-logo.png";
+  const logoSrc = "/spis-logo.jpeg";
 
   return (
     <aside
@@ -76,8 +76,8 @@ export default function Sidebar({
             </div>
             <div className="min-w-0">
               <h1 className="text-lg font-bold leading-tight truncate">SPIS</h1>
-              <p className="text-[10px] text-gray-400 truncate">
-                Task Management
+              <p className="text-[10px] text-gray-400 truncate" title="Scholars Paradise International School">
+                Task Controller
               </p>
             </div>
           </div>
@@ -199,7 +199,78 @@ export default function Sidebar({
             </div>
           )}
         </div>
+
+        {/* Admin Section (Hidden per user request) */}
+        {/* {isAdmin && (
+          <>
+            {(!collapsed || isMobile) && (
+              <div className="px-4 pt-3 pb-1">
+                <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest">
+                  Administration
+                </p>
+              </div>
+            )}
+            {collapsed && !isMobile && (
+              <div className="border-t border-white/10 my-2" />
+            )}
+
+            <NavLink
+              to="/admin/users"
+              onClick={closeMobile}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                ${
+                  isActive
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-900/40"
+                    : "text-gray-400 hover:bg-white/10 hover:text-white"
+                }
+                ${collapsed && !isMobile ? "justify-center" : ""}`
+              }
+              title={collapsed && !isMobile ? "User Management" : undefined}
+            >
+              <span className="text-lg flex-shrink-0">👥</span>
+              {(!collapsed || isMobile) && <span>User Management</span>}
+            </NavLink>
+
+            <NavLink
+              to="/admin/registrations"
+              onClick={closeMobile}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                ${
+                  isActive
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-900/40"
+                    : "text-gray-400 hover:bg-white/10 hover:text-white"
+                }
+                ${collapsed && !isMobile ? "justify-center" : ""}`
+              }
+              title={collapsed && !isMobile ? "Registrations" : undefined}
+            >
+              <span className="text-lg flex-shrink-0">📋</span>
+              {(!collapsed || isMobile) && <span>Registrations</span>}
+            </NavLink>
+
+            <NavLink
+              to="/admin/settings"
+              onClick={closeMobile}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                ${
+                  isActive
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-900/40"
+                    : "text-gray-400 hover:bg-white/10 hover:text-white"
+                }
+                ${collapsed && !isMobile ? "justify-center" : ""}`
+              }
+              title={collapsed && !isMobile ? "System Settings" : undefined}
+            >
+              <span className="text-lg flex-shrink-0">⚙️</span>
+              {(!collapsed || isMobile) && <span>System Settings</span>}
+            </NavLink>
+          </>
+        )} */}
       </nav>
     </aside>
   );
 }
+

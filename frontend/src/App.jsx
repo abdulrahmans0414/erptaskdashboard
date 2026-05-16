@@ -11,6 +11,7 @@ import EmployeeProfile from "./components/Employee/EmployeeProfile";
 import UserManagement from "./components/Admin/UserManagement";
 import BranchManagement from "./components/Admin/BranchManagement";
 import PendingRegistrations from "./components/Admin/PendingRegistrations";
+import SystemSettings from "./components/Admin/SystemSettings";
 
 const Spinner = () => (
   <div className="flex justify-center items-center h-screen bg-slate-50">
@@ -47,6 +48,8 @@ const ManagerRoute = ({ children }) => {
   return ['admin','branch-head','department-head'].includes(user.role) ? children : <Navigate to="/" replace />;
 };
 
+import { SettingsProvider } from "./context/SettingsContext";
+
 function AppRoutes() {
   return (
     <Routes>
@@ -63,6 +66,7 @@ function AppRoutes() {
       <Route path="/admin/users"         element={<AdminRoute><Layout><UserManagement /></Layout></AdminRoute>} />
       <Route path="/admin/branches"      element={<AdminRoute><Layout><BranchManagement /></Layout></AdminRoute>} />
       <Route path="/admin/registrations" element={<AdminRoute><Layout><PendingRegistrations /></Layout></AdminRoute>} />
+      <Route path="/admin/settings"      element={<AdminRoute><Layout><SystemSettings /></Layout></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -73,9 +77,11 @@ export default function App() {
   return (
     <Provider store={store}>
       <Router>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
+        <SettingsProvider>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </SettingsProvider>
       </Router>
     </Provider>
   );
