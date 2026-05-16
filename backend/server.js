@@ -17,6 +17,11 @@ import User from './models/User.js';
 import { seedDatabase } from './seed.js';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
+import hpp from 'hpp';
+import cookieParser from 'cookie-parser';
+import { initializeTokenCleanup, checkTokenBlacklist } from './middleware/tokenBlacklist.js';
+import { csrfMiddleware, attachCsrfToken, csrfErrorHandler } from './middleware/csrfMiddleware.js';
+import { handleValidationErrors } from './utils/validationRules.js';
 
 // DNS Configuration - Fix for MongoDB Atlas SRV lookup
 dns.setServers(['1.1.1.1', '8.8.8.8']);
@@ -27,19 +32,41 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Security Middlewares
+// ==================== SECURITY HEADERS ====================
 app.use(helmet({
     crossOriginResourcePolicy: false, // Allow cross-origin images/uploads
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'", process.env.VITE_API_URL || 'http://localhost:5000'],
+        },
+    },
 }));
 
-const limiter = rateLimit({
+// ==================== RATE LIMITING ====================
+const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 500, // Limit each IP to 500 requests per window
     message: 'Too many requests from this IP, please try again after 15 minutes',
     standardHeaders: 'draft-7',
     legacyHeaders: false,
+    skip: (req) => req.path === '/', // Don't rate limit health check
 });
-app.use('/api/', limiter);
+
+// Per-user rate limiting for login attempts
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 5, // 5 attempts per 15 minutes
+    keyGenerator: (req) => req.body.email || req.ip, // Rate limit by email
+    message: 'Too many login attempts. Please try again after 15 minutes.',
+    skip: (req) => req.method !== 'POST' || !req.path.includes('/login'),
+});
+
+app.use(globalLimiter);
+app.use(loginLimiter);
 
 const PORT = process.env.PORT || 5000;
 
@@ -59,9 +86,27 @@ app.use(cors({
     credentials: true
 }));
 
-// Body Parser
+// ==================== BODY PARSING & COOKIES ====================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser()); // Must be before CSRF middleware
+
+// ==================== ADDITIONAL SECURITY ====================
+// HPP (HTTP Parameter Pollution) protection
+app.use(hpp({
+    whitelist: ['sort', 'page', 'limit', 'search', 'filter'], // Allow multiple values for these params
+}));
+
+// CSRF Protection
+app.use(...csrfMiddleware);
+app.use(attachCsrfToken); // Attach token to res.locals
+app.use(csrfErrorHandler); // Handle CSRF errors
+
+// Token blacklist checking
+app.use('/api/', checkTokenBlacklist);
+
+// Validation error handler
+app.use(handleValidationErrors);
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -107,6 +152,9 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
     await connectDB();
     
+    // Initialize token cleanup background job
+    initializeTokenCleanup();
+    
     // Auto-seed if database is empty
     const userCount = await User.countDocuments();
     if (userCount === 0) {
@@ -117,6 +165,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
         console.log(`✅ Server running on http://localhost:${PORT}`);
         console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`🔒 Security: CSRF, HPP, CORS, Rate Limiting enabled`);
     });
 };
 
