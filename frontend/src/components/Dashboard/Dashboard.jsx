@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchTasks, fetchDashboardStats } from "../../store/features/tasks/taskSlice";
+import { fetchTasks, fetchDashboardStats } from "../../store/features/tasks";
 import {
   getUsers,
   getUsersByBranch,

@@ -4,7 +4,7 @@ import {
   logout as logoutAction,
   loginUser,
   getCurrentUser,
-} from "../store/features/auth/authSlice";
+} from "../store/features/auth";
 
 const AuthContext = createContext();
 

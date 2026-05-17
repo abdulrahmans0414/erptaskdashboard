@@ -1,9 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchTasks,
-  setPollingStatus,
-} from "../../store/features/tasks/taskSlice";
+import { fetchTasks, setPollingStatus } from "../../store/features/tasks";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import TaskCard from "./TaskCard";

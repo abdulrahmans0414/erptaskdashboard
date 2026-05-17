@@ -116,13 +116,22 @@ const EmployeeProfile = () => {
       setEmployee(emp);
       setProfileImage(emp.avatar || null);
 
+      const employeeId = emp._id?.toString();
       const empTasks = allTasks.filter((task) => {
         const assignedToId = task.assignedTo?._id || task.assignedTo;
-        const taskAssignedId =
+        const assignedToString =
           typeof assignedToId === "string"
             ? assignedToId
             : assignedToId?.toString();
-        return taskAssignedId === emp._id?.toString();
+
+        const assignedTeamIds = (task.assignedTeam || []).map((member) =>
+          typeof member === "string" ? member : member?._id?.toString(),
+        );
+
+        return (
+          assignedToString === employeeId ||
+          assignedTeamIds.includes(employeeId)
+        );
       });
       setTasks(empTasks);
 
