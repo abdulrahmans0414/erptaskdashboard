@@ -4,7 +4,7 @@
  * Clients connect once; server pushes task + user updates every 8 seconds.
  */
 import express from 'express';
-import { protect } from '../middleware/auth.js';
+import { protect, buildTaskFilter } from '../middleware/auth.js';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
 import eventBus from '../utils/eventBus.js';
@@ -22,16 +22,6 @@ const addClient = (userId, res) => {
 const removeClient = (userId, res) => {
     clients.get(userId)?.delete(res);
     if (clients.get(userId)?.size === 0) clients.delete(userId);
-};
-
-// Helper: build task filter per role (mirrors auth middleware)
-const buildTaskFilter = (user) => {
-    const { role, _id, department, branch } = user;
-    if (role === 'admin' || role === 'it') return {};
-    if (role === 'department-head') return { department, branch };
-    if (role === 'branch-head') return { branch };
-    if (role === 'hr') return { department: 'HR' };
-    return { $or: [{ assignedTo: _id }, { assignedTeam: _id }] };
 };
 
 // SSE endpoint

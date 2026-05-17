@@ -126,31 +126,48 @@ export const createUser = async (req, res) => {
 // @desc    Update user (Admin only)
 export const updateUser = async (req, res) => {
     try {
-        const { 
+        const {
             name, email, role, department, branch, isActive, avatar, password,
-            phone, address, bloodGroup, dateOfJoining, customFields 
+            phone, address, bloodGroup, dateOfJoining, customFields
         } = req.body;
         const user = await User.findById(req.params.id);
         
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
-        
-        if (name) user.name = name;
-        if (email) user.email = email;
-        if (role) user.role = role;
-        if (department) user.department = department;
-        if (branch) user.branch = branch;
-        if (isActive !== undefined) user.isActive = isActive;
-        if (avatar) user.avatar = avatar;
-        if (phone !== undefined) user.phone = phone;
-        if (address !== undefined) user.address = address;
-        if (bloodGroup !== undefined) user.bloodGroup = bloodGroup;
-        if (dateOfJoining) user.dateOfJoining = dateOfJoining;
-        if (customFields) user.customFields = customFields;
 
-        // ✅ FIX: Allow password update - pre-save hook will hash it
-        if (password && password.trim()) user.password = password;
+        const isSelf = req.user._id.toString() === req.params.id;
+        const canEditAll = ['admin', 'it'].includes(req.user.role);
+
+        if (canEditAll) {
+            if (name) user.name = name;
+            if (email) user.email = email;
+            if (role) user.role = role;
+            if (department) user.department = department;
+            if (branch) user.branch = branch;
+            if (isActive !== undefined) user.isActive = isActive;
+            if (avatar) user.avatar = avatar;
+            if (phone !== undefined) user.phone = phone;
+            if (address !== undefined) user.address = address;
+            if (bloodGroup !== undefined) user.bloodGroup = bloodGroup;
+            if (dateOfJoining) user.dateOfJoining = dateOfJoining;
+            if (customFields) user.customFields = customFields;
+        } else if (isSelf) {
+            if (name) user.name = name;
+            if (email) user.email = email;
+            if (phone !== undefined) user.phone = phone;
+            if (address !== undefined) user.address = address;
+            if (bloodGroup !== undefined) user.bloodGroup = bloodGroup;
+            if (customFields) user.customFields = customFields;
+            if (dateOfJoining) user.dateOfJoining = dateOfJoining;
+        } else {
+            return res.status(403).json({ success: false, message: 'Only admins may update other users' });
+        }
+
+        // ✅ FIX: Allow password update for self or admin - pre-save hook will hash it
+        if (password && password.trim()) {
+            if (isSelf || canEditAll) user.password = password;
+        }
         
         await user.save();
         

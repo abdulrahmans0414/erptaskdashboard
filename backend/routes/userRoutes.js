@@ -9,7 +9,7 @@ import {
     getUsersByBranch,
     uploadAvatar  // ✅ Import
 } from '../controllers/userController.js';
-import { protect, authorize, filterUsersByAccess, canUploadAvatar } from '../middleware/auth.js';
+import { protect, authorize, filterUsersByAccess, canAccessUser, canUploadAvatar } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -54,13 +54,13 @@ router.get('/department/:department', authorize('admin', 'it', 'department-head'
 router.get('/branch/:branch', authorize('admin', 'it', 'branch-head'), getUsersByBranch);
 
 // ✅ IMPORTANT: Specific routes before :id routes
-router.put('/avatar/:id', protect, canUploadAvatar, upload.single('avatar'), uploadAvatar);
+router.put('/avatar/:id', canUploadAvatar, upload.single('avatar'), uploadAvatar);
 
-router.get('/:id', authorize('admin', 'it', 'department-head', 'hr'), filterUsersByAccess, getUserById);
+router.get('/:id', canAccessUser, getUserById);
+router.put('/:id', canAccessUser, updateUser);
 
 // Sensitive operations - Admin only
 router.post('/', authorize('admin'), createUser);
-router.put('/:id', authorize('admin'), updateUser);
 router.delete('/:id', authorize('admin'), deleteUser);
 
 export default router;

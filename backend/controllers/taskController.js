@@ -214,6 +214,13 @@ export const getTasks = async (req, res) => {
             query.branch = branch;
         }
 
+        if (req.query.assignedTo) {
+            const assignedFilter = [
+                { assignedTo: req.query.assignedTo },
+                { assignedTeam: req.query.assignedTo }
+            ];
+            query.$or = query.$or ? [...query.$or, ...assignedFilter] : assignedFilter;
+        }
         if (status && status !== 'all') query.status = status;
         if (priority && priority !== 'all') query.priority = priority;
         
@@ -286,7 +293,8 @@ export const getTasks = async (req, res) => {
 // ============ GET TASK BY ID ============
 export const getTaskById = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id)
+        const taskId = req.task?._id || req.params.id;
+        const task = await Task.findById(taskId)
             .populate('assignedTo assignedBy assignedTeam', 'name email department role')
             .populate('individualProgress.userId', 'name email')
             .lean();
@@ -296,7 +304,6 @@ export const getTaskById = async (req, res) => {
         }
         
         res.json({ success: true, data: task });
-        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -445,6 +452,7 @@ export const startTask = async (req, res) => {
         });
         
         await task.save();
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
 
         // Notify the Assigner that the task has started
         if (task.assignedBy) {
@@ -532,6 +540,7 @@ export const submitTaskWithTime = async (req, res) => {
                 }
             }
             await task.save();
+            eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
             
             const populatedTask = await Task.findById(task._id)
                 .populate('assignedTo assignedBy assignedTeam', 'name email')
@@ -681,6 +690,7 @@ export const submitTaskWithTime = async (req, res) => {
         
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo assignedBy assignedTeam', 'name email department');
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
         
         res.json({ 
             success: true, 
@@ -811,15 +821,11 @@ export const reviewTask = async (req, res) => {
         }
 
         const populatedTask = await Task.findById(task._id).populate('assignedTo assignedBy assignedTeam', 'name email department');
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
         return res.json({
             success: true,
             data: populatedTask,
             message: status === 'approved' ? 'Task approved successfully!' : 'Task rejected. Employee notified.'
-        });
-
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid status. Use status ("approved"|"rejected").'
         });
     } catch (error) {
         console.error('Review error:', error);
@@ -847,6 +853,7 @@ export const addComment = async (req, res) => {
         });
         
         await task.save();
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
 
         // Notify Assigner / Reviewer that an update has been posted
         if (task.assignedBy && task.assignedBy.toString() !== req.user._id.toString()) {
@@ -1030,7 +1037,7 @@ export const getDashboardStats = async (req, res) => {
             Task.countDocuments({ ...queryWithDate, priority: 'urgent' }),
             Task.countDocuments({ ...queryWithDate, priority: 'high' }),
             Task.countDocuments({ 
-                ...query, 
+                ...queryWithDate, 
                 dueDate: { $lt: now }, 
                 status: { $nin: ['completed', 'approved'] } 
             }),
@@ -1099,6 +1106,7 @@ export const reassignTask = async (req, res) => {
         }
 
         // Log the reassignment
+        if (!task.comments) task.comments = [];
         task.comments.push({
             user: req.user._id,
             text: `🔄 Task reassigned. Reason: ${reason || 'Not specified'}`,
@@ -1106,6 +1114,7 @@ export const reassignTask = async (req, res) => {
         });
 
         await task.save();
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
 
         // Notify NEW assignee
         if (isTeamTask) {
@@ -1304,6 +1313,7 @@ export const updateTaskStatus = async (req, res) => {
         }
         
         await task.save();
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
         
         const populatedTask = await Task.findById(task._id)
             .populate('assignedTo assignedBy assignedTeam', 'name email department');

@@ -89,44 +89,19 @@ const EmployeeProfile = () => {
   });
   const [editLoading, setEditLoading] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
-  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [, setAvatarUploading] = useState(false);
 
   // /profile route may not have id - fallback to current user
   const effectiveId = id || currentUser?._id || currentUser?.id;
 
-  useEffect(() => {
-    if (effectiveId) {
-      loadData();
-
-      // Realtime polling: refresh profile + tasks every 10 seconds from MongoDB
-      // Skip poll if edit modal is open to avoid disrupting user input
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      pollingRef.current = setInterval(() => {
-        if (!showEditModal) {
-          loadData();
-        }
-      }, 10000);
-    }
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveId, currentUser]);
-
-  // Removed local showToast
-
   const loadData = async () => {
-    if (!employee) setLoading(true);
+    setLoading(true);
     try {
       setUserRole(currentUser?.role || null);
 
       const [empRes, tasksRes] = await Promise.all([
         getUserById(effectiveId),
-        getTasks({ limit: 5000 }),
+        getTasks({ assignedTo: effectiveId, limit: 5000 }),
       ]);
 
       const emp = empRes.data?.data;
@@ -160,8 +135,6 @@ const EmployeeProfile = () => {
         const r = await getUsersByDepartment(emp.department);
         team = r.data?.data || [];
       } else {
-        // For admin/it/hr: we don't have a generic "get all users" always permitted.
-        // Keep team empty unless manager endpoints available.
         team = [];
       }
 
@@ -191,16 +164,45 @@ const EmployeeProfile = () => {
       });
     } catch (error) {
       console.error("Error:", error);
-      showToast("Failed to load profile data", "error");
+      toast.error("Failed to load profile data");
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (!effectiveId) return;
+
+    const initialize = async () => {
+      await loadData();
+    };
+
+    initialize();
+
+    // Realtime polling: refresh profile + tasks every 10 seconds from MongoDB
+    // Skip poll if edit modal is open to avoid disrupting user input
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = setInterval(() => {
+      if (!showEditModal) {
+        loadData();
+      }
+    }, 10000);
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveId, currentUser]);
+
+  // Removed local showToast
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      showToast("Image must be less than 2MB", "error");
+      toast.error("Image must be less than 2MB");
       return;
     }
     try {

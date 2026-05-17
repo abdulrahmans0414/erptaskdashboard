@@ -87,7 +87,7 @@ router.put('/:id/comment', addComment);        // Add comment
 router.put('/:id/reassign', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), reassignTask); // Reassign
 
 // Then these
-router.get('/:id', getTaskById);
+router.get('/:id', canModifyTask, getTaskById);
 router.put('/:id', canModifyTask, updateTask);
 router.delete('/:id', authorize('admin', 'it'), deleteTask);
 

@@ -52,27 +52,31 @@ export const authorize = (...roles) => {
 };
 
 // ============ TASK DATA ISOLATION (Simplified) ============
-export const filterTasksByUserAccess = (req, res, next) => {
-    const { role, _id, department, branch } = req.user;
-    
+export const buildTaskFilter = (user) => {
+    const { role, _id, department, branch } = user;
+
     if (role === 'admin' || role === 'it') {
-        req.taskFilter = {};
-    } else if (role === 'department-head') {
-        req.taskFilter = { department, branch };
-    } else if (role === 'branch-head') {
-        req.taskFilter = { branch };
-    } else if (role === 'hr') {
-        req.taskFilter = { department: 'HR' };
-    } else {
-        // Employee, IT, Graphic - sirf apne tasks
-        req.taskFilter = {
-            $or: [
-                { assignedTo: _id },
-                { assignedTeam: _id }
-            ]
-        };
+        return {};
     }
-    
+    if (role === 'department-head') {
+        return { department, branch };
+    }
+    if (role === 'branch-head') {
+        return { branch };
+    }
+    if (role === 'hr') {
+        return { department: 'HR' };
+    }
+    return {
+        $or: [
+            { assignedTo: _id },
+            { assignedTeam: _id }
+        ]
+    };
+};
+
+export const filterTasksByUserAccess = (req, res, next) => {
+    req.taskFilter = buildTaskFilter(req.user);
     next();
 };
 
