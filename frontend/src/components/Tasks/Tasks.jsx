@@ -1,6 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchTasks, setPollingStatus } from "../../store/slices/taskSlice";
+import {
+  fetchTasks,
+  setPollingStatus,
+} from "../../store/features/tasks/taskSlice";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import TaskCard from "./TaskCard";
@@ -35,21 +38,29 @@ export default function Tasks() {
   );
 
   const load = () => {
-    dispatch(fetchTasks({ 
-      page, 
-      limit: 10,
-      search: filters.search,
-      status: filters.status,
-      priority: filters.priority,
-      department: filters.department,
-      branch: filters.branch
-    }));
+    dispatch(
+      fetchTasks({
+        page,
+        limit: 10,
+        search: filters.search,
+        status: filters.status,
+        priority: filters.priority,
+        department: filters.department,
+        branch: filters.branch,
+      }),
+    );
   };
 
   // Reload data when filters or page changes
   useEffect(() => {
     load();
-  }, [page, filters.status, filters.priority, filters.department, filters.branch]);
+  }, [
+    page,
+    filters.status,
+    filters.priority,
+    filters.department,
+    filters.branch,
+  ]);
 
   // Debounced search
   useEffect(() => {
@@ -91,9 +102,19 @@ export default function Tasks() {
   // Note: For full stats counters, we would ideally use the dashboardStats or a separate summary API.
   // For now, keeping these as current-page stats or using the total from pagination.
   const STAT_CARDS = [
-    { l: "Total Tasks", v: pagination.total, c: "text-gray-700", bg: "bg-gray-50" },
-    { l: "Page", v: `${pagination.page} / ${pagination.pages}`, c: "text-blue-600", bg: "bg-blue-50" },
-    { l: "Limit", v: "10 per page", c: "text-gray-500", bg: "bg-gray-50" }
+    {
+      l: "Total Tasks",
+      v: pagination.total,
+      c: "text-gray-700",
+      bg: "bg-gray-50",
+    },
+    {
+      l: "Page",
+      v: `${pagination.page} / ${pagination.pages}`,
+      c: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    { l: "Limit", v: "10 per page", c: "text-gray-500", bg: "bg-gray-50" },
   ];
 
   const setF = (k, v) => {

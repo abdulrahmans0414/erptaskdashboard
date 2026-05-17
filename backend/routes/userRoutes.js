@@ -8,7 +8,7 @@ import {
     getUsersByDepartment,
     getUsersByBranch,
     uploadAvatar  // ✅ Import
-} from '../controllers/userController.js';
+} from '../controllers/users/userController.js';
 import { protect, authorize, filterUsersByAccess, canAccessUser, canUploadAvatar } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';

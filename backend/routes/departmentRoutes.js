@@ -4,7 +4,7 @@ import {
     createDepartment,
     updateDepartment,
     deleteDepartment
-} from '../controllers/departmentController.js';
+} from '../controllers/departments/departmentController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();

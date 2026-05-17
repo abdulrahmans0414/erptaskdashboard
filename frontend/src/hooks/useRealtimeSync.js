@@ -5,8 +5,8 @@
  */
 import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { getCurrentUser } from '../store/slices/authSlice';
-import { fetchTasks, fetchDashboardStats } from '../store/slices/taskSlice';
+import { getCurrentUser } from '../store/features/auth/authSlice';
+import { fetchTasks, fetchDashboardStats } from '../store/features/tasks/taskSlice';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
 const SSE_URL = `${API_ORIGIN}/api/realtime/stream`;

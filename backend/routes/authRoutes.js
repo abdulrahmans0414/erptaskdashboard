@@ -2,7 +2,7 @@ import express from 'express';
 import {
     signup, getPendingRegistrations, reviewRegistration, verifyOtp,
     checkRegistrationStatus, login, getMe, register, getUsers
-} from '../controllers/authController.js';
+} from '../controllers/auth/authController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import {
     validateSignup,

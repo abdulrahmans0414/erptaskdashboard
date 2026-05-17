@@ -6,7 +6,7 @@ import {
     updateBranch,
     deleteBranch,
     getBranchStats
-} from '../controllers/branchController.js';
+} from '../controllers/branches/branchController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();

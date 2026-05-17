@@ -5,7 +5,7 @@ import {
     startTask, submitTaskWithTime, reviewTask,
     getDashboardStats, getEmployeeSummary, getTimeReport,
     updateTaskStatus, addComment, reassignTask
-} from '../controllers/taskController.js';
+} from '../controllers/tasks/taskController.js';
 import { protect, authorize, filterTasksByUserAccess, canModifyTask } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
