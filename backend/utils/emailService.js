@@ -523,3 +523,109 @@ const getPriorityStyle = (priority) => {
     };
     return styles[priority?.toLowerCase()] || 'background:#f1f5f9;color:#475569;';
 };
+
+// ── Resend Logged Email ─────────────────────────────────────────
+export const resendLoggedEmail = async (logId) => {
+    const log = await EmailLog.findById(logId);
+    if (!log) {
+        throw new Error('Email log not found');
+    }
+
+    const { recipient, type, taskId, subject, contentSnippet } = log;
+
+    // 1. Resending OTP
+    if (type === 'OTP') {
+        const PendingRegistration = (await import('../models/PendingRegistration.js')).default;
+        const pending = await PendingRegistration.findOne({ email: recipient.toLowerCase().trim() });
+        
+        let otp = '';
+        if (pending && pending.otp) {
+            otp = pending.otp;
+        } else {
+            // Extract from subject line using regex
+            const otpMatch = subject.match(/OTP:\s*(\d+)/i);
+            if (otpMatch) {
+                otp = otpMatch[1];
+            } else {
+                otp = contentSnippet.replace('OTP: ', '').trim();
+            }
+        }
+
+        // If still empty (e.g. log was totally corrupt/empty), let's generate a temporary valid one
+        // and sync it to the PendingRegistration database so the user can actually use it!
+        if (!otp && pending) {
+            otp = Math.floor(100000 + Math.random() * 900000).toString();
+            pending.otp = otp;
+            pending.otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+            await pending.save();
+        } else if (!otp) {
+            otp = Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        const name = pending ? pending.name : 'User';
+        const expiry = pending ? pending.otpExpiresAt : new Date(Date.now() + 15 * 60 * 1000);
+        return await sendOTPEmail(recipient, name, otp, expiry);
+    }
+
+    // 2. Resending WELCOME
+    if (type === 'WELCOME') {
+        const User = (await import('../models/User.js')).default;
+        const user = await User.findOne({ email: recipient });
+        const name = user ? user.name : 'User';
+        const role = user ? user.role : 'employee';
+        const dept = user ? user.department : 'General';
+        return await sendWelcomeEmail(recipient, name, role, dept);
+    }
+
+    // 3. Resending Task Notifications (TASK_ASSIGNED, TASK_SUBMITTED, TASK_APPROVED, TASK_REJECTED, TASK_UPDATED)
+    if (['TASK_ASSIGNED', 'TASK_SUBMITTED', 'TASK_APPROVED', 'TASK_REJECTED', 'TASK_UPDATED'].includes(type)) {
+        const Task = (await import('../models/Task.js')).default;
+        const User = (await import('../models/User.js')).default;
+
+        const task = await Task.findById(taskId);
+        if (!task) {
+            // If the task was deleted, let's fall back to sending a static copy using the log data
+            const transporter = await createTransporter();
+            const fallbackContent = `
+                <p style="color:#334155;font-size:16px;margin:0 0 12px;">Hello 👋</p>
+                <p style="color:#64748b;font-size:14px;margin:0 0 24px;line-height:1.6;">
+                    This is a resent task notification. The associated task is no longer available, but here was the recorded content:
+                </p>
+                <div style="background:#f8fafc;border-left:4px solid #cbd5e1;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+                    <p style="color:#475569;font-size:13px;font-weight:700;margin:0 0 6px;">Recorded Note:</p>
+                    <p style="color:#64748b;font-size:13px;margin:0;line-height:1.5;">${contentSnippet || 'No recorded note.'}</p>
+                </div>
+            `;
+            await transporter.sendMail({
+                from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>`,
+                to: recipient,
+                subject: `[RESENT] ${subject}`,
+                html: createEmailTemplate({
+                    headerTitle: 'Resent Notification',
+                    headerSubtitle: 'Original task not found',
+                    content: fallbackContent
+                })
+            });
+            return true;
+        }
+
+        // If task exists, reconstruct full details
+        const employee = await User.findOne({ email: recipient }) || await User.findById(task.assignedTo);
+        const employeeName = employee ? employee.name : 'Employee';
+        
+        const data = {
+            employeeName,
+            taskTitle: task.title,
+            dueDate: task.dueDate,
+            priority: task.priority,
+            department: task.department,
+            feedback: contentSnippet || task.description,
+            taskId: task._id,
+            senderId: log.senderId
+        };
+
+        return await sendEmailNotification(recipient, type, data, log.attachments);
+    }
+
+    throw new Error(`Unsupported email type for resending: ${type}`);
+};

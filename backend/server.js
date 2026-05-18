@@ -13,6 +13,7 @@ import departmentRoutes from './routes/departmentRoutes.js';
 import branchRoutes from './routes/branchRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import realtimeRoutes from './routes/realtimeRoutes.js';
+import emailLogRoutes from './routes/emailLogRoutes.js';
 import User from './models/User.js';
 import { seedDatabase } from './seed.js';
 import helmet from 'helmet';
@@ -144,6 +145,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/realtime', realtimeRoutes);
+app.use('/api/email-logs', emailLogRoutes);
 
 // 404 Handler
 app.use((req, res) => {

@@ -135,6 +135,15 @@ const UserManagement = () => {
     loadUsers();
   }, [page, roleFilter, branchFilter]);
 
+  // Read URL search query param if present on mount to interlink from Email Center
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const searchParam = params.get("search");
+    if (searchParam) {
+      setSearch(searchParam);
+    }
+  }, []);
+
   // Debounced search for users
   useEffect(() => {
     const timer = setTimeout(() => {

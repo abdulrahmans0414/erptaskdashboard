@@ -24,6 +24,7 @@ export default function Sidebar({
 
   const isPerformanceActive =
     location.pathname.startsWith("/tasks") ||
+    location.pathname.startsWith("/mailbox") ||
     location.pathname.startsWith("/reports");
 
   useEffect(() => {
@@ -182,6 +183,21 @@ export default function Sidebar({
               >
                 <span>📋</span>
                 <span>Tasks</span>
+              </NavLink>
+
+              <NavLink
+                to="/mailbox"
+                onClick={() => {
+                  setPerformanceOpen(true);
+                  closeMobile();
+                }}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 pl-3 pr-4 py-2 rounded-lg text-sm transition
+                  ${isActive ? "bg-white/10 text-white font-medium" : "text-gray-500 hover:text-gray-200 hover:bg-white/5"}`
+                }
+              >
+                <span>✉️</span>
+                <span>Email Logs</span>
               </NavLink>
 
               {canViewReports && (

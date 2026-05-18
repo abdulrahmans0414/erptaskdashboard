@@ -72,6 +72,15 @@ export default function Tasks() {
     return () => clearTimeout(timer);
   }, [filters.search]);
 
+  // Read URL search query param if present on mount to interlink from Email Center
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const searchParam = params.get("search");
+    if (searchParam) {
+      setFilters((prev) => ({ ...prev, search: searchParam }));
+    }
+  }, []);
+
   // Clamp filter options to user's authorized scope
   useEffect(() => {
     if (!user?.role) return;
