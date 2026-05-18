@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../services/api';
+import api from '../../../services/api';
 
 const updateInList = (items, payload) => {
     const i = items.findIndex(t => t._id === payload._id);

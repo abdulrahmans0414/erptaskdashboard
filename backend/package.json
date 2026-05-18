@@ -16,6 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csurf": "^1.11.0",
     "dotenv": "^16.3.1",
