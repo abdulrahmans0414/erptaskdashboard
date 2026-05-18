@@ -1,8 +1,8 @@
-import User from '../models/User.js';
+import User from '../../models/User.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import eventBus, { EVENTS } from '../utils/eventBus.js';
+import eventBus, { EVENTS } from '../../utils/eventBus.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

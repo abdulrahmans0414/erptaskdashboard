@@ -57,7 +57,7 @@ router.use(protect);
 
 // Dashboard & Reports
 router.get('/dashboard/stats', filterTasksByUserAccess, getDashboardStats);
-router.get('/employees/summary', authorize('admin', 'it', 'department-head'), getEmployeeSummary);
+router.get('/employees/summary', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), getEmployeeSummary);
 router.get('/reports/time', authorize('admin', 'it', 'department-head', 'hr'), getTimeReport);
 
 // Department & Team

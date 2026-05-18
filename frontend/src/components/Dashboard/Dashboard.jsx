@@ -5,6 +5,7 @@ import {
   getUsers,
   getUsersByBranch,
   getUsersByDepartment,
+  getEmployeeSummary
 } from "../../services/api";
 import { reviewTask } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -580,23 +581,14 @@ const Dashboard = () => {
   const loadEmployees = useCallback(async () => {
     try {
       const role = user?.role;
-      const branch = user?.branch;
-      const department = user?.department;
-
       if (!["admin", "hr", "department-head", "branch-head"].includes(role)) {
         setEmployees([]);
         return;
       }
 
-      let r;
-      if (role === "branch-head" && branch) r = await getUsersByBranch(branch);
-      else if (role === "department-head" && department)
-        r = await getUsersByDepartment(department);
-      else r = await getUsers({ limit: 1000 });
-
-      if (r?.data?.success) {
-        const fetchedUsers = (r.data.data || []).filter((e) => e.role !== "admin");
-        console.log(`Loaded ${fetchedUsers.length} employees for dashboard`);
+      const res = await getEmployeeSummary();
+      if (res?.data?.success) {
+        const fetchedUsers = (res.data.data || []).filter((e) => e.role !== "admin");
         setEmployees(fetchedUsers);
       }
     } catch (error) {
@@ -614,7 +606,7 @@ const Dashboard = () => {
       setLoading(false);
     };
     loadData();
-  }, [dispatch, loadEmployees]);
+  }, [dispatch, loadEmployees, dashboardStats]); // Interlink employee updates with real-time stats updates
 
   // When branch changes, reset department filter — departments vary per branch
   useEffect(() => {
@@ -765,16 +757,8 @@ const Dashboard = () => {
   );
 
   const getEmpStats = (eid) => {
-    if (!allTasks || allTasks.length === 0) return { totalTasks: 0, completed: 0, pending: 0, inProgress: 0 };
-    const et = allTasks.filter((t) => t.assignedTo?._id === eid);
-    return {
-      totalTasks: et.length,
-      completed: et.filter(
-        (t) => t.status === "completed" || t.status === "approved",
-      ).length,
-      pending: et.filter((t) => t.status === "pending").length,
-      inProgress: et.filter((t) => t.status === "in-progress").length,
-    };
+    // This function is no longer used since backend handles it, but keeping it as a safe fallback just in case
+    return { totalTasks: 0, completed: 0, pending: 0, inProgress: 0 };
   };
 
   const branchStats = dashboardStats?.branchStats || [];
@@ -1622,10 +1606,15 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {paginatedEmployees.map((emp, index) => (
                 <EmployeeMiniCard
-                  key={emp._id}
+                  key={emp._id || emp.id}
                   emp={emp}
-                  stats={getEmpStats(emp._id)}
-                  onClick={() => navigate(`/employee/${emp._id}`)}
+                  stats={{
+                    totalTasks: emp.totalTasks || 0,
+                    completed: emp.completed || 0,
+                    pending: emp.pending || 0,
+                    inProgress: emp.inProgress || 0
+                  }}
+                  onClick={() => navigate(`/employee/${emp._id || emp.id}`)}
                   index={index}
                 />
               ))}
@@ -1637,9 +1626,6 @@ const Dashboard = () => {
             />
           </>
         )}
-      </div>
-
-        </div>
       </div>
 
       {/* Recent Tasks Table */}

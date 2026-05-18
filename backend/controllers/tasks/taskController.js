@@ -1,8 +1,8 @@
-import Task from '../models/Task.js';
-import User from '../models/User.js';
-import Notification from '../models/Notification.js';
-import { sendEmailNotification } from '../utils/emailService.js';
-import eventBus, { emitDataChange, EVENTS } from '../utils/eventBus.js';
+import Task from '../../models/Task.js';
+import User from '../../models/User.js';
+import Notification from '../../models/Notification.js';
+import { sendEmailNotification } from '../../utils/emailService.js';
+import eventBus, { emitDataChange, EVENTS } from '../../utils/eventBus.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -1002,45 +1002,50 @@ export const getDashboardStats = async (req, res) => {
         const queryWithDate = { ...query, ...dateQuery };
 
         // 📊 NEW: Aggregate branch-wise stats on the server
-        const branchAgg = await Task.aggregate([
-            { $match: queryWithDate },
-            { $group: {
-                _id: "$branch",
-                total: { $sum: 1 },
-                completed: { $sum: { $cond: [{ $in: ["$status", ["completed", "approved"]] }, 1, 0] } },
-                pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
-                inProgress: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
-                submitted: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } }
-            }},
-            { $sort: { total: -1 } }
-        ]);
-
-        // Use Promise.all with simple counts for maximum stability
-        const [
-            totalTasks,
-            completedTasks,
-            pendingTasks,
-            inProgressTasks,
-            submittedTasks,
-            rejectedTasks,
-            urgentTasks,
-            highPriorityTasks,
-            overdueTasks,
-            recentTasks
-        ] = await Promise.all([
-            Task.countDocuments(queryWithDate),
-            Task.countDocuments({ ...queryWithDate, status: { $in: ['completed', 'approved'] } }),
-            Task.countDocuments({ ...queryWithDate, status: 'pending' }),
-            Task.countDocuments({ ...queryWithDate, status: 'in-progress' }),
-            Task.countDocuments({ ...queryWithDate, status: 'submitted' }),
-            Task.countDocuments({ ...queryWithDate, status: 'rejected' }),
-            Task.countDocuments({ ...queryWithDate, priority: 'urgent' }),
-            Task.countDocuments({ ...queryWithDate, priority: 'high' }),
-            Task.countDocuments({ 
-                ...queryWithDate, 
-                dueDate: { $lt: now }, 
-                status: { $nin: ['completed', 'approved'] } 
-            }),
+        // Use Promise.all with simple aggregations for maximum speed and stability
+        const [statsAgg, branchAgg, recentTasks] = await Promise.all([
+            Task.aggregate([
+                { $match: queryWithDate },
+                {
+                    $group: {
+                        _id: null,
+                        totalTasks: { $sum: 1 },
+                        completedTasks: { $sum: { $cond: [{ $in: ["$status", ["completed", "approved"]] }, 1, 0] } },
+                        pendingTasks: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+                        inProgressTasks: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
+                        submittedTasks: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } },
+                        rejectedTasks: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
+                        urgentTasks: { $sum: { $cond: [{ $eq: ["$priority", "urgent"] }, 1, 0] } },
+                        highPriorityTasks: { $sum: { $cond: [{ $eq: ["$priority", "high"] }, 1, 0] } },
+                        overdueTasks: {
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $lt: ["$dueDate", now] },
+                                            { $nin: ["$status", ["completed", "approved"]] }
+                                        ]
+                                    },
+                                    1,
+                                    0
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]),
+            Task.aggregate([
+                { $match: queryWithDate },
+                { $group: {
+                    _id: "$branch",
+                    total: { $sum: 1 },
+                    completed: { $sum: { $cond: [{ $in: ["$status", ["completed", "approved"]] }, 1, 0] } },
+                    pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+                    inProgress: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
+                    submitted: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } }
+                }},
+                { $sort: { total: -1 } }
+            ]),
             Task.find(queryWithDate)
                 .sort({ updatedAt: -1 })
                 .limit(10)
@@ -1049,20 +1054,22 @@ export const getDashboardStats = async (req, res) => {
                 .lean()
         ]);
 
+        const summaryData = statsAgg[0] || {
+            totalTasks: 0,
+            completedTasks: 0,
+            pendingTasks: 0,
+            inProgressTasks: 0,
+            submittedTasks: 0,
+            rejectedTasks: 0,
+            urgentTasks: 0,
+            highPriorityTasks: 0,
+            overdueTasks: 0
+        };
+
         res.json({
             success: true,
             data: {
-                summary: {
-                    totalTasks,
-                    completedTasks,
-                    pendingTasks,
-                    inProgressTasks,
-                    submittedTasks,
-                    rejectedTasks,
-                    urgentTasks,
-                    highPriorityTasks,
-                    overdueTasks
-                },
+                summary: summaryData,
                 branchStats: branchAgg.map(b => ({
                     name: b._id || 'Unknown',
                     total: b.total,
@@ -1162,7 +1169,7 @@ export const getEmployeeSummary = async (req, res) => {
         let match = {};
         const { role, department, branch } = req.user;
         
-        if (role === 'admin') {
+        if (role === 'admin' || role === 'hr') {
             match = {};
         } else if (role === 'department-head') {
             match = { department, branch };
@@ -1175,8 +1182,8 @@ export const getEmployeeSummary = async (req, res) => {
         // Find relevant employees
         const employees = await User.find({ 
             ...match, 
-            role: { $in: ['employee', 'hr', 'it', 'graphic'] } 
-        }).select('name department branch role avatar').lean();
+            role: { $in: ['employee', 'hr', 'it', 'graphic', 'branch-head', 'department-head'] } // include heads in HR/Admin view if needed, or keep to workers. Wait, we should probably let them see all non-admin. Let's just exclude admin.
+        }).select('name department branch role avatar employeeId').lean();
 
         // Use aggregation to count tasks for these employees
         const employeeIds = employees.map(e => e._id);
@@ -1206,15 +1213,14 @@ export const getEmployeeSummary = async (req, res) => {
                 }
             },
             {
-                // We need to handle team tasks by "unwinding" if necessary, 
-                // but simpler for now: project a list of "involvedUsers"
+                // We need to handle team tasks by "unwinding" if necessary.
+                // Using $setUnion prevents duplicate counts if a user is in both assignedTo and assignedTeam.
                 $project: {
                     status: 1,
                     isOverdue: 1,
                     involvedUsers: {
-                        $cond: [
-                            { $ifNull: ["$assignedTo", false] },
-                            { $concatArrays: [["$assignedTo"], { $ifNull: ["$assignedTeam", []] }] },
+                        $setUnion: [
+                            { $cond: [{ $ifNull: ["$assignedTo", false] }, ["$assignedTo"], []] },
                             { $ifNull: ["$assignedTeam", []] }
                         ]
                     }
@@ -1245,12 +1251,20 @@ export const getEmployeeSummary = async (req, res) => {
                 total: 0, pending: 0, inProgress: 0, submitted: 0, completed: 0, overdue: 0
             };
             return {
+                _id: emp._id, // Add _id for key mapping in React
                 id: emp._id,
                 name: emp.name,
                 department: emp.department || emp.role,
                 branch: emp.branch,
                 avatar: emp.avatar,
-                ...stats
+                role: emp.role,
+                employeeId: emp.employeeId,
+                totalTasks: stats.total, // map to Dashboard variable names
+                pending: stats.pending,
+                inProgress: stats.inProgress,
+                submitted: stats.submitted,
+                completed: stats.completed,
+                overdue: stats.overdue
             };
         });
         

@@ -343,7 +343,9 @@ taskSchema.methods.reassignTask = function(newAssigneeId, reason, attachments = 
 taskSchema.index({ assignedTo: 1, status: 1 });
 taskSchema.index({ assignedTeam: 1, status: 1 });
 taskSchema.index({ department: 1, branch: 1, status: 1 });
+taskSchema.index({ department: 1, branch: 1, createdAt: -1 }); // Added for dashboard time-filtering
 taskSchema.index({ branch: 1, status: 1 });
+taskSchema.index({ branch: 1, createdAt: -1 }); // Added for branch-level time-filtering
 taskSchema.index({ createdAt: -1 });
 taskSchema.index({ dueDate: 1 });
 taskSchema.index({ status: 1 });

@@ -1,9 +1,9 @@
-import User from '../models/User.js';
-import PendingRegistration from '../models/PendingRegistration.js';
-import Notification from '../models/Notification.js';
+import User from '../../models/User.js';
+import PendingRegistration from '../../models/PendingRegistration.js';
+import Notification from '../../models/Notification.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { sendOTPEmail, sendWelcomeEmail } from '../utils/emailService.js';
+import { sendOTPEmail, sendWelcomeEmail } from '../../utils/emailService.js';
 
 const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 const generateOTP   = () => crypto.randomInt(100000, 999999).toString();

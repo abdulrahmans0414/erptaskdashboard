@@ -18,9 +18,7 @@ import { seedDatabase } from './seed.js';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import hpp from 'hpp';
-import cookieParser from 'cookie-parser';
 import { initializeTokenCleanup, checkTokenBlacklist } from './middleware/tokenBlacklist.js';
-import { csrfMiddleware, attachCsrfToken, csrfErrorHandler } from './middleware/csrfMiddleware.js';
 import { handleValidationErrors } from './utils/validationRules.js';
 
 // DNS Configuration - Fix for MongoDB Atlas SRV lookup
@@ -86,21 +84,15 @@ app.use(cors({
     credentials: true
 }));
 
-// ==================== BODY PARSING & COOKIES ====================
+// ==================== BODY PARSING ====================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser()); // Must be before CSRF middleware
 
 // ==================== ADDITIONAL SECURITY ====================
 // HPP (HTTP Parameter Pollution) protection
 app.use(hpp({
-    whitelist: ['sort', 'page', 'limit', 'search', 'filter'], // Allow multiple values for these params
+    whitelist: ['sort', 'page', 'limit', 'search', 'filter'],
 }));
-
-// CSRF Protection
-app.use(...csrfMiddleware);
-app.use(attachCsrfToken); // Attach token to res.locals
-app.use(csrfErrorHandler); // Handle CSRF errors
 
 // Token blacklist checking
 app.use('/api/', checkTokenBlacklist);

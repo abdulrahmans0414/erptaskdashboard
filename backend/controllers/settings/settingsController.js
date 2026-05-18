@@ -1,4 +1,4 @@
-import Settings from '../models/Settings.js';
+import Settings from '../../models/Settings.js';
 
 const getOrCreateSettings = async () => {
     let settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });

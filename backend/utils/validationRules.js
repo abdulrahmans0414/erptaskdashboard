@@ -37,22 +37,14 @@ export const validateSignup = [
         .normalizeEmail()
         .withMessage('Invalid email format'),
     body('password')
-        .isLength({ min: 12 })
-        .withMessage('Password must be at least 12 characters')
-        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/)
-        .withMessage('Password must contain uppercase, lowercase, number, and special character'),
-    body('firstName')
+        .isLength({ min: 6 })
+        .withMessage('Password must be at least 6 characters'),
+    body('name')
         .trim()
         .notEmpty()
-        .withMessage('First name is required')
-        .isLength({ max: 50 })
-        .withMessage('First name must be less than 50 characters'),
-    body('lastName')
-        .trim()
-        .notEmpty()
-        .withMessage('Last name is required')
-        .isLength({ max: 50 })
-        .withMessage('Last name must be less than 50 characters'),
+        .withMessage('Full name is required')
+        .isLength({ max: 100 })
+        .withMessage('Name must be less than 100 characters'),
     body('branch')
         .notEmpty()
         .withMessage('Branch is required'),
@@ -61,9 +53,7 @@ export const validateSignup = [
         .withMessage('Department is required'),
     body('role')
         .notEmpty()
-        .withMessage('Role is required')
-        .isIn(['employee', 'hr', 'it', 'graphic', 'coordinator', 'mentor', 'teacher', 'student'])
-        .withMessage('Invalid role selected'),
+        .withMessage('Role is required'),
 ];
 
 export const validateLogin = [

@@ -42,27 +42,11 @@ router.get('/stream', protect, async (req, res) => {
     const pushData = async () => {
         if (res.writableEnded) return;
         try {
-            const taskFilter = buildTaskFilter(req.user);
-            const [tasks, userDoc] = await Promise.all([
-                Task.find(taskFilter)
-                    .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
-                    .sort({ updatedAt: -1 })
-                    .limit(5000)
-                    .lean(),
-                User.findById(req.user._id).select('-password').lean(),
-            ]);
+            const userDoc = await User.findById(req.user._id).select('-password').lean();
 
-            const stats = {
-                total: tasks.length,
-                completed: tasks.filter(t => ['completed', 'approved'].includes(t.status)).length,
-                pending: tasks.filter(t => t.status === 'pending').length,
-                inProgress: tasks.filter(t => t.status === 'in-progress').length,
-                submitted: tasks.filter(t => t.status === 'submitted').length,
-                rejected: tasks.filter(t => t.status === 'rejected').length,
-                overdue: tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && !['completed', 'approved'].includes(t.status)).length,
-            };
-
-            res.write(`event: tasks\ndata: ${JSON.stringify({ tasks, stats })}\n\n`);
+            // Notify frontend to invalidate caches and fetch updated stats/tasks
+            res.write(`event: invalidate_tasks\ndata: ${JSON.stringify({ timestamp: Date.now() })}\n\n`);
+            
             if (userDoc) {
                 res.write(`event: profile\ndata: ${JSON.stringify(userDoc)}\n\n`);
             }

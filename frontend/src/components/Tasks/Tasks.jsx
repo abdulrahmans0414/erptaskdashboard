@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchTasks, setPollingStatus } from "../../store/features/tasks";
+import { fetchTasks, setPollingStatus, fetchDashboardStats } from "../../store/features/tasks";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import TaskCard from "./TaskCard";
@@ -13,7 +13,7 @@ export default function Tasks() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
-  const { items: allTasks, pagination, loading } = useSelector((s) => s.tasks);
+  const { items: allTasks, pagination, loading, dashboardStats } = useSelector((s) => s.tasks);
 
   const BRANCHES = settings?.branches || ["Gaurabagh"];
   const DEPTS = settings?.departments || ["IT"];
@@ -46,6 +46,10 @@ export default function Tasks() {
         branch: filters.branch,
       }),
     );
+    dispatch(fetchDashboardStats({
+      department: filters.department !== "all" ? filters.department : undefined,
+      branch: filters.branch !== "all" ? filters.branch : undefined,
+    }));
   };
 
   // Reload data when filters or page changes
@@ -83,35 +87,25 @@ export default function Tasks() {
     });
   }, [user?.role, user?.branch, user?.department]);
 
-  const stats = useMemo(
-    () => ({
-      total: pagination.total || 0,
-      pending: allTasks.filter((t) => t.status === "pending").length, // This is now partial (current page only)
-      inProgress: allTasks.filter((t) => t.status === "in-progress").length,
-      submitted: allTasks.filter((t) => t.status === "submitted").length,
-      approved: allTasks.filter((t) =>
-        ["approved", "completed"].includes(t.status),
-      ).length,
-    }),
-    [allTasks, pagination.total],
-  );
+  const stats = useMemo(() => {
+    const apiStats = dashboardStats?.summary || {};
+    return {
+      total: pagination.total || apiStats.totalTasks || 0,
+      pending: apiStats.pendingTasks || 0,
+      inProgress: apiStats.inProgressTasks || 0,
+      submitted: apiStats.submittedTasks || 0,
+      approved: (apiStats.completedTasks || 0),
+    };
+  }, [pagination.total, dashboardStats]);
 
   // Note: For full stats counters, we would ideally use the dashboardStats or a separate summary API.
   // For now, keeping these as current-page stats or using the total from pagination.
   const STAT_CARDS = [
-    {
-      l: "Total Tasks",
-      v: pagination.total,
-      c: "text-gray-700",
-      bg: "bg-gray-50",
-    },
-    {
-      l: "Page",
-      v: `${pagination.page} / ${pagination.pages}`,
-      c: "text-blue-600",
-      bg: "bg-blue-50",
-    },
-    { l: "Limit", v: "10 per page", c: "text-gray-500", bg: "bg-gray-50" },
+    { l: "Total", v: stats.total, c: "text-gray-700", bg: "bg-gray-50" },
+    { l: "Pending", v: stats.pending, c: "text-amber-600", bg: "bg-amber-50" },
+    { l: "In Progress", v: stats.inProgress, c: "text-blue-600", bg: "bg-blue-50" },
+    { l: "Submitted", v: stats.submitted, c: "text-purple-600", bg: "bg-purple-50" },
+    { l: "Completed", v: stats.approved, c: "text-emerald-600", bg: "bg-emerald-50" },
   ];
 
   const setF = (k, v) => {

@@ -26,7 +26,6 @@ export const useRealtimeSync = (isAuthenticated) => {
         fallbackRef.current = setInterval(() => {
             const token = localStorage.getItem('token');
             if (!token) return;
-            dispatch(fetchTasks());
             dispatch(fetchDashboardStats());
             dispatch(getCurrentUser());
         }, FALLBACK_POLL_MS);
@@ -61,24 +60,14 @@ export const useRealtimeSync = (isAuthenticated) => {
                 console.log('🔴 Realtime SSE connected');
             });
 
-            es.addEventListener('tasks', (e) => {
+            es.addEventListener('invalidate_tasks', (e) => {
                 try {
-                    const { tasks, stats } = JSON.parse(e.data);
-                    // Directly update Redux store with fresh data
-                    // Adapt SSE data to the new paginated store structure
-                    dispatch({ 
-                        type: 'tasks/fetchTasks/fulfilled', 
-                        payload: { 
-                            data: tasks,
-                            pagination: {
-                                total: tasks.length,
-                                page: 1,
-                                pages: 1
-                            }
-                        } 
-                    });
+                    // Update the global dashboard stats immediately
+                    dispatch(fetchDashboardStats());
+                    // NOTE: We no longer forcefully dispatch fetchTasks() here,
+                    // as it would overwrite the user's current pagination and filters in Tasks.jsx.
                 } catch (err) {
-                    console.error('SSE tasks parse error:', err);
+                    console.error('SSE invalidate parse error:', err);
                 }
             });
 

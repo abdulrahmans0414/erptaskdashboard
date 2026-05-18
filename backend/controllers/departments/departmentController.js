@@ -1,4 +1,4 @@
-import Department from '../models/Department.js';
+import Department from '../../models/Department.js';
 
 // @desc    Get all departments
 // @route   GET /api/departments

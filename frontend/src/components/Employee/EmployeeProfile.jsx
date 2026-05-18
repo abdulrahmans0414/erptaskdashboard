@@ -179,6 +179,8 @@ const EmployeeProfile = () => {
   };
 
   useEffect(() => {
+    // effectiveId depends on currentUser loading from Redux async.
+    // If no id in URL (self profile), wait until currentUser is available.
     if (!effectiveId) return;
 
     const initialize = async () => {
@@ -187,14 +189,14 @@ const EmployeeProfile = () => {
 
     initialize();
 
-    // Realtime polling: refresh profile + tasks every 10 seconds from MongoDB
-    // Skip poll if edit modal is open to avoid disrupting user input
+    // Realtime polling: refresh profile + tasks every 30 seconds
+    // Increased from 10s to reduce server load; real-time updates come via SSE
     if (pollingRef.current) clearInterval(pollingRef.current);
     pollingRef.current = setInterval(() => {
       if (!showEditModal) {
         loadData();
       }
-    }, 10000);
+    }, 30000);
 
     return () => {
       if (pollingRef.current) {
@@ -203,7 +205,7 @@ const EmployeeProfile = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveId, currentUser]);
+  }, [effectiveId]);
 
   // Removed local showToast
 

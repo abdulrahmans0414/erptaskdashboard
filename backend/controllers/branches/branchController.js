@@ -1,6 +1,6 @@
-import Branch from '../models/Branch.js';
-import User from '../models/User.js';
-import Task from '../models/Task.js';
+import Branch from '../../models/Branch.js';
+import User from '../../models/User.js';
+import Task from '../../models/Task.js';
 
 // Keep Branch.headName/headEmail in sync with User(role='branch-head') for that branch.
 // This makes frontend Branch Management behave like seed.js se initial setup.
