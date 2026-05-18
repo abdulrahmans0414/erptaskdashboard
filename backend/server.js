@@ -143,12 +143,25 @@ app.use((req, res) => {
 });
 
 // Global Error Handler
+// NOTE: Must manually set CORS headers here because Express error handlers
+// run after middleware, and some error paths skip CORS header injection.
 app.use((err, req, res, next) => {
     console.error('❌ Server Error:', err);
-    res.status(err.status || 500).json({ 
+
+    // Re-apply CORS headers on error responses so the browser
+    // sees the real error (500) instead of a misleading CORS error.
+    const origin = req.headers.origin;
+    if (origin && isOriginAllowed(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+
+    // Don't expose CORS error messages to the client
+    const isCorsError = err.message === 'CORS not allowed';
+    res.status(isCorsError ? 403 : (err.status || 500)).json({ 
         success: false, 
-        message: err.message || 'Internal server error',
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+        message: isCorsError ? 'Forbidden' : (err.message || 'Internal server error'),
+        ...(process.env.NODE_ENV === 'development' && !isCorsError && { stack: err.stack })
     });
 });
 
