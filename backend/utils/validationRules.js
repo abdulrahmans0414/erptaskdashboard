@@ -57,10 +57,11 @@ export const validateSignup = [
 ];
 
 export const validateLogin = [
+    // Accept both email addresses AND employee IDs (e.g. EMP001)
     body('email')
-        .isEmail()
-        .normalizeEmail()
-        .withMessage('Invalid email format'),
+        .trim()
+        .notEmpty()
+        .withMessage('Email or Employee ID is required'),
     body('password')
         .notEmpty()
         .withMessage('Password is required'),

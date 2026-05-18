@@ -109,8 +109,7 @@ app.use(hpp({
 // Token blacklist checking
 app.use('/api/', checkTokenBlacklist);
 
-// Validation error handler
-app.use(handleValidationErrors);
+// NOTE: handleValidationErrors is applied per-route in each router file, not globally.
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
