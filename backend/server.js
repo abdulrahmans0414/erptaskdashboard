@@ -71,17 +71,29 @@ const PORT = process.env.PORT || 5000;
 // CORS Configuration - PRODUCTION UPDATE
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map(origin => origin.trim());
 
+// Wildcard patterns for Vercel preview deployments (regex-based)
+const allowedOriginPatterns = [
+    /^https:\/\/erptaskdashboard(-[a-z0-9]+)*\.vercel\.app$/,  // All Vercel preview URLs for this project
+];
+
+const isOriginAllowed = (origin) => {
+    if (!origin) return true; // Allow non-browser clients (curl, mobile, etc.)
+    if (allowedOrigins.includes(origin)) return true;
+    return allowedOriginPatterns.some(pattern => pattern.test(origin));
+};
+
 app.use(cors({
     origin: (origin, cb) => {
-        // Allow requests with no origin (mobile apps, curl, etc.)
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (isOriginAllowed(origin)) {
             cb(null, true);
         } else {
             console.warn(`⚠️ CORS blocked for origin: ${origin}`);
             cb(new Error('CORS not allowed'));
         }
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
 // ==================== BODY PARSING ====================
