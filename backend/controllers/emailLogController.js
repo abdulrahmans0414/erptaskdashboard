@@ -261,17 +261,18 @@ export const resendEmailLog = async (req, res) => {
                     const msg = await client.fetchOne(logId, { envelope: true });
                     await client.logout();
 
-                if (msg && msg.envelope) {
-                    // Create transient log template to pass to resendLoggedEmail
-                    log = await EmailLog.create({
-                        recipient: msg.envelope.to[0] ? `${msg.envelope.to[0].mailbox}@${msg.envelope.to[0].host}` : req.user.email,
-                        subject: msg.envelope.subject || 'Resent Gmail Message',
-                        contentSnippet: 'Resent direct Gmail communication.',
-                        body: `<p>This is a resent copy of email: <strong>${msg.envelope.subject}</strong> originally dispatched on ${msg.envelope.date}.</p>`,
-                        type: 'WELCOME',
-                        status: 'sent',
-                        senderId: req.user._id
-                    });
+                    if (msg && msg.envelope) {
+                        // Create transient log template to pass to resendLoggedEmail
+                        log = await EmailLog.create({
+                            recipient: msg.envelope.to[0] ? `${msg.envelope.to[0].mailbox}@${msg.envelope.to[0].host}` : req.user.email,
+                            subject: msg.envelope.subject || 'Resent Gmail Message',
+                            contentSnippet: 'Resent direct Gmail communication.',
+                            body: `<p>This is a resent copy of email: <strong>${msg.envelope.subject}</strong> originally dispatched on ${msg.envelope.date}.</p>`,
+                            type: 'WELCOME',
+                            status: 'sent',
+                            senderId: req.user._id
+                        });
+                    }
                 }
             } catch (err) {
                 console.warn('⚠️ Direct Gmail details fetch for resend failed:', err.message);
