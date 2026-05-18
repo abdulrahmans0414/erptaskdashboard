@@ -31,6 +31,10 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Enable trust proxy so Express knows it is behind a reverse proxy (Render, Heroku, etc.)
+// and can trust the X-Forwarded-For header to determine the correct client IP.
+app.set('trust proxy', 1);
+
 // ==================== SECURITY HEADERS ====================
 app.use(helmet({
     crossOriginResourcePolicy: false, // Allow cross-origin images/uploads
@@ -59,7 +63,12 @@ const globalLimiter = rateLimit({
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 5, // 5 attempts per 15 minutes
-    keyGenerator: (req) => (req.body && req.body.email) ? req.body.email : req.ip, // Rate limit by email
+    keyGenerator: (req) => {
+        if (req.body && typeof req.body.email === 'string') {
+            return req.body.email.toLowerCase().trim();
+        }
+        return req.ip || (req.headers && req.headers['x-forwarded-for']) || 'unknown';
+    },
     message: 'Too many login attempts. Please try again after 15 minutes.',
     skip: (req) => req.method !== 'POST' || !req.path.includes('/login'),
 });
