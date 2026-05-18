@@ -55,6 +55,16 @@ const taskSlice = createSlice({
         dashboardStats: null,
         statsLoading: false,
         statsLastFetched: null,
+        currentFetchParams: {
+            page: 1,
+            limit: 10,
+            search: '',
+            status: 'all',
+            priority: 'all',
+            department: 'all',
+            branch: 'all',
+        },
+        currentStatsParams: {},
     },
     reducers: {
         clearTaskError: (s) => { s.error = null; },
@@ -64,7 +74,10 @@ const taskSlice = createSlice({
     },
     extraReducers: (b) => {
         b
-            .addCase(fetchTasks.pending, (s) => { s.loading = true; })
+            .addCase(fetchTasks.pending, (s, a) => {
+                s.loading = true;
+                s.currentFetchParams = { ...(a.meta.arg || {}), limit: (a.meta.arg && a.meta.arg.limit) || 10 };
+            })
             .addCase(fetchTasks.fulfilled, (s, a) => {
                 s.loading = false;
                 s.items = a.payload.data;
@@ -73,7 +86,10 @@ const taskSlice = createSlice({
             })
             .addCase(fetchTasks.rejected, (s, a) => { s.loading = false; s.error = a.payload; })
 
-            .addCase(fetchDashboardStats.pending, (s) => { s.statsLoading = true; })
+            .addCase(fetchDashboardStats.pending, (s, a) => {
+                s.statsLoading = true;
+                s.currentStatsParams = a.meta.arg || {};
+            })
             .addCase(fetchDashboardStats.fulfilled, (s, a) => {
                 s.statsLoading = false;
                 s.dashboardStats = a.payload;

@@ -3,8 +3,8 @@
  * Connects to the backend SSE stream and updates Redux store in real-time.
  * Replaces polling as the primary sync mechanism. Falls back to polling if SSE fails.
  */
-import { useEffect, useRef } from 'react';
-import { useDispatch } from 'react-redux';
+import { useEffect, useRef, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { getCurrentUser } from '../store/features/auth';
 import { fetchTasks, fetchDashboardStats } from '../store/features/tasks';
 
@@ -20,25 +20,30 @@ export const useRealtimeSync = (isAuthenticated) => {
     const fallbackRef = useRef(null);
     const retryRef = useRef(null);
     const retryCount = useRef(0);
+    const currentTaskQuery = useSelector((state) => state.tasks.currentFetchParams);
+    const currentStatsQuery = useSelector((state) => state.tasks.currentStatsParams);
 
-    const startFallbackPolling = () => {
+    const startFallbackPolling = useCallback(() => {
         if (fallbackRef.current) return; // already running
         fallbackRef.current = setInterval(() => {
             const token = localStorage.getItem('token');
             if (!token) return;
-            dispatch(fetchDashboardStats());
+            if (currentTaskQuery) {
+                dispatch(fetchTasks(currentTaskQuery));
+            }
+            dispatch(fetchDashboardStats(currentStatsQuery));
             dispatch(getCurrentUser());
         }, FALLBACK_POLL_MS);
-    };
+    }, [currentTaskQuery, currentStatsQuery, dispatch]);
 
-    const stopFallbackPolling = () => {
+    const stopFallbackPolling = useCallback(() => {
         if (fallbackRef.current) {
             clearInterval(fallbackRef.current);
             fallbackRef.current = null;
         }
-    };
+    }, []);
 
-    const connectSSE = () => {
+    const connectSSE = useCallback(function connectSSEFunc() {
         const token = localStorage.getItem('token');
         if (!token || !isAuthenticated) return;
 
@@ -60,25 +65,26 @@ export const useRealtimeSync = (isAuthenticated) => {
                 console.log('🔴 Realtime SSE connected');
             });
 
-            es.addEventListener('invalidate_tasks', (e) => {
+            es.addEventListener('invalidate_tasks', () => {
                 try {
-                    // Update the global dashboard stats immediately
-                    dispatch(fetchDashboardStats());
-                    // NOTE: We no longer forcefully dispatch fetchTasks() here,
-                    // as it would overwrite the user's current pagination and filters in Tasks.jsx.
-                } catch (err) {
-                    console.error('SSE invalidate parse error:', err);
+                    // Refresh dashboard and task data using current filter state
+                    if (currentTaskQuery) {
+                        dispatch(fetchTasks(currentTaskQuery));
+                    }
+                    dispatch(fetchDashboardStats(currentStatsQuery));
+                } catch (error) {
+                    console.error('SSE invalidate parse error:', error);
                 }
             });
 
-            es.addEventListener('profile', (e) => {
+            es.addEventListener('profile', (event) => {
                 try {
-                    const user = JSON.parse(e.data);
+                    const user = JSON.parse(event.data);
                     // Update auth slice with fresh user data
                     dispatch({ type: 'auth/getMe/fulfilled', payload: user });
                     localStorage.setItem('user', JSON.stringify(user));
-                } catch (err) {
-                    console.error('SSE profile parse error:', err);
+                } catch (error) {
+                    console.error('SSE profile parse error:', error);
                 }
             });
 
@@ -91,13 +97,13 @@ export const useRealtimeSync = (isAuthenticated) => {
                 // Exponential backoff reconnect
                 const delay = Math.min(1000 * Math.pow(2, retryCount.current), 30000);
                 retryCount.current += 1;
-                retryRef.current = setTimeout(connectSSE, delay);
+                retryRef.current = setTimeout(connectSSEFunc, delay);
             };
-        } catch (err) {
-            console.warn('EventSource not supported, using polling fallback');
+        } catch (error) {
+            console.warn('EventSource not supported, using polling fallback', error?.message || error);
             startFallbackPolling();
         }
-    };
+    }, [currentTaskQuery, currentStatsQuery, dispatch, isAuthenticated, startFallbackPolling, stopFallbackPolling]);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -130,7 +136,7 @@ export const useRealtimeSync = (isAuthenticated) => {
             stopFallbackPolling();
             if (retryRef.current) clearTimeout(retryRef.current);
         };
-    }, [isAuthenticated, dispatch]);
+    }, [isAuthenticated, dispatch, connectSSE, startFallbackPolling, stopFallbackPolling]);
 };
 
 export default useRealtimeSync;
