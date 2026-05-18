@@ -1023,7 +1023,7 @@ export const getDashboardStats = async (req, res) => {
                                     {
                                         $and: [
                                             { $lt: ["$dueDate", now] },
-                                            { $nin: ["$status", ["completed", "approved"]] }
+                                            { $not: { $in: ["$status", ["completed", "approved"]] } }
                                         ]
                                     },
                                     1,
@@ -1207,7 +1207,7 @@ export const getEmployeeSummary = async (req, res) => {
                     isOverdue: {
                         $and: [
                             { $lt: ["$dueDate", now] },
-                            { $nin: ["$status", ["completed", "approved"]] }
+                            { $not: { $in: ["$status", ["completed", "approved"]] } }
                         ]
                     }
                 }

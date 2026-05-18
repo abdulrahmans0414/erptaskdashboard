@@ -16,7 +16,7 @@ export const logAuditAction = async (action, user, metadata = {}) => {
     try {
         const auditEntry = new ActivityLog({
             userId: user?._id,
-            userName: user?.firstName + ' ' + user?.lastName,
+            userName: user?.name || user?.email || 'System',
             userRole: user?.role,
             action,
             details: metadata.details || '',

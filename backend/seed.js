@@ -236,7 +236,7 @@ const generateTasksForUser = (user, admin, branchName, department) => {
         'Document all client requirements and feedback'
     ];
     
-    const numTasks = Math.floor(Math.random() * 20) + 10;
+    const numTasks = Math.floor(Math.random() * 2) + 1;
     
     for (let i = 0; i < numTasks; i++) {
         const daysAgo = Math.floor(Math.random() * 60);

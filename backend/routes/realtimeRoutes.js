@@ -35,6 +35,9 @@ router.get('/stream', protect, async (req, res) => {
     });
     res.flushHeaders();
 
+    // Send connected event so client knows SSE is successfully working
+    res.write('event: connected\ndata: {"status":"connected"}\n\n');
+
     const userId = req.user._id.toString();
     addClient(userId, res);
 

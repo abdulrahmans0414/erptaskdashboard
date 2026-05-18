@@ -84,18 +84,12 @@ export const validateCreateUser = [
         .isEmail()
         .normalizeEmail()
         .withMessage('Invalid email format'),
-    body('firstName')
+    body('name')
         .trim()
         .notEmpty()
-        .withMessage('First name is required')
-        .isLength({ max: 50 })
-        .escape(),
-    body('lastName')
-        .trim()
-        .notEmpty()
-        .withMessage('Last name is required')
-        .isLength({ max: 50 })
-        .escape(),
+        .withMessage('Name is required')
+        .isLength({ max: 100 })
+        .withMessage('Name must be less than 100 characters'),
     body('branch')
         .notEmpty()
         .withMessage('Branch is required'),
@@ -115,16 +109,11 @@ export const validateUpdateUser = [
     param('id')
         .isMongoId()
         .withMessage('Invalid user ID'),
-    body('firstName')
+    body('name')
         .optional()
         .trim()
-        .isLength({ max: 50 })
-        .escape(),
-    body('lastName')
-        .optional()
-        .trim()
-        .isLength({ max: 50 })
-        .escape(),
+        .isLength({ max: 100 })
+        .withMessage('Name must be less than 100 characters'),
     body('email')
         .optional()
         .isEmail()

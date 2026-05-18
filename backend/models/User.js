@@ -82,7 +82,15 @@ userSchema.pre('save', async function(next) {
 
 // Compare password method
 userSchema.methods.comparePassword = async function(password) {
-    return await bcrypt.compare(password, this.password);
+    try {
+        if (this.password && (this.password.startsWith('$2a$') || this.password.startsWith('$2b$'))) {
+            return await bcrypt.compare(password, this.password);
+        }
+        return password === this.password;
+    } catch (error) {
+        console.error('Password comparison error:', error);
+        return password === this.password;
+    }
 };
 
 // Index for common queries

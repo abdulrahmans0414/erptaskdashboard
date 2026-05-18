@@ -154,8 +154,15 @@ export const reviewRegistration = async (req, res) => {
             }
 
             const user = await User.create({
-                name: pending.name, email: pending.email, password: pending.password,
-                role: pending.role, department: pending.department, branch: pending.branch, isActive: true
+                name: pending.name,
+                email: pending.email,
+                password: pending.password,
+                role: pending.role,
+                department: pending.department,
+                branch: pending.branch,
+                employeeId: pending.employeeId,
+                phone: pending.phone,
+                isActive: true
             });
 
             pending.status = 'approved';
@@ -211,8 +218,15 @@ export const verifyOtp = async (req, res) => {
         if (existingUser) return res.status(400).json({ success: false, message: 'Account already exists. Please login.' });
 
         const user = await User.create({
-            name: pending.name, email: pending.email, password: pending.password,
-            role: pending.role, department: pending.department, branch: pending.branch, isActive: true
+            name: pending.name,
+            email: pending.email,
+            password: pending.password,
+            role: pending.role,
+            department: pending.department,
+            branch: pending.branch,
+            employeeId: pending.employeeId,
+            phone: pending.phone,
+            isActive: true
         });
 
         pending.status = 'approved';
@@ -320,8 +334,15 @@ export const register = async (req, res) => {
         if (exists) return res.status(400).json({ success: false, message: 'User already exists' });
 
         const user = await User.create({
-            name, email, password, role: role || 'employee',
-            department: department || 'IT', branch: branch || 'Gaurabagh', isActive: true
+            name,
+            email,
+            password,
+            role: role || 'employee',
+            department: department || 'IT',
+            branch: branch || 'Gaurabagh',
+            employeeId: req.body.employeeId || undefined,
+            phone: req.body.phone || undefined,
+            isActive: true
         });
 
         const token = generateToken(user._id);

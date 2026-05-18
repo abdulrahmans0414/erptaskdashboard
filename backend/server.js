@@ -20,6 +20,7 @@ import { rateLimit } from 'express-rate-limit';
 import hpp from 'hpp';
 import { initializeTokenCleanup, checkTokenBlacklist } from './middleware/tokenBlacklist.js';
 import { handleValidationErrors } from './utils/validationRules.js';
+import logger from './logger.js';
 
 // DNS Configuration - Fix for MongoDB Atlas SRV lookup
 dns.setServers(['1.1.1.1', '8.8.8.8']);
@@ -58,10 +59,14 @@ const globalLimiter = rateLimit({
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 5, // 5 attempts per 15 minutes
-    keyGenerator: (req) => req.body.email || req.ip, // Rate limit by email
+    keyGenerator: (req) => (req.body && req.body.email) ? req.body.email : req.ip, // Rate limit by email
     message: 'Too many login attempts. Please try again after 15 minutes.',
     skip: (req) => req.method !== 'POST' || !req.path.includes('/login'),
 });
+
+// ==================== BODY PARSING ====================
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(globalLimiter);
 app.use(loginLimiter);
@@ -96,9 +101,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
-// ==================== BODY PARSING ====================
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 
 // ==================== ADDITIONAL SECURITY ====================
 // HPP (HTTP Parameter Pollution) protection
@@ -145,7 +148,7 @@ app.use((req, res) => {
 // NOTE: Must manually set CORS headers here because Express error handlers
 // run after middleware, and some error paths skip CORS header injection.
 app.use((err, req, res, next) => {
-    console.error('❌ Server Error:', err);
+    logger.error('❌ Server Error:', err);
 
     // Re-apply CORS headers on error responses so the browser
     // sees the real error (500) instead of a misleading CORS error.
@@ -174,18 +177,19 @@ const startServer = async () => {
     // Auto-seed if database is empty
     const userCount = await User.countDocuments();
     if (userCount === 0) {
-        console.log('⚠️ Database is empty. Seeding database automatically...');
+        logger.info('⚠️ Database is empty. Seeding database automatically...');
         await seedDatabase(true);
     }
 
+
     app.listen(PORT, () => {
-        console.log(`✅ Server running on http://localhost:${PORT}`);
-        console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`🔒 Security: CSRF, HPP, CORS, Rate Limiting enabled`);
+        logger.info(`✅ Server running on http://localhost:${PORT}`);
+        logger.info(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
+        logger.info(`🔒 Security: CSRF, HPP, CORS, Rate Limiting enabled`);
     });
 };
 
 startServer().catch(err => {
-    console.error('Failed to start server:', err);
+    logger.error('Failed to start server:', err);
     process.exit(1);
 });
