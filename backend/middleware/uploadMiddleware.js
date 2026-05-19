@@ -14,6 +14,7 @@ import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { Readable } from 'stream';
 import path from 'path';
+import crypto from 'crypto';
 
 // ── Configure Cloudinary ────────────────────────────────────────
 cloudinary.config({
@@ -97,14 +98,29 @@ export const uploadToCloudinary = (folder = 'erp/misc', maxCount = 10, fieldName
             try {
                 const uploads = await Promise.all(
                     req.files.map(async (file) => {
-                        const ext = path.extname(file.originalname).toLowerCase();
-                        const isImage = /\.(png|jpe?g|gif|webp)$/i.test(ext);
+                        const fileExt = path.extname(file.originalname);
+                        const fileBase = path.basename(file.originalname, fileExt);
+                        const isImage = /\.(png|jpe?g|gif|webp)$/i.test(fileExt);
+
+                        // Clean, lowercase, and truncate filename to max 15 chars for clean URLs
+                        const cleanBase = fileBase
+                            .replace(/[^a-zA-Z0-9_-]/g, '_')
+                            .toLowerCase()
+                            .substring(0, 15);
+                        
+                        // Generate a short 6-char unique hex string to avoid collisions professionally
+                        const uniqueId = crypto.randomBytes(3).toString('hex');
+                        const shortName = `${uniqueId}_${cleanBase}`;
+
+                        // Cloudinary automatically appends extensions for 'image' types, but not for 'raw' files
+                        const customPublicId = isImage
+                            ? shortName
+                            : `${shortName}${fileExt.toLowerCase()}`;
 
                         const result = await uploadBufferToCloudinary(file.buffer, {
                             folder: `erp/${folder}`,
                             resource_type: isImage ? 'image' : 'raw',
-                            // Preserve original filename in public_id
-                            public_id: `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
+                            public_id: customPublicId,
                             overwrite: false,
                         });
 
