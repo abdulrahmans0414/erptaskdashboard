@@ -5,6 +5,7 @@ import {
   updateBranch,
   deleteBranch,
 } from "../../services/api";
+import { useSettings } from "../../context/SettingsContext";
 
 const BRANCH_NAMES = [
   "Gaurabagh",
@@ -29,11 +30,17 @@ const EMPTY_FORM = {
   email: "",
   headName: "",
   headEmail: "",
+  departments: [],
 };
 
 import toast from "react-hot-toast";
 
 const BranchManagement = () => {
+  const { settings } = useSettings();
+  const allDepts = settings?.departments || [
+    "IT", "HR", "Graphic", "Academic", "Finance", "Marketing", "Legal", "Transport", "Operations"
+  ];
+
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -110,7 +117,10 @@ const BranchManagement = () => {
 
   const openCreate = () => {
     setEditingBranch(null);
-    setFormData(EMPTY_FORM);
+    setFormData({
+      ...EMPTY_FORM,
+      departments: [],
+    });
     setShowModal(true);
   };
 
@@ -128,6 +138,7 @@ const BranchManagement = () => {
       email: branch.email || "",
       headName: branch.headName || "",
       headEmail: branch.headEmail || "",
+      departments: branch.departments || [],
     });
     setShowModal(true);
   };
@@ -505,6 +516,40 @@ const BranchManagement = () => {
                   className={inputClass}
                 />
               </Field>
+
+              <div className="pt-2 border-t border-slate-100">
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+                  🏢 Departments Mapping
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  {allDepts.map((dept) => {
+                    const checked = formData.departments?.includes(dept);
+                    return (
+                      <label
+                        key={dept}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition ${
+                          checked
+                            ? "bg-blue-50 border-blue-200 text-blue-700 font-semibold"
+                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const nextDepts = e.target.checked
+                              ? [...(formData.departments || []), dept]
+                              : (formData.departments || []).filter((d) => d !== dept);
+                            setFormData({ ...formData, departments: nextDepts });
+                          }}
+                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500/30"
+                        />
+                        {dept}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
                 <Field label="Head Name">

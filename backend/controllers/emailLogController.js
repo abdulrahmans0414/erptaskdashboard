@@ -230,10 +230,20 @@ export const resendEmail = async (req, res) => {
 // NOT called on page load.
 export const syncFromGmail = async (req, res) => {
     try {
-        const { fetchGmailMails } = await import('../utils/gmailImapService.js');
+        const { fetchGmailMails } = await import('../utils/imapService.js');
         const mails = await fetchGmailMails(20);
 
-        if (!mails || mails.length === 0) {
+        // IMAP ITERATION SAFEGUARD
+        if (!mails || !Array.isArray(mails)) {
+            console.log("No valid emails iterable array found");
+            return res.json({
+                success: true,
+                message: 'No new emails found in Gmail inbox (IMAP may be unavailable or inbox is empty)',
+                synced: 0,
+            });
+        }
+
+        if (mails.length === 0) {
             return res.json({
                 success: true,
                 message: 'No new emails found in Gmail inbox (IMAP may be unavailable or inbox is empty)',

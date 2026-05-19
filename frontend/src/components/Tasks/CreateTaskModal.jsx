@@ -4,6 +4,7 @@ import {
   getUsers,
   getUsersByBranch,
   getUsersByDepartment,
+  getBranches,
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
@@ -39,12 +40,26 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [taskFormFiles, setTaskFormFiles] = useState([]);
   const [showUsers, setShowUsers] = useState(false);
 
+  const [dbBranches, setDbBranches] = useState([]);
+
   useEffect(() => {
     if (isOpen) {
       resetForm();
       loadUsers();
+      loadDbBranches();
     }
   }, [isOpen, user?.role, user?.branch, user?.department]);
+
+  const loadDbBranches = async () => {
+    try {
+      const response = await getBranches();
+      if (response.data.success) {
+        setDbBranches(response.data.data);
+      }
+    } catch (e) {
+      console.error("Failed to load branches:", e);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -122,6 +137,13 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const departmentsForSelectedBranch = (() => {
     const b = formData.branch;
     if (!b) return departments;
+
+    // Look up in dbBranches loaded from server
+    const branchObj = dbBranches.find((br) => br.name === b);
+    if (branchObj && branchObj.departments && branchObj.departments.length > 0) {
+      return branchObj.departments;
+    }
+
     const set = new Set(
       users
         .filter((u) => u.branch === b)
@@ -292,13 +314,19 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 </label>
                 <select
                   value={formData.branch}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const nextBranch = e.target.value;
+                    const branchObj = dbBranches.find((br) => br.name === nextBranch);
+                    const branchDepts = (branchObj && branchObj.departments && branchObj.departments.length > 0)
+                      ? branchObj.departments
+                      : departments;
                     setFormData({
                       ...formData,
-                      branch: e.target.value,
+                      branch: nextBranch,
+                      department: branchDepts[0] || "IT",
                       assignedTo: "",
-                    })
-                  }
+                    });
+                  }}
                   disabled={branchLocked}
                   className="w-full px-3 py-2 border rounded-lg text-sm disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
                 >

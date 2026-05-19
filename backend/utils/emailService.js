@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import Settings from '../models/Settings.js';
 import EmailLog from '../models/EmailLog.js';
 import eventBus, { EVENTS } from './eventBus.js';
+import logger from '../logger.js';
 
 // ── Transporter ────────────────────────
 const createTransporter = async () => {
@@ -33,6 +34,83 @@ const createTransporter = async () => {
             rejectUnauthorized: false // Allow self-signed certs in dev
         }
     });
+};
+
+// ── Transporter Wrapper with Fallback ────────────────────────────
+const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
+    let host = process.env.EMAIL_HOST || 'smtp.gmail.com';
+    let port = parseInt(process.env.EMAIL_PORT, 10) || 587;
+    let user = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '';
+    let pass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s/g, '') : '';
+    let usedDbConfig = false;
+
+    if (!forceEnv) {
+        try {
+            const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
+            if (settings?.emailConfig?.user && settings?.emailConfig?.pass) {
+                host = settings.emailConfig.host || host;
+                port = parseInt(settings.emailConfig.port, 10) || port;
+                user = settings.emailConfig.user.trim();
+                pass = settings.emailConfig.pass.replace(/\s/g, '');
+                usedDbConfig = true;
+            }
+        } catch (e) {
+            console.error('Failed to load email settings from DB, using .env fallback.', e);
+        }
+    }
+
+    let transporter = nodemailer.createTransport({
+        host, port, secure: port === 465, auth: { user, pass }, tls: { rejectUnauthorized: false }
+    });
+
+    try {
+        logger.info(`📧 Attempting to send email to ${mailOptions.to} (attachments: ${!!mailOptions.attachments})`);
+        return await transporter.sendMail(mailOptions);
+    } catch (error) {
+        const errorMsg = (error?.message || String(error)).toLowerCase();
+        let currentOptions = { ...mailOptions };
+
+        logger.warn(`📧 Email send failed: ${error.message}`);
+
+        // Fallback 1: If ANY error occurs and we have attachments, strip them.
+        if (currentOptions.attachments) {
+            logger.warn(`⚠️ Email failed to send with attachments (${errorMsg}). Retrying without attachments...`);
+            
+            delete currentOptions.attachments; // completely remove attachments
+            
+            const noticeHtml = `
+                <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:8px;padding:16px 20px;margin-top:20px;">
+                    <p style="color:#9a3412;font-size:13px;font-weight:700;margin:0 0 6px;">📎 Attachments Notice:</p>
+                    <p style="color:#c2410c;font-size:13px;margin:0;line-height:1.5;">
+                        Some file attachments could not be delivered via email due to server restrictions or network issues. Please log in to the TaskGrid ERP platform to view them securely.
+                    </p>
+                </div>
+            `;
+            if (currentOptions.html) {
+                currentOptions.html = currentOptions.html.replace('</div>\n                        </td>\n                    </tr>\n                    <!-- Footer -->', noticeHtml + '\n</div>\n                        </td>\n                    </tr>\n                    <!-- Footer -->');
+            }
+
+            try {
+                logger.info(`📧 Retrying email send to ${currentOptions.to} WITHOUT attachments`);
+                return await transporter.sendMail(currentOptions);
+            } catch (err2) {
+                logger.error(`❌ Retry without attachments failed: ${err2.message}`);
+                error = err2; // Update error and fall down to Fallback 2
+            }
+        }
+        
+        // Fallback 2: Fix 535 Bad Credentials if DB config is invalid
+        const newErrorMsg = (error?.message || String(error)).toLowerCase();
+        if (usedDbConfig && (error?.responseCode === 535 || newErrorMsg.includes('535') || newErrorMsg.includes('auth') || newErrorMsg.includes('login') || newErrorMsg.includes('credentials'))) {
+            logger.warn('⚠️ DB Email credentials failed. Falling back to .env credentials...');
+            return await sendMailWithFallback({
+                ...currentOptions, // Uses the stripped options if Fallback 1 ran!
+                from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>` 
+            }, true);
+        }
+        
+        throw error;
+    }
 };
 
 // ── Common Styles ────────────────────────────────────────────────
@@ -178,7 +256,7 @@ export const sendOTPEmail = async (toEmail, userName, otp, otpExpiresAt) => {
 
         const textFallback = `Hello ${userName},\n\nYour registration has been approved.\nUse this OTP to activate your account: ${otp}\nValid until: ${expiryStr}\n\nSecurity: Never share this OTP with anyone.`;
 
-        await transporter.sendMail({
+        await sendMailWithFallback({
             from: `"SPIS Task Controller" <${process.env.EMAIL_USER}>`,
             to: toEmail,
             subject: `OTP: ${otp} - Activate Your SPIS Account`,
@@ -273,7 +351,7 @@ export const sendWelcomeEmail = async (toEmail, userName, role, department) => {
             </div>
         `;
 
-        await transporter.sendMail({
+        await sendMailWithFallback({
             from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>`,
             to: toEmail,
             subject: '✅ Welcome to TaskGrid ERP – Account Activated!',
@@ -438,21 +516,31 @@ export const sendEmailNotification = async (toEmail, type, data, attachments = [
         // Format attachments for nodemailer
         const mailAttachments = (attachments || []).map(att => {
             if (!att.fileUrl) return null;
-            // Nodemailer automatically fetches HTTP/HTTPS URLs when provided in 'href'
-            if (att.fileUrl.startsWith('http://') || att.fileUrl.startsWith('https://')) {
+            
+            // Clean up backslashes (especially on Windows where path joins might have corrupted URLs)
+            let cleanUrl = att.fileUrl.replace(/\\/g, '/');
+            
+            // If the URL has a protocol, or contains a remote host, handle it
+            if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.includes('res.cloudinary.com')) {
+                // Ensure proper protocol format
+                if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+                    // Fix cases like 'https:/res.cloudinary.com' or 'https:res.cloudinary.com'
+                    cleanUrl = cleanUrl.replace(/^(https?:)\/*/, '$1//');
+                }
                 return {
                     filename: att.filename,
-                    href: att.fileUrl
+                    href: cleanUrl
                 };
             }
+            
             // Fallback for legacy local disk uploads uses 'path'
             return {
                 filename: att.filename,
-                path: process.cwd() + att.fileUrl
+                path: process.cwd() + (cleanUrl.startsWith('/') ? cleanUrl : '/' + cleanUrl)
             };
         }).filter(Boolean);
 
-        await transporter.sendMail({
+        await sendMailWithFallback({
             from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>`,
             to: toEmail,
             subject,
@@ -596,10 +684,28 @@ export const resendLoggedEmail = async (logId) => {
         const Task = (await import('../models/Task.js')).default;
         const User = (await import('../models/User.js')).default;
 
-        const task = await Task.findById(taskId);
+        let resolvedTaskId = taskId;
+        if (!resolvedTaskId && subject) {
+            // Remove prefix emojis and text: e.g. "📋 New Task: Setup Server" -> "Setup Server"
+            const titleMatch = subject.replace(/^[^:]+:\s*/, '').trim();
+            if (titleMatch) {
+                const escapedTitle = titleMatch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                try {
+                    const matchedTask = await Task.findOne({
+                        title: { $regex: new RegExp('^' + escapedTitle + '$', 'i') }
+                    }).select('_id');
+                    if (matchedTask) {
+                        resolvedTaskId = matchedTask._id;
+                    }
+                } catch (err) {
+                    console.error('Failed to match task title on resend:', err);
+                }
+            }
+        }
+
+        const task = resolvedTaskId ? await Task.findById(resolvedTaskId) : null;
         if (!task) {
             // If the task was deleted, let's fall back to sending a static copy using the log data
-            const transporter = await createTransporter();
             const fallbackContent = `
                 <p style="color:#334155;font-size:16px;margin:0 0 12px;">Hello 👋</p>
                 <p style="color:#64748b;font-size:14px;margin:0 0 24px;line-height:1.6;">
@@ -610,7 +716,7 @@ export const resendLoggedEmail = async (logId) => {
                     <p style="color:#64748b;font-size:13px;margin:0;line-height:1.5;">${contentSnippet || 'No recorded note.'}</p>
                 </div>
             `;
-            await transporter.sendMail({
+            await sendMailWithFallback({
                 from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>`,
                 to: recipient,
                 subject: `[RESENT] ${subject}`,

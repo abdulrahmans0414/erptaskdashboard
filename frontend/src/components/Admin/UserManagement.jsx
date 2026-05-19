@@ -6,6 +6,7 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  getBranches,
 } from "../../services/api";
 
 const ROLE_LABELS = {
@@ -131,9 +132,26 @@ const UserManagement = () => {
     setLoading(false);
   };
 
+  const [dbBranches, setDbBranches] = useState([]);
+
+  const loadDbBranches = async () => {
+    try {
+      const response = await getBranches();
+      if (response.data.success) {
+        setDbBranches(response.data.data);
+      }
+    } catch (e) {
+      console.error("Failed to load branches in UserManagement:", e);
+    }
+  };
+
   useEffect(() => {
     loadUsers();
   }, [page, roleFilter, branchFilter]);
+
+  useEffect(() => {
+    loadDbBranches();
+  }, []);
 
   // Read URL search query param if present on mount to interlink from Email Center
   useEffect(() => {
@@ -222,6 +240,17 @@ const UserManagement = () => {
     setShowPwd(false);
     setShowModal(true);
   };
+
+  const departmentsForSelectedBranch = (() => {
+    const b = formData.branch;
+    if (!b) return departments;
+
+    const branchObj = dbBranches.find((br) => br.name === b);
+    if (branchObj && branchObj.departments && branchObj.departments.length > 0) {
+      return branchObj.departments;
+    }
+    return departments;
+  })();
 
   const filtered = users; // Server-side filtering is active
 
@@ -732,7 +761,7 @@ const UserManagement = () => {
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     className={inputClass}
                   >
-                    {departments.map((d) => (
+                    {departmentsForSelectedBranch.map((d) => (
                       <option key={d} value={d}>
                         {d}
                       </option>
@@ -742,7 +771,18 @@ const UserManagement = () => {
                 <Field label="Branch" required>
                   <select
                     value={formData.branch}
-                    onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                    onChange={(e) => {
+                      const nextBranch = e.target.value;
+                      const branchObj = dbBranches.find((br) => br.name === nextBranch);
+                      const branchDepts = (branchObj && branchObj.departments && branchObj.departments.length > 0)
+                        ? branchObj.departments
+                        : departments;
+                      setFormData({
+                        ...formData,
+                        branch: nextBranch,
+                        department: branchDepts[0] || "IT"
+                      });
+                    }}
                     className={inputClass}
                   >
                     {branches.map((b) => (

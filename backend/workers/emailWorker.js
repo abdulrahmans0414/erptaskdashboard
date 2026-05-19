@@ -27,10 +27,16 @@ export const startEmailWorker = () => {
             console.log(`[${new Date().toISOString()}] 🔄 Email Worker: Starting background IMAP sync...`);
 
             // Dynamically import the IMAP service to avoid loading it if not needed
-            const { fetchGmailMails } = await import('../utils/gmailImapService.js');
+            const { fetchGmailMails } = await import('../utils/imapService.js');
             const mails = await fetchGmailMails(20);
 
-            if (!mails || mails.length === 0) {
+            // IMAP ITERATION SAFEGUARD
+            if (!mails || !Array.isArray(mails)) {
+                console.log("No valid emails iterable array found");
+                return;
+            }
+
+            if (mails.length === 0) {
                 console.log(`[${new Date().toISOString()}] ✅ Email Worker: No new emails found.`);
                 return;
             }

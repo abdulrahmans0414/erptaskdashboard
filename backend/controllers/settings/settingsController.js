@@ -45,8 +45,8 @@ export const updateSettings = async (req, res) => {
         if (branchEmails) settings.branchEmails = branchEmails;
         if (emailConfig) {
             // Only update the password if a new one is provided (or if we explicitly want to clear it)
-            // If the frontend sends '********', it means password wasn't changed.
-            if (emailConfig.pass === '********') {
+            // If the frontend sends '********' or '••••••••', it means password wasn't changed.
+            if (emailConfig.pass === '********' || emailConfig.pass === '••••••••') {
                 delete emailConfig.pass;
             }
             settings.emailConfig = { ...settings.emailConfig, ...emailConfig };

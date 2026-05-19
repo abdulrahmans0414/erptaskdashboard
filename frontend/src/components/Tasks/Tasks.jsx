@@ -256,7 +256,7 @@ export default function Tasks() {
       </div>
 
       {/* Task list */}
-      {loading ? (
+      {loading && allTasks.length === 0 ? (
         <div className="flex justify-center py-16">
           <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full"></div>
         </div>

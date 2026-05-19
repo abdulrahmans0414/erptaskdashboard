@@ -4,6 +4,13 @@ import Notification from '../../models/Notification.js';
 import Settings from '../../models/Settings.js';
 import { sendEmailNotification } from '../../utils/emailService.js';
 import eventBus, { emitDataChange, EVENTS } from '../../utils/eventBus.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { deleteFromCloudinary } from '../../middleware/uploadMiddleware.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 // ============ HELPER FUNCTIONS ============
@@ -89,10 +96,50 @@ export const createTask = async (req, res) => {
             }));
         }
         
-        const assignedTeamArr = parseMaybeJsonArray(assignedTeam) || assignedTeam;
+        let isTeamTaskBool = false;
+        if (typeof isTeamTask === 'string') {
+            const trimmed = isTeamTask.trim().toLowerCase();
+            if (trimmed === 'true') {
+                isTeamTaskBool = true;
+            } else if (trimmed === 'false') {
+                isTeamTaskBool = false;
+            } else {
+                try {
+                    isTeamTaskBool = Boolean(JSON.parse(trimmed));
+                } catch {
+                    isTeamTaskBool = false;
+                }
+            }
+        } else {
+            isTeamTaskBool = Boolean(isTeamTask);
+        }
+
+        const rawAssignedTeam = parseMaybeJsonArray(assignedTeam);
+        let assignedTeamArr = [];
+        if (Array.isArray(rawAssignedTeam)) {
+            assignedTeamArr = rawAssignedTeam;
+        } else if (assignedTeam) {
+            if (Array.isArray(assignedTeam)) {
+                assignedTeamArr = assignedTeam;
+            } else if (typeof assignedTeam === 'string') {
+                try {
+                    const parsed = JSON.parse(assignedTeam);
+                    if (Array.isArray(parsed)) {
+                        assignedTeamArr = parsed;
+                    } else {
+                        assignedTeamArr = [assignedTeam];
+                    }
+                } catch {
+                    assignedTeamArr = assignedTeam.split(',').map(x => x.trim()).filter(Boolean);
+                }
+            } else {
+                assignedTeamArr = [assignedTeam];
+            }
+        }
+
         const collaboratingDeptsArr = parseMaybeJsonArray(collaboratingDepartments) || collaboratingDepartments;
 
-        if ((isTeamTask === true || isTeamTask === 'true') && assignedTeamArr && assignedTeamArr.length > 0) {
+        if (isTeamTaskBool && assignedTeamArr && assignedTeamArr.length > 0) {
             taskData.isTeamTask = true;
             taskData.assignedTeam = assignedTeamArr;
             taskData.individualProgress = assignedTeamArr.map(userId => ({
@@ -146,15 +193,39 @@ export const createTask = async (req, res) => {
         }
         
         // Send notifications
-        if (isTeamTask && assignedTeam) {
+        if (taskData.isTeamTask && assignedTeamArr && assignedTeamArr.length > 0) {
             await createBulkNotifications(
-                assignedTeam,
+                assignedTeamArr,
                 'New Team Task Assigned',
                 `You are assigned to team task: "${title}"`,
                 'task_assigned',
                 task._id
             );
-            // Optional: send email to team (skip for brevity or implement if needed)
+            // Send email notification to each team member
+            for (const memberId of assignedTeamArr) {
+                try {
+                    const member = await User.findById(memberId).select('email name');
+                    if (member && member.email) {
+                        await sendEmailNotification(
+                            member.email,
+                            'TASK_ASSIGNED',
+                            {
+                                employeeName: member.name,
+                                taskTitle: task.title,
+                                dueDate: task.dueDate,
+                                priority: task.priority,
+                                department: task.department,
+                                feedback: task.description || '',
+                                taskId: task._id,
+                                senderId: req.user._id
+                            },
+                            task.taskFormAttachments
+                        );
+                    }
+                } catch (emailErr) {
+                    console.error(`Failed to send task assignment email to team member ${memberId}:`, emailErr.message);
+                }
+            }
         } else {
             await createNotification(
                 assignedTo,
@@ -174,7 +245,10 @@ export const createTask = async (req, res) => {
                         taskTitle: task.title,
                         dueDate: task.dueDate,
                         priority: task.priority,
-                        department: task.department
+                        department: task.department,
+                        feedback: task.description || '',
+                        taskId: task._id,
+                        senderId: req.user._id
                     },
                     task.taskFormAttachments
                 );
@@ -356,32 +430,43 @@ export const deleteTask = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
 
-        // Cleanup form attachments
+        // Only Admin or the user who created the task can delete it
+        if (req.user.role !== 'admin' && task.assignedBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Not authorized to delete this task. Only Admins or the task creator can delete it.' });
+        }
+
+        // Cleanup form attachments (both Cloudinary CDN and local fallback)
         if (task.taskFormAttachments && task.taskFormAttachments.length > 0) {
-            task.taskFormAttachments.forEach(att => {
+            for (const att of task.taskFormAttachments) {
                 try {
+                    if (att.publicId) {
+                        await deleteFromCloudinary(att.publicId);
+                    }
                     const filePath = path.join(__dirname, '..', '..', att.fileUrl);
                     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
                 } catch (e) {
                     console.error("Error deleting form attachment:", e);
                 }
-            });
+            }
         }
 
-        // Cleanup attempt attachments
+        // Cleanup attempt attachments (both Cloudinary CDN and local fallback)
         if (task.attempts && task.attempts.length > 0) {
-            task.attempts.forEach(attempt => {
+            for (const attempt of task.attempts) {
                 if (attempt.attachments && attempt.attachments.length > 0) {
-                    attempt.attachments.forEach(att => {
+                    for (const att of attempt.attachments) {
                         try {
+                            if (att.publicId) {
+                                await deleteFromCloudinary(att.publicId);
+                            }
                             const filePath = path.join(__dirname, '..', '..', att.fileUrl);
                             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
                         } catch (e) {
                             console.error("Error deleting attempt attachment:", e);
                         }
-                    });
+                    }
                 }
-            });
+            }
         }
 
         await task.deleteOne();
@@ -470,7 +555,9 @@ export const startTask = async (req, res) => {
                         {
                             employeeName: assigner.name,
                             taskTitle: task.title,
-                            feedback: `${req.user.name} has started working on this task.`
+                            feedback: `${req.user.name} has started working on this task.`,
+                            taskId: task._id,
+                            senderId: req.user._id
                         }
                     );
                 }
@@ -656,6 +743,44 @@ export const submitTaskWithTime = async (req, res) => {
                     );
                 }
             }
+        }
+
+        // Send submission notification and email to the original assigner as well
+        if (task.assignedBy && task.assignedBy.toString() !== reviewerId?.toString() && task.assignedBy.toString() !== req.user._id.toString()) {
+            try {
+                const assigner = await User.findById(task.assignedBy).select('email name');
+                if (assigner) {
+                    await createNotification(
+                        assigner._id,
+                        'Task Submitted for Review',
+                        `${req.user.name} submitted "${task.title}" for review`,
+                        'task_submitted',
+                        task._id
+                    );
+
+                    if (assigner.email) {
+                        const attachmentNames = uploadedFiles.map(f => f.filename).join(', ');
+                        await sendEmailNotification(
+                            assigner.email,
+                            'TASK_SUBMITTED',
+                            {
+                                employeeName: assigner.name,
+                                taskTitle: task.title,
+                                dueDate: task.dueDate,
+                                priority: task.priority,
+                                department: task.department,
+                                feedback: `${req.user.name} has submitted this task for review.\n\nSubmission Note: ${submissionNote}${attachmentNames ? `\n\nAttachments: ${attachmentNames}` : ''}`,
+                                taskId: task._id,
+                                senderId: req.user._id
+                            },
+                            uploadedFiles
+                        );
+                    }
+                }
+            } catch (assignerErr) {
+                console.error('Failed to notify task assigner of submission:', assignerErr.message);
+            }
+        }
 
             // CC to department/branch configured email in Settings
             try {
@@ -688,7 +813,6 @@ export const submitTaskWithTime = async (req, res) => {
             } catch (e) {
                 console.warn('CC email error (non-fatal):', e.message);
             }
-        }
 
         // ── Confirmation to the submitting employee ───────────────────
         await createNotification(
@@ -948,7 +1072,9 @@ export const addComment = async (req, res) => {
                         {
                             employeeName: assigner.name,
                             taskTitle: task.title,
-                            feedback: `${req.user.name} posted an update: "${comment}"`
+                            feedback: `${req.user.name} posted an update: "${comment}"`,
+                            taskId: task._id,
+                            senderId: req.user._id
                         }
                     );
                 }
@@ -1207,6 +1333,30 @@ export const reassignTask = async (req, res) => {
                 'task_assigned',
                 task._id
             );
+            
+            for (const memberId of assignedTeam) {
+                try {
+                    const member = await User.findById(memberId).select('email name');
+                    if (member && member.email) {
+                        await sendEmailNotification(
+                            member.email,
+                            'TASK_ASSIGNED',
+                            {
+                                employeeName: member.name,
+                                taskTitle: task.title,
+                                dueDate: task.dueDate,
+                                priority: task.priority,
+                                department: task.department,
+                                feedback: task.description || '',
+                                taskId: task._id,
+                                senderId: req.user._id
+                            }
+                        );
+                    }
+                } catch (emailErr) {
+                    console.error(`Failed to send task reassignment email to team member ${memberId}:`, emailErr.message);
+                }
+            }
         } else {
             await createNotification(
                 assignedTo,
@@ -1226,7 +1376,10 @@ export const reassignTask = async (req, res) => {
                         taskTitle: task.title,
                         dueDate: task.dueDate,
                         priority: task.priority,
-                        department: task.department
+                        department: task.department,
+                        feedback: task.description || '',
+                        taskId: task._id,
+                        senderId: req.user._id
                     }
                 );
             }
@@ -1443,3 +1596,5 @@ export const getTimeReport = async (req, res) => {
         res.status(500).json({ success: false, message: 'Error generating time report' });
     }
 };
+
+// End of file

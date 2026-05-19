@@ -4,18 +4,10 @@ const branchSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        unique: true,
-        enum: [
-            'Gaurabagh',
-            'Vikas Nagar',
-            'Kalyanpur',
-            'Kursi',
-            'Hive',
-            'Ring Road',
-            'Muazzam Nagar',
-            'Aziz Nagar'
-        ]
+        unique: true
     },
+    departments: [{ type: String }],
+
     code: {
         type: String,
         required: true,

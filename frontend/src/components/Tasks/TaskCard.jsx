@@ -6,7 +6,7 @@ import {
   addTaskComment,
 } from "../../store/features/tasks";
 import { useAuth } from "../../context/AuthContext";
-import { updateTask, reassignTask, getUsers } from "../../services/api";
+import { updateTask, reassignTask, getUsers, deleteTask } from "../../services/api";
 import { useSettings } from "../../context/SettingsContext";
 import toast from "react-hot-toast";
 
@@ -16,8 +16,14 @@ const API_ORIGIN = (
 
 const getAttachmentUrl = (url) => {
   if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  return `${API_ORIGIN}${url}`;
+  let cleanUrl = url.replace(/\\/g, '/');
+  if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.includes('res.cloudinary.com')) {
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = cleanUrl.replace(/^(https?:)\/*/, '$1//');
+    }
+    return cleanUrl;
+  }
+  return `${API_ORIGIN}${cleanUrl.startsWith('/') ? cleanUrl : '/' + cleanUrl}`;
 };
 
 const FMT_TIME = (m) => {
@@ -25,6 +31,124 @@ const FMT_TIME = (m) => {
   const h = Math.floor(m / 60),
     r = m % 60;
   return h > 0 ? `${h}h ${r}m` : `${r}m`;
+};
+
+const AttachmentGrid = ({ attachments, title }) => {
+  if (!attachments || attachments.length === 0) return null;
+
+  const isImage = (filename, fileType) => {
+    if (fileType && fileType.startsWith('image/')) return true;
+    return /\.(jpe?g|png|gif|webp|svg)$/i.test(filename || '');
+  };
+
+  const getDocIcon = (filename) => {
+    const ext = filename?.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return '📕';
+    if (['zip', 'rar', 'tar', 'gz', '7z'].includes(ext)) return '📦';
+    if (['doc', 'docx'].includes(ext)) return '📘';
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return '📗';
+    if (['ppt', 'pptx'].includes(ext)) return '📙';
+    return '📄';
+  };
+
+  return (
+    <div className="mt-3">
+      {title && (
+        <span className="block text-xs font-semibold text-zinc-500 mb-1.5 flex items-center gap-1.5">
+          📎 {title}
+        </span>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {attachments.map((att, idx) => {
+          const url = getAttachmentUrl(att.fileUrl);
+          const isImg = isImage(att.filename, att.fileType);
+          const filename = att.filename || `File_${idx + 1}`;
+
+          if (isImg) {
+            return (
+              <a
+                key={idx}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative block w-14 h-14 aspect-square overflow-hidden border border-zinc-200 rounded-lg hover:scale-105 transition-transform duration-200 shadow-sm flex-shrink-0 bg-zinc-50 group"
+                title={`View ${filename}`}
+              >
+                <img
+                  src={url}
+                  alt={filename}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('div');
+                      fallback.className = 'w-full h-full flex items-center justify-center text-xs font-bold bg-zinc-100 text-zinc-400';
+                      fallback.innerText = 'IMG';
+                      parent.appendChild(fallback);
+                    }
+                  }}
+                />
+              </a>
+            );
+          }
+
+          return (
+            <a
+              key={idx}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg hover:scale-105 transition-transform duration-200 text-[11px] text-zinc-700 font-medium shadow-sm flex-shrink-0"
+              title={`Download ${filename}`}
+            >
+              <span className="text-sm">{getDocIcon(filename)}</span>
+              <span className="max-w-[120px] truncate">{filename}</span>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const CompactAttachments = ({ attachments }) => {
+  if (!attachments || attachments.length === 0) return null;
+
+  const getDocIcon = (filename) => {
+    const ext = filename?.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return '📕';
+    if (['zip', 'rar', 'tar', 'gz', '7z'].includes(ext)) return '📦';
+    if (['doc', 'docx'].includes(ext)) return '📘';
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return '📗';
+    if (['ppt', 'pptx'].includes(ext)) return '📙';
+    const isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+    if (isImg) return '🖼️';
+    return '📄';
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-0.5">
+      {attachments.map((att, idx) => {
+        const url = getAttachmentUrl(att.fileUrl);
+        const filename = att.filename || `File_${idx + 1}`;
+
+        return (
+          <a
+            key={idx}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg hover:scale-105 transition-all duration-200 text-[10px] text-zinc-700 font-medium shadow-sm flex-shrink-0"
+            title={`Download ${filename}`}
+          >
+            <span className="text-xs">{getDocIcon(filename)}</span>
+            <span className="max-w-[120px] truncate">{filename}</span>
+          </a>
+        );
+      })}
+    </div>
+  );
 };
 
 const STATUS = {
@@ -329,24 +453,7 @@ function ReviewModal({ task, stage, onClose, onDone }) {
           👤 {task.assignedTo?.name} · 🏢 {task.department} · 📍 {task.branch}
         </p>
 
-        {task.taskFormAttachments && task.taskFormAttachments.length > 0 && (
-          <div className="text-gray-500 text-xs flex flex-wrap gap-1 mt-1">
-            <span className="font-semibold text-blue-600">
-              📎 Task Attachments:
-            </span>
-            {task.taskFormAttachments.map((att, idx) => (
-              <a
-                key={idx}
-                href={getAttachmentUrl(att.fileUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:underline"
-              >
-                [View {att.filename}]
-              </a>
-            ))}
-          </div>
-        )}
+        <AttachmentGrid attachments={task.taskFormAttachments} title="Task Attachments" />
         <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
           <div className="bg-white rounded-lg p-2 border">
             <span className="text-gray-500">Time Spent</span>
@@ -368,24 +475,10 @@ function ReviewModal({ task, stage, onClose, onDone }) {
               task.attempts[task.attempts.length - 1].submissionAttachments
                 ?.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-blue-200">
-                  <p className="font-semibold text-blue-700 mb-1">
-                    Attachments:
-                  </p>
-                  <div className="flex flex-col gap-1">
-                    {task.attempts[
-                      task.attempts.length - 1
-                    ].submissionAttachments.map((att, i) => (
-                      <a
-                        key={i}
-                        href={getAttachmentUrl(att.fileUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        📎 {att.filename}
-                      </a>
-                    ))}
-                  </div>
+                  <AttachmentGrid
+                    attachments={task.attempts[task.attempts.length - 1].submissionAttachments}
+                    title="Submission Attachments"
+                  />
                 </div>
               )}
           </div>
@@ -806,21 +899,7 @@ function ActivityDrawer({ task, onClose }) {
                   <p className="text-gray-700 mt-0.5 whitespace-pre-wrap">
                     {item.msg}
                   </p>
-                  {item.attachments && item.attachments.length > 0 && (
-                    <div className="mt-1 flex flex-col gap-1">
-                      {item.attachments.map((att, aIdx) => (
-                        <a
-                          key={aIdx}
-                          href={getAttachmentUrl(att.fileUrl)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline text-[10px]"
-                        >
-                          📎 {att.filename}
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                  <AttachmentGrid attachments={item.attachments} />
                 </>
               ) : (
                 <p className="text-gray-600">{item.details || item.action}</p>
@@ -892,6 +971,19 @@ export default function TaskCard({ task, onUpdate }) {
     setModal(null);
     setReviewStage(null);
     if (onUpdate) onUpdate();
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this task? This action cannot be undone and will permanently remove all attachments.")) {
+      return;
+    }
+    try {
+      await deleteTask(task._id);
+      toast.success("Task deleted successfully");
+      if (onUpdate) onUpdate();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to delete task");
+    }
   };
 
   const userId = user?._id || user?.id;
@@ -1007,25 +1099,6 @@ export default function TaskCard({ task, onUpdate }) {
               )}
               <span>🏢 {task.department}</span>
               <span>📍 {task.branch}</span>
-              {task.taskFormAttachments &&
-                task.taskFormAttachments.length > 0 && (
-                  <div className="flex gap-2">
-                    <span className="font-semibold text-blue-600">
-                      📎 Attachments:
-                    </span>
-                    {task.taskFormAttachments.map((att, idx) => (
-                      <a
-                        key={idx}
-                        href={getAttachmentUrl(att.fileUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline"
-                      >
-                        {att.filename}
-                      </a>
-                    ))}
-                  </div>
-                )}
               {task.totalTimeSpent > 0 && (
                 <span>⏱️ {FMT_TIME(task.totalTimeSpent)}</span>
               )}
@@ -1033,6 +1106,14 @@ export default function TaskCard({ task, onUpdate }) {
                 <span>🔄 Attempt #{task.currentAttempt}</span>
               )}
             </div>
+
+            {/* Compact Attachments */}
+            {task.taskFormAttachments && task.taskFormAttachments.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-gray-400">📎 Attachments:</span>
+                <CompactAttachments attachments={task.taskFormAttachments} />
+              </div>
+            )}
 
             {/* Submission note */}
             {task.submissionNote && (
@@ -1052,22 +1133,8 @@ export default function TaskCard({ task, onUpdate }) {
               if (subAtts.length === 0) return null;
               return (
                 <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl text-xs">
-                  <p className="font-semibold text-blue-700 mb-1">
-                    📎 Submitted Files:
-                  </p>
-                  <div className="flex flex-col gap-1">
-                    {subAtts.map((att, i) => (
-                      <a
-                        key={i}
-                        href={getAttachmentUrl(att.fileUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5"
-                      >
-                        📄 {att.filename}
-                      </a>
-                    ))}
-                  </div>
+                  <span className="font-semibold text-blue-700 block mb-1">📁 Submitted Files:</span>
+                  <CompactAttachments attachments={subAtts} />
                 </div>
               );
             })()}
@@ -1101,21 +1168,31 @@ export default function TaskCard({ task, onUpdate }) {
                 : "Updates"}
             </button>
 
-            {/* Edit & Reassign */}
+            {/* Edit & Reassign & Delete */}
             {canManage && (
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setModal("edit")}
-                  className="flex-1 px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap"
-                >
-                  ✏️ Edit
-                </button>
-                <button
-                  onClick={() => setModal("reassign")}
-                  className="flex-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap"
-                >
-                  🔄 Reassign
-                </button>
+              <div className="flex flex-col gap-1 w-full">
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setModal("edit")}
+                    className="flex-1 px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap"
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    onClick={() => setModal("reassign")}
+                    className="flex-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap"
+                  >
+                    🔄 Reassign
+                  </button>
+                </div>
+                {(isAdmin || isAssigner) && (
+                  <button
+                    onClick={handleDelete}
+                    className="w-full px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap"
+                  >
+                    🗑️ Delete Task
+                  </button>
+                )}
               </div>
             )}
 

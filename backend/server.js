@@ -159,6 +159,21 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/realtime', realtimeRoutes);
 app.use('/api/email-logs', emailLogRoutes);
 
+app.get('/api/test-email', async (req, res) => {
+    try {
+        const { sendEmailNotification } = await import('./utils/emailService.js');
+        const Task = (await import('./models/Task.js')).default;
+        // Mock data with a fake cloudinary URL that throws 401
+        await sendEmailNotification('abdulrahmans0414@gmail.com', 'TASK_ASSIGNED', {
+            employeeName: 'Test',
+            taskTitle: 'Test Task',
+        }, [{ filename: 'test.pdf', fileUrl: 'https://httpstat.us/401' }]);
+        res.json({ success: true, message: 'Check logs' });
+    } catch (e) {
+        res.status(500).json({ error: e.message, stack: e.stack });
+    }
+});
+
 // 404 Handler
 app.use((req, res) => {
     res.status(404).json({
@@ -195,6 +210,21 @@ const startServer = async () => {
     // Initialize token cleanup background job
     initializeTokenCleanup();
 
+    // Clean up any masked database email config password so it doesn't break IMAP/SMTP
+    try {
+        const Settings = (await import('./models/Settings.js')).default;
+        const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
+        if (settings?.emailConfig?.pass && (settings.emailConfig.pass === '••••••••' || settings.emailConfig.pass === '********')) {
+            await Settings.updateOne(
+                { singleton: 'SYSTEM_SETTINGS' },
+                { $set: { 'emailConfig.pass': '' } }
+            );
+            logger.info('🧹 Cleaned up invalid masked SMTP password from database (reset to .env fallback)');
+        }
+    } catch (e) {
+        logger.warn('Failed to clean up masked email config password:', e.message);
+    }
+
     // Start background email IMAP sync worker (node-cron)
     startEmailWorker();
 
@@ -217,3 +247,18 @@ startServer().catch(err => {
     logger.error('Failed to start server:', err);
     process.exit(1);
 });
+
+// Execute test on startup and log to file
+setTimeout(async () => {
+    try {
+        const { sendEmailNotification } = await import('./utils/emailService.js');
+        logger.info('📧 Starting startup email test...');
+        const res = await sendEmailNotification('abdulrahmans0414@gmail.com', 'TASK_ASSIGNED', {
+            employeeName: 'Test',
+            taskTitle: 'Test Task',
+        }, [{ filename: 'test.pdf', fileUrl: 'https://httpstat.us/401' }]);
+        logger.info(`📧 Finished startup email test. Result: ${res}`);
+    } catch (e) {
+        logger.error(`❌ Startup email test error: ${e.message}\n${e.stack}`);
+    }
+}, 3000);

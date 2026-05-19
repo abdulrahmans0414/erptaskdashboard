@@ -108,10 +108,23 @@ export const updateBranch = async (req, res) => {
 
 export const deleteBranch = async (req, res) => {
     try {
-        const branch = await Branch.findByIdAndDelete(req.params.id);
+        const branch = await Branch.findById(req.params.id);
         if (!branch) {
             return res.status(404).json({ success: false, message: 'Branch not found' });
         }
+
+        // Check if there are Users or Tasks associated with this branch
+        const usersCount = await User.countDocuments({ branch: branch.name });
+        const tasksCount = await Task.countDocuments({ branch: branch.name });
+
+        if (usersCount > 0 || tasksCount > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Cannot delete branch. It contains ${usersCount} users and ${tasksCount} tasks. Reassign them or use Edit to rename the branch instead.` 
+            });
+        }
+
+        await branch.deleteOne();
 
         // If branch is deleted, also delete branch-head user for that branch.
         await User.deleteMany({ role: 'branch-head', branch: branch.name });
