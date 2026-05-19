@@ -20,79 +20,35 @@ import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import hpp from 'hpp';
 import { initializeTokenCleanup, checkTokenBlacklist } from './middleware/tokenBlacklist.js';
-import { handleValidationErrors } from './utils/validationRules.js';
 import logger from './logger.js';
+
+// Load .env FIRST before anything else
+dotenv.config();
 
 // DNS Configuration - Fix for MongoDB Atlas SRV lookup
 dns.setServers(['1.1.1.1', '8.8.8.8']);
 
-dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
 // Enable trust proxy so Express knows it is behind a reverse proxy (Render, Heroku, etc.)
-// and can trust the X-Forwarded-For header to determine the correct client IP.
 app.set('trust proxy', 1);
 
-// ==================== SECURITY HEADERS ====================
-app.use(helmet({
-    crossOriginResourcePolicy: false, // Allow cross-origin images/uploads
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", process.env.VITE_API_URL || 'http://localhost:5000'],
-        },
-    },
-}));
+// ==================== CORS (must be BEFORE Helmet and all routes) ====================
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
 
-// ==================== RATE LIMITING ====================
-const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 500, // Limit each IP to 500 requests per window
-    message: 'Too many requests from this IP, please try again after 15 minutes',
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    skip: (req) => req.path === '/', // Don't rate limit health check
-});
-
-// Per-user rate limiting for login attempts
-const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 5, // 5 attempts per 15 minutes
-    keyGenerator: (req) => {
-        if (req.body && typeof req.body.email === 'string') {
-            return req.body.email.toLowerCase().trim();
-        }
-        return req.ip || (req.headers && req.headers['x-forwarded-for']) || 'unknown';
-    },
-    message: 'Too many login attempts. Please try again after 15 minutes.',
-    skip: (req) => req.method !== 'POST' || !req.path.includes('/login'),
-});
-
-// ==================== BODY PARSING ====================
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-app.use(globalLimiter);
-app.use(loginLimiter);
-
-const PORT = process.env.PORT || 5000;
-
-// CORS Configuration - PRODUCTION UPDATE
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map(origin => origin.trim());
-
-// Wildcard patterns for Vercel preview deployments (regex-based)
+// Wildcard patterns for Vercel preview deployments
 const allowedOriginPatterns = [
-    /^https:\/\/erptaskdashboard(-[a-z0-9]+)*\.vercel\.app$/,  // All Vercel preview URLs for this project
+    /^https:\/\/erptaskdashboard(-[a-z0-9]+)*\.vercel\.app$/,
 ];
 
 const isOriginAllowed = (origin) => {
-    if (!origin) return true; // Allow non-browser clients (curl, mobile, etc.)
+    if (!origin) return true; // Allow non-browser clients (Render health checks, curl, mobile)
     if (allowedOrigins.includes(origin)) return true;
     return allowedOriginPatterns.some(pattern => pattern.test(origin));
 };
@@ -102,7 +58,7 @@ app.use(cors({
         if (isOriginAllowed(origin)) {
             cb(null, true);
         } else {
-            console.warn(`⚠️ CORS blocked for origin: ${origin}`);
+            logger.warn(`⚠️ CORS blocked for origin: ${origin}`);
             cb(new Error('CORS not allowed'));
         }
     },
@@ -111,32 +67,87 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
+// Handle OPTIONS preflight for all routes
+app.options('*', cors());
 
-
-// ==================== ADDITIONAL SECURITY ====================
-// HPP (HTTP Parameter Pollution) protection
-app.use(hpp({
-    whitelist: ['sort', 'page', 'limit', 'search', 'filter'],
+// ==================== SECURITY HEADERS ====================
+app.use(helmet({
+    crossOriginResourcePolicy: false, // Allow cross-origin images/uploads
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+            // Allow SSE connections back to both Render backend and local dev
+            connectSrc: [
+                "'self'",
+                'http://localhost:5001',
+                'http://localhost:5000',
+                'https://*.onrender.com',
+                'https://*.vercel.app',
+            ],
+        },
+    },
 }));
 
-// Token blacklist checking
+// ==================== RATE LIMITING ====================
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 500,
+    message: { success: false, message: 'Too many requests, please try again in 15 minutes' },
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    skip: (req) => req.path === '/' || req.path === '/health',
+});
+
+// Login-specific rate limiter (strict)
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10, // 10 attempts per 15 minutes (relaxed from 5 to avoid dev frustration)
+    keyGenerator: (req) => {
+        if (req.body && typeof req.body.email === 'string') {
+            return req.body.email.toLowerCase().trim();
+        }
+        return req.ip || req.headers?.['x-forwarded-for'] || 'unknown';
+    },
+    message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' },
+    skip: (req) => !(req.method === 'POST' && req.path.includes('/login')),
+});
+
+// ==================== BODY PARSING ====================
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+app.use(globalLimiter);
+app.use(loginLimiter);
+
+// ==================== ADDITIONAL SECURITY ====================
+app.use(hpp({
+    whitelist: ['sort', 'page', 'limit', 'search', 'filter', 'status', 'type'],
+}));
+
+// Token blacklist checking for all /api/ routes
 app.use('/api/', checkTokenBlacklist);
 
-// NOTE: handleValidationErrors is applied per-route in each router file, not globally.
-
-// Static files
+// Static files (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Health check endpoint
+// Health check endpoints
 app.get('/', (req, res) => {
-    res.json({ 
-        message: 'ERP Dashboard API v2.0', 
+    res.json({
+        message: 'ERP Dashboard API v2.0',
         status: 'running',
         timestamp: new Date().toISOString()
     });
 });
 
-// Routes
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ==================== ROUTES ====================
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
@@ -149,42 +160,40 @@ app.use('/api/email-logs', emailLogRoutes);
 
 // 404 Handler
 app.use((req, res) => {
-    res.status(404).json({ 
-        success: false, 
-        message: `Route ${req.originalUrl} not found` 
+    res.status(404).json({
+        success: false,
+        message: `Route ${req.originalUrl} not found`
     });
 });
 
 // Global Error Handler
-// NOTE: Must manually set CORS headers here because Express error handlers
-// run after middleware, and some error paths skip CORS header injection.
+// Re-apply CORS headers on error so browser sees real error, not misleading CORS error
 app.use((err, req, res, next) => {
-    logger.error('❌ Server Error:', err);
+    logger.error('❌ Server Error:', err.message || err);
 
-    // Re-apply CORS headers on error responses so the browser
-    // sees the real error (500) instead of a misleading CORS error.
     const origin = req.headers.origin;
     if (origin && isOriginAllowed(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
     }
 
-    // Don't expose CORS error messages to the client
     const isCorsError = err.message === 'CORS not allowed';
-    res.status(isCorsError ? 403 : (err.status || 500)).json({ 
-        success: false, 
+    res.status(isCorsError ? 403 : (err.status || 500)).json({
+        success: false,
         message: isCorsError ? 'Forbidden' : (err.message || 'Internal server error'),
         ...(process.env.NODE_ENV === 'development' && !isCorsError && { stack: err.stack })
     });
 });
 
-// Connect to DB and Start Server
+// ==================== START SERVER ====================
+const PORT = parseInt(process.env.PORT, 10) || 5001;
+
 const startServer = async () => {
     await connectDB();
-    
+
     // Initialize token cleanup background job
     initializeTokenCleanup();
-    
+
     // Auto-seed if database is empty
     const userCount = await User.countDocuments();
     if (userCount === 0) {
@@ -192,11 +201,11 @@ const startServer = async () => {
         await seedDatabase(true);
     }
 
-
     app.listen(PORT, () => {
         logger.info(`✅ Server running on http://localhost:${PORT}`);
         logger.info(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-        logger.info(`🔒 Security: CSRF, HPP, CORS, Rate Limiting enabled`);
+        logger.info(`🔒 Security: HPP, CORS, Rate Limiting enabled`);
+        logger.info(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
     });
 };
 

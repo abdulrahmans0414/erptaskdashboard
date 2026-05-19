@@ -11,7 +11,7 @@ import { useSettings } from "../../context/SettingsContext";
 import toast from "react-hot-toast";
 
 const API_ORIGIN = (
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+  import.meta.env.VITE_API_URL || "http://localhost:5001/api"
 ).replace(/\/api\/?$/, "");
 
 const FMT_TIME = (m) => {

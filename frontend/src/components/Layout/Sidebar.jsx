@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
-const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5000/api")
+const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5001/api")
   .replace(/\/api\/?$/, "");
 
 export default function Sidebar({

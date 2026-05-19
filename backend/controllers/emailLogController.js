@@ -4,7 +4,25 @@ import { fetchGmailMails } from '../utils/gmailImapService.js';
 import { ImapFlow } from 'imapflow';
 import Settings from '../models/Settings.js';
 
-// @desc    Get all email logs (directly from Gmail IMAP with MongoDB fallback)
+// Helper to get IMAP credentials (strips spaces from app passwords)
+const getImapCredentials = async () => {
+    let user = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '';
+    let pass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s/g, '') : '';
+
+    try {
+        const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
+        if (settings?.emailConfig?.user && settings?.emailConfig?.pass) {
+            user = settings.emailConfig.user.trim();
+            pass = settings.emailConfig.pass.replace(/\s/g, '');
+        }
+    } catch (e) {
+        // Ignore DB error, use .env fallback
+    }
+
+    return { user, pass };
+};
+
+// @desc    Get all email logs (MongoDB primary, Gmail IMAP optional enrichment)
 // @route   GET /api/email-logs
 // @access  Private
 export const getEmailLogs = async (req, res) => {
@@ -14,25 +32,18 @@ export const getEmailLogs = async (req, res) => {
         const limitNumber = parseInt(limit, 10);
         const skip = (pageNumber - 1) * limitNumber;
 
-        // Try fetching real-time emails directly from Gmail IMAP first!
-        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        // Try fetching real-time emails directly from Gmail IMAP (optional enrichment)
+        const { user: imapUser, pass: imapPass } = await getImapCredentials();
+        if (imapUser && imapPass) {
             try {
-                // Map frontend folder and type filters to IMAP folder/type scopes
                 let folder = 'ALL';
-                if (status === 'sent') {
-                    folder = 'SENT';
-                } else if (status === 'failed') {
-                    folder = 'FAILED';
-                }
+                if (status === 'sent') folder = 'SENT';
+                else if (status === 'failed') folder = 'FAILED';
 
                 let mappedType = 'ALL';
-                if (type === 'OTP') {
-                    mappedType = 'SECURITY';
-                } else if (type === 'WELCOME') {
-                    mappedType = 'WELCOME';
-                } else if (type === 'TASK_ASSIGNED' || type === 'TASKS') {
-                    mappedType = 'TASKS';
-                }
+                if (type === 'OTP') mappedType = 'SECURITY';
+                else if (type === 'WELCOME') mappedType = 'WELCOME';
+                else if (type === 'TASK_ASSIGNED' || type === 'TASKS') mappedType = 'TASKS';
 
                 const result = await fetchGmailMails(req.user.email, req.user.role, {
                     folder,
@@ -42,22 +53,25 @@ export const getEmailLogs = async (req, res) => {
                     type: mappedType
                 });
 
-                return res.status(200).json({
-                    success: true,
-                    data: result.mails,
-                    pagination: {
-                        total: result.total,
-                        page: result.page,
-                        pages: result.pages,
-                        limit: result.limit
-                    }
-                });
+                // fetchGmailMails returns null when credentials fail or IMAP is unavailable
+                if (result !== null) {
+                    return res.status(200).json({
+                        success: true,
+                        data: result.mails || [],
+                        pagination: {
+                            total: result.total || 0,
+                            page: result.page || pageNumber,
+                            pages: result.pages || 1,
+                            limit: result.limit || limitNumber
+                        }
+                    });
+                }
             } catch (imapError) {
                 console.warn('⚠️ Gmail IMAP fetch failed, falling back to MongoDB logs:', imapError.message);
             }
         }
 
-        // ==================== FALLBACK: MONGO DB LOGS ====================
+        // ==================== PRIMARY: MONGO DB LOGS ====================
         const queryFilter = {};
 
         // Security scoping for non-admins
@@ -69,7 +83,7 @@ export const getEmailLogs = async (req, res) => {
         }
 
         // Keyword Search
-        if (search.trim()) {
+        if (search && search.trim()) {
             const searchRegex = new RegExp(search.trim(), 'i');
             const searchCondition = {
                 $or: [
@@ -90,11 +104,12 @@ export const getEmailLogs = async (req, res) => {
             }
         }
 
-        // Map frontend categories to local DB fields
+        // Type filter
         if (type && type !== 'ALL') {
             queryFilter.type = type;
         }
 
+        // Status filter
         if (status && status !== 'ALL') {
             queryFilter.status = status;
         }
@@ -105,7 +120,8 @@ export const getEmailLogs = async (req, res) => {
             .populate('senderId', 'name email role')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limitNumber);
+            .limit(limitNumber)
+            .lean();
 
         res.status(200).json({
             success: true,
@@ -134,28 +150,19 @@ export const deleteEmailLog = async (req, res) => {
     try {
         const idOrUid = req.params.id;
 
-        // 1. If it's a Gmail IMAP UID (numeric string), delete directly from Gmail!
+        // 1. If it's a Gmail IMAP UID (numeric string), delete directly from Gmail
         if (/^\d+$/.test(idOrUid)) {
             try {
-                let user = process.env.EMAIL_USER;
-                let pass = process.env.EMAIL_PASS;
-
-                const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
-                if (settings && settings.emailConfig && settings.emailConfig.user && settings.emailConfig.pass) {
-                    user = settings.emailConfig.user;
-                    pass = settings.emailConfig.pass;
-                }
+                const { user, pass } = await getImapCredentials();
 
                 if (user && pass) {
                     const client = new ImapFlow({
                         host: 'imap.gmail.com',
                         port: 993,
                         secure: true,
-                        auth: {
-                            user,
-                            pass
-                        },
-                        logger: false
+                        auth: { user, pass },
+                        logger: false,
+                        tls: { rejectUnauthorized: false }
                     });
 
                     client.on('error', (err) => {
@@ -163,14 +170,13 @@ export const deleteEmailLog = async (req, res) => {
                     });
 
                     await client.connect();
-                    // Open all mail first to locate the message UID
                     await client.mailboxOpen('[Gmail]/All Mail');
                     await client.messageDelete(idOrUid);
                     await client.logout();
 
                     return res.status(200).json({
                         success: true,
-                        message: 'Email successfully deleted directly from your Gmail!'
+                        message: 'Email successfully deleted from your Gmail!'
                     });
                 }
             } catch (err) {
@@ -178,9 +184,9 @@ export const deleteEmailLog = async (req, res) => {
             }
         }
 
-        // 2. Fallback to MongoDB log deletion
+        // 2. MongoDB fallback
         const log = await EmailLog.findById(idOrUid);
-        
+
         if (!log) {
             return res.status(404).json({
                 success: false,
@@ -222,34 +228,21 @@ export const deleteEmailLog = async (req, res) => {
 export const resendEmailLog = async (req, res) => {
     try {
         const logId = req.params.id;
-
-        // If it's a Gmail IMAP message (numeric UID), we can't fetch full raw nodemailer templates
-        // but we can query the details and resend, or read details from Gmail and send!
-        // To make it seamless, if it's not in MongoDB, we can query it from Gmail, parse it, and send a copy!
         let log = await EmailLog.findById(logId);
 
+        // If numeric UID (IMAP message), fetch details from Gmail first
         if (!log && /^\d+$/.test(logId)) {
             try {
-                let user = process.env.EMAIL_USER;
-                let pass = process.env.EMAIL_PASS;
-
-                const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
-                if (settings && settings.emailConfig && settings.emailConfig.user && settings.emailConfig.pass) {
-                    user = settings.emailConfig.user;
-                    pass = settings.emailConfig.pass;
-                }
+                const { user, pass } = await getImapCredentials();
 
                 if (user && pass) {
-                    // Fetch details from Gmail to simulate resend
                     const client = new ImapFlow({
                         host: 'imap.gmail.com',
                         port: 993,
                         secure: true,
-                        auth: {
-                            user,
-                            pass
-                        },
-                        logger: false
+                        auth: { user, pass },
+                        logger: false,
+                        tls: { rejectUnauthorized: false }
                     });
 
                     client.on('error', (err) => {
@@ -261,13 +254,14 @@ export const resendEmailLog = async (req, res) => {
                     const msg = await client.fetchOne(logId, { envelope: true });
                     await client.logout();
 
-                    if (msg && msg.envelope) {
-                        // Create transient log template to pass to resendLoggedEmail
+                    if (msg?.envelope) {
+                        const toAddr = msg.envelope.to?.[0];
+                        const toEmail = toAddr ? `${toAddr.mailbox}@${toAddr.host}` : req.user.email;
                         log = await EmailLog.create({
-                            recipient: msg.envelope.to[0] ? `${msg.envelope.to[0].mailbox}@${msg.envelope.to[0].host}` : req.user.email,
+                            recipient: toEmail,
                             subject: msg.envelope.subject || 'Resent Gmail Message',
                             contentSnippet: 'Resent direct Gmail communication.',
-                            body: `<p>This is a resent copy of email: <strong>${msg.envelope.subject}</strong> originally dispatched on ${msg.envelope.date}.</p>`,
+                            body: `<p>Resent copy of: <strong>${msg.envelope.subject}</strong> — originally sent on ${msg.envelope.date}.</p>`,
                             type: 'WELCOME',
                             status: 'sent',
                             senderId: req.user._id
@@ -275,7 +269,7 @@ export const resendEmailLog = async (req, res) => {
                     }
                 }
             } catch (err) {
-                console.warn('⚠️ Direct Gmail details fetch for resend failed:', err.message);
+                console.warn('⚠️ Gmail details fetch for resend failed:', err.message);
             }
         }
 
@@ -286,7 +280,7 @@ export const resendEmailLog = async (req, res) => {
             });
         }
 
-        // Authorization Scoping
+        // Authorization
         if (
             req.user.role !== 'admin' &&
             log.recipient.toLowerCase().trim() !== req.user.email.toLowerCase().trim() &&

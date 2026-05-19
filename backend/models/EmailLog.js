@@ -7,6 +7,11 @@ const emailLogSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
+    sender: {
+        type: String,
+        default: '',
+        trim: true
+    },
     subject: {
         type: String,
         required: true
@@ -30,10 +35,15 @@ const emailLogSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    body: {
+        type: String,
+        default: ''
+    },
     attachments: [{
         filename: String,
         fileUrl: String,
-        fileSize: Number
+        fileSize: Number,
+        contentType: String
     }],
     status: {
         type: String,
@@ -48,9 +58,11 @@ const emailLogSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Index for searching history
+// Indexes for fast querying
 emailLogSchema.index({ recipient: 1, createdAt: -1 });
 emailLogSchema.index({ taskId: 1 });
 emailLogSchema.index({ type: 1 });
+emailLogSchema.index({ status: 1 });
+emailLogSchema.index({ createdAt: -1 });
 
 export default mongoose.model('EmailLog', emailLogSchema);

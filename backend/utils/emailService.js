@@ -6,29 +6,30 @@ import EmailLog from '../models/EmailLog.js';
 // ── Transporter ────────────────────────
 const createTransporter = async () => {
     let host = process.env.EMAIL_HOST || 'smtp.gmail.com';
-    let port = process.env.EMAIL_PORT || 587;
-    let user = process.env.EMAIL_USER;
-    let pass = process.env.EMAIL_PASS;
+    let port = parseInt(process.env.EMAIL_PORT, 10) || 587;
+    // Strip spaces from Gmail App Passwords (common copy-paste issue)
+    let user = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '';
+    let pass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s/g, '') : '';
 
     try {
         const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
-        if (settings && settings.emailConfig && settings.emailConfig.user && settings.emailConfig.pass) {
+        if (settings?.emailConfig?.user && settings?.emailConfig?.pass) {
             host = settings.emailConfig.host || host;
-            port = settings.emailConfig.port || port;
-            user = settings.emailConfig.user;
-            pass = settings.emailConfig.pass;
+            port = parseInt(settings.emailConfig.port, 10) || port;
+            user = settings.emailConfig.user.trim();
+            pass = settings.emailConfig.pass.replace(/\s/g, '');
         }
     } catch (e) {
-        console.error('Failed to load email settings from DB, using fallback.', e);
+        console.error('Failed to load email settings from DB, using .env fallback.', e);
     }
 
     return nodemailer.createTransport({
         host,
         port,
         secure: port === 465,
-        auth: {
-            user,
-            pass
+        auth: { user, pass },
+        tls: {
+            rejectUnauthorized: false // Allow self-signed certs in dev
         }
     });
 };

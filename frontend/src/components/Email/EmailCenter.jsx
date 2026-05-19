@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getEmailLogs, deleteEmailLog, resendEmailLog } from '../../services/api/emailLogApi';
 import toast from 'react-hot-toast';
@@ -21,13 +21,16 @@ export default function EmailCenter() {
     const [selectedEmail, setSelectedEmail] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+    // Use a stable ref for limit to avoid infinite re-renders
+    const limitRef = useRef(pagination.limit);
+
     // Fetch Logs
     const fetchLogs = useCallback(async (page = 1) => {
         setLoading(true);
         try {
             const params = {
                 page,
-                limit: pagination.limit,
+                limit: limitRef.current,
                 search: searchQuery
             };
 
@@ -40,24 +43,24 @@ export default function EmailCenter() {
                 params.type = 'OTP';
             } else if (activeFolder === 'WELCOME') {
                 params.type = 'WELCOME';
-            } else if (activeFolder === 'TASKS') {
-                params.type = 'TASK_ASSIGNED'; // We can filter by multiple in query or handle backend filtering
             }
+            // For TASKS we do NOT pass a type — let backend return all and we filter
+            // (avoids only showing TASK_ASSIGNED, misses TASK_APPROVED etc.)
 
             const response = await getEmailLogs(params);
             
-            if (response.data.success) {
-                // If folder is TASKS, manually filter other task categories on frontend
-                // to circumvent single-type limitations if necessary, or display all retrieved
-                let retrievedLogs = response.data.data;
+            if (response.data?.success) {
+                let retrievedLogs = Array.isArray(response.data.data) ? response.data.data : [];
+                
+                // Client-side filter for TASKS folder — show all TASK_* types
                 if (activeFolder === 'TASKS') {
-                    // Backend retrieves all matching logs. If client requested 'TASKS', 
-                    // we show all logs starting with 'TASK_'
-                    retrievedLogs = retrievedLogs.filter(log => log.type.startsWith('TASK_'));
+                    retrievedLogs = retrievedLogs.filter(log => log?.type?.startsWith('TASK_'));
                 }
 
                 setLogs(retrievedLogs);
-                setPagination(response.data.pagination);
+                if (response.data.pagination) {
+                    setPagination(response.data.pagination);
+                }
             }
         } catch (error) {
             console.error('Failed to load email logs:', error);
@@ -65,7 +68,7 @@ export default function EmailCenter() {
         } finally {
             setLoading(false);
         }
-    }, [activeFolder, searchQuery, pagination.limit]);
+    }, [activeFolder, searchQuery]);
 
     // Fetch logs on mount, folder change, or search query change
     useEffect(() => {
