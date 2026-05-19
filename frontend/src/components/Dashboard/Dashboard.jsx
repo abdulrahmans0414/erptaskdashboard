@@ -174,7 +174,7 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
       <div className="flex items-center gap-3 mb-3">
         {emp.avatar ? (
           <img
-            src={`${API_ORIGIN}${emp.avatar}`}
+            src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
             alt={emp.name}
             className="w-11 h-11 min-w-[44px] rounded-xl object-cover shadow-lg ring-1 ring-gray-200 group-hover:scale-110 transition-transform"
             onError={(e) => {

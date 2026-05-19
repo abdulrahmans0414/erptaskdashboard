@@ -14,6 +14,12 @@ const API_ORIGIN = (
   import.meta.env.VITE_API_URL || "http://localhost:5001/api"
 ).replace(/\/api\/?$/, "");
 
+const getAttachmentUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_ORIGIN}${url}`;
+};
+
 const FMT_TIME = (m) => {
   if (!m) return "0m";
   const h = Math.floor(m / 60),
@@ -331,7 +337,7 @@ function ReviewModal({ task, stage, onClose, onDone }) {
             {task.taskFormAttachments.map((att, idx) => (
               <a
                 key={idx}
-                href={`${API_ORIGIN}${att.fileUrl}`}
+                href={getAttachmentUrl(att.fileUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-500 hover:underline"
@@ -371,7 +377,7 @@ function ReviewModal({ task, stage, onClose, onDone }) {
                     ].submissionAttachments.map((att, i) => (
                       <a
                         key={i}
-                        href={`${API_ORIGIN}${att.fileUrl}`}
+                        href={getAttachmentUrl(att.fileUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline"
@@ -805,7 +811,7 @@ function ActivityDrawer({ task, onClose }) {
                       {item.attachments.map((att, aIdx) => (
                         <a
                           key={aIdx}
-                          href={`${API_ORIGIN}${att.fileUrl}`}
+                          href={getAttachmentUrl(att.fileUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-500 hover:underline text-[10px]"
@@ -1010,7 +1016,7 @@ export default function TaskCard({ task, onUpdate }) {
                     {task.taskFormAttachments.map((att, idx) => (
                       <a
                         key={idx}
-                        href={`${API_ORIGIN}${att.fileUrl}`}
+                        href={getAttachmentUrl(att.fileUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-500 hover:underline"
@@ -1053,7 +1059,7 @@ export default function TaskCard({ task, onUpdate }) {
                     {subAtts.map((att, i) => (
                       <a
                         key={i}
-                        href={`${API_ORIGIN}${att.fileUrl}`}
+                        href={getAttachmentUrl(att.fileUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5"

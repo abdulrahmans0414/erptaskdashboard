@@ -303,7 +303,7 @@ export default function Sidebar({
         >
           {user?.avatar ? (
             <img
-              src={`${API_ORIGIN}${user.avatar}`}
+              src={user.avatar.startsWith("http") ? user.avatar : `${API_ORIGIN}${user.avatar}`}
               alt=""
               className="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow"
             />

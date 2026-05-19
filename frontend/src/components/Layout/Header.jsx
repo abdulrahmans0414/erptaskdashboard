@@ -124,7 +124,7 @@ const Header = ({
             >
               {user?.avatar ? (
                 <img
-                  src={`${API_ORIGIN}${user.avatar}`}
+                  src={user.avatar.startsWith("http") ? user.avatar : `${API_ORIGIN}${user.avatar}`}
                   className="w-8 h-8 rounded-full object-cover ring-2 ring-white shadow"
                   alt={user?.name}
                 />
@@ -163,7 +163,7 @@ const Header = ({
                   <div className="flex items-center gap-3">
                     {user?.avatar ? (
                       <img
-                        src={`${API_ORIGIN}${user.avatar}`}
+                        src={user.avatar.startsWith("http") ? user.avatar : `${API_ORIGIN}${user.avatar}`}
                         alt=""
                         className="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow"
                       />
