@@ -438,14 +438,14 @@ export const sendEmailNotification = async (toEmail, type, data, attachments = [
         // Format attachments for nodemailer
         const mailAttachments = (attachments || []).map(att => {
             if (!att.fileUrl) return null;
-            // Nodemailer automatically fetches HTTP/HTTPS URLs when provided in path
+            // Nodemailer automatically fetches HTTP/HTTPS URLs when provided in 'href'
             if (att.fileUrl.startsWith('http://') || att.fileUrl.startsWith('https://')) {
                 return {
                     filename: att.filename,
-                    path: att.fileUrl
+                    href: att.fileUrl
                 };
             }
-            // Fallback for legacy local disk uploads
+            // Fallback for legacy local disk uploads uses 'path'
             return {
                 filename: att.filename,
                 path: process.cwd() + att.fileUrl
