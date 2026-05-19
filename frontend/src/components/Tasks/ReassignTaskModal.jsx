@@ -42,9 +42,22 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
         assignedTo: selectedUser,
         reason: reason || "Task reassigned",
       });
-      toast.success("Task reassigned successfully!");
+      
+      setLoading(false);
+      toast.success("✅ Task reassigned successfully!", {
+        duration: 4000,
+        style: { fontWeight: "600" }
+      });
+      
       if (onUpdated) onUpdated();
       onClose();
+      
+      // Wipe internal state
+      setSelectedUser("");
+      setSearch("");
+      setReason("");
+      
+      return;
     } catch (e) {
       const msg = e.response?.data?.message || "Failed to reassign";
       toast.error(msg);

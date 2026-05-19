@@ -185,15 +185,30 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       } else {
         await createTask(taskData);
       }
-      toast.success("Task created successfully!");
+      
+      // Stop loading before we do UI transitions
+      setLoading(false);
+      
+      // Beautiful feedback popup
+      toast.success("✅ Task created successfully!", {
+        duration: 4000,
+        style: { fontWeight: "600" }
+      });
+      
+      // Inform parent to refresh tasks
       if (onTaskCreated) onTaskCreated();
-      onClose();
+      
+      // Cleanly reset form states and close modal explicitly
       resetForm();
+      onClose();
+      
+      return; // Early return prevents finally block from executing
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to create task";
       toast.error(msg);
       setError(msg);
     } finally {
+      // Only runs if it throws or fails
       setLoading(false);
     }
   };

@@ -53,9 +53,25 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
     setError("");
     try {
       await updateTask(task._id, formData);
-      toast.success("Task updated successfully!");
+      setLoading(false);
+      
+      toast.success("✅ Task updated successfully!", {
+        duration: 4000,
+        style: { fontWeight: "600" }
+      });
+      
       if (onUpdated) onUpdated();
       onClose();
+      
+      // Wipe internal state completely
+      setFormData({
+        title: "", description: "", department: "",
+        assignedTo: "", dueDate: "", priority: "medium",
+        estimatedHours: "", estimatedMinutes: "",
+      });
+      setUserSearch("");
+      
+      return;
     } catch (error) {
       console.error("Error updating task:", error);
       toast.error(error.response?.data?.message || "Failed to update task");

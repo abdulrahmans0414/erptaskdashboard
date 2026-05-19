@@ -73,23 +73,50 @@ export default function NotificationBell() {
     return () => clearInterval(id);
   }, []);
 
-  const handleRead = async (id) => {
-    await markAsRead(id);
-    setNotifications((n) =>
-      n.map((x) => (x._id === id ? { ...x, isRead: true } : x)),
+  // ─── OPTIMISTIC UI: state mutations BEFORE API call ─────────────────────────
+  const handleRead = (id) => {
+    // 1. Instant local mutation — UI updates NOW
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
     );
     setUnread((u) => Math.max(0, u - 1));
+
+    // 2. Fire API in background — no await, no blocking
+    markAsRead(id).catch(() => {
+      // On failure, revert the optimistic mutation
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: false } : n))
+      );
+      setUnread((u) => u + 1);
+    });
   };
 
-  const handleReadAll = async () => {
-    await markAllAsRead();
-    setNotifications((n) => n.map((x) => ({ ...x, isRead: true })));
+  const handleReadAll = () => {
+    const prevNotifs = notifications;
+    const prevUnread = unread;
+
+    // 1. Instant local mutation
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnread(0);
+
+    // 2. Fire API in background
+    markAllAsRead().catch(() => {
+      // On failure, revert
+      setNotifications(prevNotifs);
+      setUnread(prevUnread);
+    });
   };
 
-  const handleDelete = async (id) => {
-    await deleteNotification(id);
-    setNotifications((n) => n.filter((x) => x._id !== id));
+  const handleDelete = (id) => {
+    const prevNotifs = notifications;
+
+    // 1. Instant local mutation
+    setNotifications((prev) => prev.filter((n) => n._id !== id));
+
+    // 2. Fire API in background
+    deleteNotification(id).catch(() => {
+      setNotifications(prevNotifs);
+    });
   };
 
   const visible =

@@ -93,11 +93,20 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
       const result = await submitTaskWithAttachments(task._id, formData);
 
       if (result?.data?.success !== false) {
-        toast.success("Task submitted successfully!");
-        onSubmitted();
+        setLoading(false);
+        toast.success("✅ Task submitted successfully!", {
+          duration: 4000,
+          style: { fontWeight: "600" }
+        });
+        
+        if (onSubmitted) onSubmitted();
         onClose();
+        
+        // Wipe internal state completely
         setNote("");
         setAttachments([]);
+        
+        return;
       } else {
         const msg = result?.data?.message || "Failed to submit task";
         toast.error(msg);
