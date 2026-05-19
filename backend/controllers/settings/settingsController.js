@@ -30,17 +30,19 @@ export const getSettings = async (req, res) => {
     }
 };
 
-// @desc    Update system settings (Departments, Branches, Custom Fields)
+// @desc    Update system settings (Departments, Branches, Custom Fields, Email Routing)
 // @route   PUT /api/settings
 // @access  Admin
 export const updateSettings = async (req, res) => {
     try {
-        const { departments, branches, userCustomFields, emailConfig } = req.body;
+        const { departments, branches, userCustomFields, emailConfig, departmentEmails, branchEmails } = req.body;
         const settings = await getOrCreateSettings();
 
         if (departments) settings.departments = departments;
         if (branches) settings.branches = branches;
         if (userCustomFields) settings.userCustomFields = userCustomFields;
+        if (departmentEmails) settings.departmentEmails = departmentEmails;
+        if (branchEmails) settings.branchEmails = branchEmails;
         if (emailConfig) {
             // Only update the password if a new one is provided (or if we explicitly want to clear it)
             // If the frontend sends '********', it means password wasn't changed.

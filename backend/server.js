@@ -20,6 +20,7 @@ import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import hpp from 'hpp';
 import { initializeTokenCleanup, checkTokenBlacklist } from './middleware/tokenBlacklist.js';
+import { startEmailWorker } from './workers/emailWorker.js';
 import logger from './logger.js';
 
 // Load .env FIRST before anything else
@@ -193,6 +194,9 @@ const startServer = async () => {
 
     // Initialize token cleanup background job
     initializeTokenCleanup();
+
+    // Start background email IMAP sync worker (node-cron)
+    startEmailWorker();
 
     // Auto-seed if database is empty
     const userCount = await User.countDocuments();
