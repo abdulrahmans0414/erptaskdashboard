@@ -436,14 +436,21 @@ export const sendEmailNotification = async (toEmail, type, data, attachments = [
         const subject = getTaskSubject(type, data);
 
         // Format attachments for nodemailer
-        const mailAttachments = (attachments || []).map(att => ({
-            filename: att.filename,
-            // Assuming fileUrl is a relative path like /uploads/...
-            // Need to convert it to absolute path if we want to attach from file system,
-            // OR if it's stored on disk, we can use `path: process.cwd() + att.fileUrl`.
-            // For safety, let's use path
-            path: att.fileUrl ? process.cwd() + att.fileUrl : undefined
-        })).filter(att => att.path);
+        const mailAttachments = (attachments || []).map(att => {
+            if (!att.fileUrl) return null;
+            // Nodemailer automatically fetches HTTP/HTTPS URLs when provided in path
+            if (att.fileUrl.startsWith('http://') || att.fileUrl.startsWith('https://')) {
+                return {
+                    filename: att.filename,
+                    path: att.fileUrl
+                };
+            }
+            // Fallback for legacy local disk uploads
+            return {
+                filename: att.filename,
+                path: process.cwd() + att.fileUrl
+            };
+        }).filter(Boolean);
 
         await transporter.sendMail({
             from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>`,
