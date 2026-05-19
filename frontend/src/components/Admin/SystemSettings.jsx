@@ -239,11 +239,88 @@ const EmailConfigPanel = ({ showToast }) => {
   );
 };
 
+/* ─── Email Routing Panel (CC Config) ───────────────────────────── */
+const EmailRoutingPanel = ({ departments, branches, settings, updateSettings, showToast }) => {
+  const [deptEmails, setDeptEmails] = useState({});
+  const [branchEmails, setBranchEmails] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setDeptEmails(settings.departmentEmails || {});
+      setBranchEmails(settings.branchEmails || {});
+    }
+  }, [settings]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateSettings({ departmentEmails: deptEmails, branchEmails });
+      showToast("Email routing saved successfully!");
+    } catch {
+      showToast("Failed to save email routing", "error");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="font-bold text-gray-800 flex items-center gap-2"><span>🔄</span> Automated Email Routing (CC)</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Automatically CC a specific email address when a task is submitted in a department or branch.</p>
+        </div>
+        <button onClick={handleSave} disabled={saving}
+          className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition shadow-md shadow-blue-200/70">
+          {saving ? "Saving..." : "💾 Save Routing"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+        {/* Department Emails */}
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+          <h4 className="font-bold text-sm text-gray-700 mb-3 flex items-center gap-2">🏢 Department Routing</h4>
+          <div className="space-y-3">
+            {departments.length === 0 ? <p className="text-xs text-gray-400 italic">No departments configured.</p> : null}
+            {departments.map(dept => (
+              <div key={dept} className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-600">{dept} Email</label>
+                <input type="email" placeholder={`e.g. ${dept.toLowerCase().replace(/\s/g, '')}@spis.in`}
+                  value={deptEmails[dept] || ""}
+                  onChange={(e) => setDeptEmails({ ...deptEmails, [dept]: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Branch Emails */}
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+          <h4 className="font-bold text-sm text-gray-700 mb-3 flex items-center gap-2">📍 Branch Routing</h4>
+          <div className="space-y-3">
+            {branches.length === 0 ? <p className="text-xs text-gray-400 italic">No branches configured.</p> : null}
+            {branches.map(branch => (
+              <div key={branch} className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-600">{branch} Email</label>
+                <input type="email" placeholder={`e.g. ${branch.toLowerCase().replace(/\s/g, '')}@spis.in`}
+                  value={branchEmails[branch] || ""}
+                  onChange={(e) => setBranchEmails({ ...branchEmails, [branch]: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ─── Main Component ─────────────────────────────────────────────── */
 const TABS = [
   { id: "org", label: "Organization", icon: "🏢" },
   { id: "fields", label: "Custom Fields", icon: "🧩" },
-  { id: "email", label: "Email Config", icon: "📧" },
+  { id: "email", label: "SMTP Config", icon: "📧" },
+  { id: "routing", label: "Email Routing", icon: "🔄" },
 ];
 
 const SystemSettings = () => {
@@ -327,6 +404,9 @@ const SystemSettings = () => {
         )}
         {activeTab === "email" && (
           <EmailConfigPanel showToast={showToast} />
+        )}
+        {activeTab === "routing" && (
+          <EmailRoutingPanel departments={departments} branches={branches} settings={settings} updateSettings={updateSettings} showToast={showToast} />
         )}
       </div>
     </div>

@@ -1,18 +1,30 @@
 import express from 'express';
-import { protect } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import {
     getEmailLogs,
+    getEmailLogById,
+    getEmailStats,
     deleteEmailLog,
-    resendEmailLog
+    bulkDeleteEmailLogs,
+    resendEmail,
+    syncFromGmail
 } from '../controllers/emailLogController.js';
 
 const router = express.Router();
 
-// All routes here are protected by JWT authentication
+// All routes require authentication
 router.use(protect);
 
+// Require admin or IT role for email logs
+router.use(authorize('admin', 'it'));
+
+router.get('/stats', getEmailStats);
+router.post('/sync', syncFromGmail);
+router.delete('/bulk', bulkDeleteEmailLogs);
+
 router.get('/', getEmailLogs);
+router.get('/:id', getEmailLogById);
 router.delete('/:id', deleteEmailLog);
-router.post('/:id/resend', resendEmailLog);
+router.post('/:id/resend', resendEmail);
 
 export default router;

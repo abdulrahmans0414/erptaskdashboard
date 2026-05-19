@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getEmailLogs, deleteEmailLog, resendEmailLog } from '../../services/api/emailLogApi';
+import { getEmailLogs, deleteEmailLog, resendEmailLog, bulkDeleteEmailLogs, syncFromGmail } from '../../services/api/emailLogApi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,6 +16,7 @@ export default function EmailCenter() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFolder, setActiveFolder] = useState('ALL'); // ALL, TASKS, SECURITY, WELCOME, SENT, FAILED
     const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1, limit: 15 });
+    const [selectedIds, setSelectedIds] = useState(new Set());
     
     // Preview Email Modal State
     const [selectedEmail, setSelectedEmail] = useState(null);
@@ -64,7 +65,10 @@ export default function EmailCenter() {
             }
         } catch (error) {
             console.error('Failed to load email logs:', error);
-            toast.error(error.response?.data?.message || 'Error fetching email logs');
+            // Ignore cancel errors if using axios cancel tokens, otherwise show toast
+            if (error.code !== 'ERR_CANCELED') {
+                toast.error(error.response?.data?.message || 'Error fetching email logs');
+            }
         } finally {
             setLoading(false);
         }
@@ -77,7 +81,16 @@ export default function EmailCenter() {
         }, 300);
 
         return () => clearTimeout(delaySearch);
-    }, [activeFolder, searchQuery]);
+    }, [activeFolder, searchQuery, fetchLogs]);
+
+    // Listen for realtime email log updates
+    useEffect(() => {
+        const handleInvalidate = () => {
+            fetchLogs(pagination.page);
+        };
+        window.addEventListener('invalidate_emails', handleInvalidate);
+        return () => window.removeEventListener('invalidate_emails', handleInvalidate);
+    }, [pagination.page, fetchLogs]);
 
     // Handle Delete
     const handleDelete = async (id, e) => {
@@ -102,6 +115,46 @@ export default function EmailCenter() {
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to delete email log');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Handle Bulk Delete
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
+        if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} email log(s)?`)) return;
+
+        setActionLoading(true);
+        try {
+            const response = await bulkDeleteEmailLogs({ ids: Array.from(selectedIds) });
+            if (response.data.success) {
+                toast.success(response.data.message || 'Emails deleted successfully');
+                setSelectedIds(new Set());
+                fetchLogs(pagination.page);
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete email logs');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Handle Manual Sync
+    const handleSync = async () => {
+        setActionLoading(true);
+        const syncPromise = syncFromGmail();
+        toast.promise(syncPromise, {
+            loading: 'Syncing from Gmail via IMAP...',
+            success: (res) => res.data.message || 'Sync complete',
+            error: (err) => err.response?.data?.message || 'Sync failed'
+        });
+
+        try {
+            await syncPromise;
+            fetchLogs(1);
+        } catch (error) {
+            console.error('Sync error:', error);
         } finally {
             setActionLoading(false);
         }
@@ -222,6 +275,16 @@ export default function EmailCenter() {
 
                 {/* Right Profile Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0">
+                    {isAdmin && (
+                        <button 
+                            onClick={handleSync} 
+                            disabled={loading || actionLoading}
+                            className="p-2 hover:bg-slate-200/60 rounded-full text-blue-600 transition disabled:opacity-50 hidden sm:flex items-center justify-center bg-blue-50"
+                            title="Sync from Gmail (IMAP)"
+                        >
+                            📥
+                        </button>
+                    )}
                     <button 
                         onClick={() => fetchLogs(pagination.page)} 
                         disabled={loading || actionLoading}
@@ -318,10 +381,31 @@ export default function EmailCenter() {
                         {/* Checkbox selector */}
                         <div className="flex items-center gap-3">
                             <input 
-                                type="checkbox" 
+                                type="checkbox"
+                                checked={logs.length > 0 && selectedIds.size === logs.length}
+                                onChange={(e) => {
+                                    if (e.target.checked) {
+                                        setSelectedIds(new Set(logs.map(l => l._id)));
+                                    } else {
+                                        setSelectedIds(new Set());
+                                    }
+                                }}
                                 className="rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer hidden sm:block" 
                             />
-                            <span className="text-slate-400 text-xs hidden sm:inline select-none">Select All</span>
+                            {selectedIds.size > 0 ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-600 text-xs font-semibold select-none hidden sm:inline">{selectedIds.size} selected</span>
+                                    <button 
+                                        onClick={handleBulkDelete}
+                                        disabled={actionLoading}
+                                        className="text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 py-1 rounded-lg font-semibold transition flex items-center gap-1"
+                                    >
+                                        🗑️ Delete
+                                    </button>
+                                </div>
+                            ) : (
+                                <span className="text-slate-400 text-xs hidden sm:inline select-none">Select All</span>
+                            )}
                         </div>
 
                         {/* Pagination controls */}
@@ -390,7 +474,14 @@ export default function EmailCenter() {
                                             {/* Left Icons Selection & Star */}
                                             <div className="flex items-center gap-3 flex-shrink-0">
                                                 <input 
-                                                    type="checkbox" 
+                                                    type="checkbox"
+                                                    checked={selectedIds.has(log._id)}
+                                                    onChange={(e) => {
+                                                        const newSet = new Set(selectedIds);
+                                                        if (e.target.checked) newSet.add(log._id);
+                                                        else newSet.delete(log._id);
+                                                        setSelectedIds(newSet);
+                                                    }}
                                                     onClick={(e) => e.stopPropagation()} 
                                                     className="rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer hidden sm:block" 
                                                 />

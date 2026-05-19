@@ -12,7 +12,8 @@ eventBus.setMaxListeners(100);
 export const EVENTS = {
     TASK_UPDATED: 'task_updated',
     USER_UPDATED: 'user_updated',
-    STATS_UPDATED: 'stats_updated'
+    STATS_UPDATED: 'stats_updated',
+    EMAIL_LOG_UPDATED: 'email_log_updated'
 };
 
 export const emitDataChange = (userId, type, payload) => {

@@ -94,6 +94,10 @@ export const useRealtimeSync = (isAuthenticated) => {
                 }
             });
 
+            es.addEventListener('invalidate_emails', () => {
+                window.dispatchEvent(new Event('invalidate_emails'));
+            });
+
             es.addEventListener('profile', (event) => {
                 try {
                     const user = JSON.parse(event.data);

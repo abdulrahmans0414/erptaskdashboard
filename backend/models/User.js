@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    avatarPublicId: {         // Cloudinary public_id for deletion
+        type: String,
+        default: null
+    },
     phone: {
         type: String,
         default: null

@@ -14,3 +14,13 @@ export const deleteEmailLog = (id) => {
 export const resendEmailLog = (id) => {
     return api.post(`/email-logs/${id}/resend`);
 };
+
+// Bulk delete email logs
+export const bulkDeleteEmailLogs = (data) => {
+    return api.delete(`/email-logs/bulk`, { data });
+};
+
+// Sync emails from Gmail (Manual trigger)
+export const syncFromGmail = () => {
+    return api.post(`/email-logs/sync`);
+};

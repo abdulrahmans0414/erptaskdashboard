@@ -1,11 +1,6 @@
 import User from '../../models/User.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import eventBus, { EVENTS } from '../../utils/eventBus.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { deleteFromCloudinary } from '../../middleware/uploadMiddleware.js';
 
 // @desc    Get all users (with pagination, search, and data isolation)
 export const getAllUsers = async (req, res) => {
@@ -225,41 +220,36 @@ export const getUsersByBranch = async (req, res) => {
     }
 };
 
-// @desc    Upload avatar (Admin only)
+// @desc    Upload avatar - uses Cloudinary via uploadSingleToCloudinary middleware
 export const uploadAvatar = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
-        
-        if (!req.file) {
+
+        if (!req.uploadedFile) {
             return res.status(400).json({ success: false, message: 'No image uploaded' });
         }
 
-        // Delete old avatar if it exists
-        if (user.avatar) {
-            try {
-                const oldImagePath = path.join(__dirname, '..', '..', user.avatar);
-                if (fs.existsSync(oldImagePath)) {
-                    fs.unlinkSync(oldImagePath);
-                }
-            } catch (err) {
-                console.error("Error deleting old avatar:", err);
-            }
+        // Delete old avatar from Cloudinary if it exists and has a publicId
+        if (user.avatarPublicId) {
+            await deleteFromCloudinary(user.avatarPublicId);
         }
-        
-        user.avatar = `/uploads/avatars/${req.file.filename}`;
+
+        // Save Cloudinary URL (permanent CDN link)
+        user.avatar = req.uploadedFile.fileUrl;
+        user.avatarPublicId = req.uploadedFile.publicId;
         await user.save();
-        
-        res.json({ 
-            success: true, 
-            data: { 
+
+        res.json({
+            success: true,
+            data: {
                 avatar: user.avatar,
                 _id: user._id,
-                name: user.name 
+                name: user.name
             },
-            message: 'Avatar updated successfully' 
+            message: 'Avatar updated successfully'
         });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {

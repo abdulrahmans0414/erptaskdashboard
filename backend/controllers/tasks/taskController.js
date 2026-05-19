@@ -1,14 +1,10 @@
 import Task from '../../models/Task.js';
 import User from '../../models/User.js';
 import Notification from '../../models/Notification.js';
+import Settings from '../../models/Settings.js';
 import { sendEmailNotification } from '../../utils/emailService.js';
 import eventBus, { emitDataChange, EVENTS } from '../../utils/eventBus.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // ============ HELPER FUNCTIONS ============
 const createNotification = async (userId, title, message, type, taskId) => {
@@ -81,14 +77,15 @@ export const createTask = async (req, res) => {
             taskFormAttachments: []
         };
 
-        // Optional form uploads (multipart)
-        const uploadedFormFiles = req.files?.taskFormFiles || [];
+        // Optional form uploads via Cloudinary middleware
+        const uploadedFormFiles = req.uploadedFiles || [];
         if (uploadedFormFiles.length > 0) {
             taskData.taskFormAttachments = uploadedFormFiles.map(f => ({
-                filename: f.originalname,
-                fileUrl: `/uploads/tasks/forms/${f.filename}`,
-                fileType: f.mimetype,
-                fileSize: f.size
+                filename: f.filename,
+                fileUrl: f.fileUrl,        // Cloudinary CDN URL - permanent
+                publicId: f.publicId,      // For future deletion
+                fileType: f.mimeType,
+                fileSize: f.fileSize
             }));
         }
         
@@ -520,12 +517,13 @@ export const submitTaskWithTime = async (req, res) => {
                 progress.submittedAt = new Date();
                 progress.submissionNote = submissionNote;
 
-                // Store attachments as a comment on the member's progress (keeps schema compatible)
-                const uploaded = (req.files || []).map(f => ({
-                    filename: f.originalname,
-                    fileUrl: `/uploads/tasks/submissions/${f.filename}`,
-                    fileType: f.mimetype,
-                    fileSize: f.size
+                // Store attachments from Cloudinary middleware
+                const uploaded = (req.uploadedFiles || []).map(f => ({
+                    filename: f.filename,
+                    fileUrl: f.fileUrl,
+                    publicId: f.publicId,
+                    fileType: f.mimeType,
+                    fileSize: f.fileSize
                 }));
                 if (uploaded.length > 0) {
                     if (!progress.comments) progress.comments = [];
@@ -573,11 +571,12 @@ export const submitTaskWithTime = async (req, res) => {
             currentAttempt.submittedAt = now;
             currentAttempt.timeSpent = timeSpent;
             currentAttempt.submissionNote = submissionNote;
-            const uploaded = (req.files || []).map(f => ({
-                filename: f.originalname,
-                fileUrl: `/uploads/tasks/submissions/${f.filename}`,
-                fileType: f.mimetype,
-                fileSize: f.size
+            const uploaded = (req.uploadedFiles || []).map(f => ({
+                filename: f.filename,
+                fileUrl: f.fileUrl,
+                publicId: f.publicId,
+                fileType: f.mimeType,
+                fileSize: f.fileSize
             }));
             if (uploaded.length > 0) currentAttempt.submissionAttachments = uploaded;
             currentAttempt.status = 'submitted';
@@ -637,7 +636,7 @@ export const submitTaskWithTime = async (req, res) => {
                     'task_submitted',
                     task._id
                 );
-                
+
                 if (reviewer.email) {
                     const attachmentNames = uploadedFiles.map(f => f.filename).join(', ');
                     await sendEmailNotification(
@@ -646,6 +645,9 @@ export const submitTaskWithTime = async (req, res) => {
                         {
                             employeeName: reviewer.name,
                             taskTitle: task.title,
+                            dueDate: task.dueDate,
+                            priority: task.priority,
+                            department: task.department,
                             feedback: `${req.user.name} has submitted this task for your review.\n\nSubmission Note: ${submissionNote}${attachmentNames ? `\n\nAttachments: ${attachmentNames}` : ''}`,
                             taskId: task._id,
                             senderId: req.user._id
@@ -653,6 +655,38 @@ export const submitTaskWithTime = async (req, res) => {
                         uploadedFiles
                     );
                 }
+            }
+
+            // CC to department/branch configured email in Settings
+            try {
+                const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' }).lean();
+                const deptEmail = settings?.departmentEmails?.[task.department];
+                const branchEmail = settings?.branchEmails?.[task.branch];
+
+                if (deptEmail) {
+                    await sendEmailNotification(deptEmail, 'TASK_SUBMITTED', {
+                        employeeName: `${task.department} Dept`,
+                        taskTitle: task.title,
+                        dueDate: task.dueDate,
+                        priority: task.priority,
+                        department: task.department,
+                        feedback: `[CC] ${req.user.name} submitted "${task.title}" for review.`,
+                        taskId: task._id
+                    });
+                }
+                if (branchEmail && branchEmail !== deptEmail) {
+                    await sendEmailNotification(branchEmail, 'TASK_SUBMITTED', {
+                        employeeName: `${task.branch} Branch`,
+                        taskTitle: task.title,
+                        dueDate: task.dueDate,
+                        priority: task.priority,
+                        department: task.department,
+                        feedback: `[CC] ${req.user.name} submitted "${task.title}" for review.`,
+                        taskId: task._id
+                    });
+                }
+            } catch (e) {
+                console.warn('CC email error (non-fatal):', e.message);
             }
         }
 
@@ -801,23 +835,64 @@ export const reviewTask = async (req, res) => {
 
         await task.save();
 
-        // Notifications
-        const notifTitle = status === 'approved' ? '✅ Task Approved' : '❌ Task Rejected';
-        const notifMsg = status === 'approved' 
-            ? `Your task "${task.title}" has been approved.` 
-            : `Your task "${task.title}" was rejected. Reason: ${adminComments || 'Please check feedback'}`;
-        
-        await createNotification(task.assignedTo, notifTitle, notifMsg, status === 'approved' ? 'task_approved' : 'task_rejected', task._id);
-
+        // ── Email routing based on review stage ──────────────────────────────
         const assignee = await User.findById(task.assignedTo).select('email name');
-        if (assignee && assignee.email) {
-            await sendEmailNotification(assignee.email, status === 'approved' ? 'TASK_APPROVED' : 'TASK_REJECTED', {
-                employeeName: assignee.name,
-                taskTitle: task.title,
-                feedback: adminComments,
-                taskId: task._id,
-                senderId: req.user._id
-            });
+
+        if (isDeptReviewer && status === 'approved') {
+            // Dept head approved → notify Branch Head to do second review
+            const branchHead = task.branchHead
+                ? await User.findById(task.branchHead).select('email name')
+                : await User.findOne({ role: 'branch-head', branch: task.branch }).select('email name');
+
+            if (branchHead) {
+                await createNotification(
+                    branchHead._id,
+                    'Task Ready for Branch Review',
+                    `Dept Head approved "${task.title}". Please do final review.`,
+                    'task_submitted',
+                    task._id
+                );
+                if (branchHead.email) {
+                    await sendEmailNotification(branchHead.email, 'TASK_SUBMITTED', {
+                        employeeName: branchHead.name,
+                        taskTitle: task.title,
+                        dueDate: task.dueDate,
+                        priority: task.priority,
+                        department: task.department,
+                        feedback: `Department Head (${req.user.name}) approved this task. It now requires your final branch review.`,
+                        taskId: task._id,
+                        senderId: req.user._id
+                    });
+                }
+            }
+        } else {
+            // Approved fully (by admin/branch head) OR Rejected at any stage → notify employee
+            const notifTitle = status === 'approved' ? '✅ Task Approved!' : '❌ Task Needs Rework';
+            const notifMsg = status === 'approved'
+                ? `Your task "${task.title}" has been fully approved. Great work! 🎉`
+                : `Your task "${task.title}" was rejected. Reason: ${adminComments || 'Please check feedback'}`;
+
+            if (task.assignedTo) {
+                await createNotification(task.assignedTo, notifTitle, notifMsg,
+                    status === 'approved' ? 'task_approved' : 'task_rejected', task._id);
+            }
+
+            if (assignee?.email) {
+                await sendEmailNotification(
+                    assignee.email,
+                    status === 'approved' ? 'TASK_APPROVED' : 'TASK_REJECTED',
+                    {
+                        employeeName: assignee.name,
+                        taskTitle: task.title,
+                        dueDate: task.dueDate,
+                        priority: task.priority,
+                        department: task.department,
+                        feedback: adminComments,
+                        taskId: task._id,
+                        senderId: req.user._id
+                    }
+                );
+            }
         }
 
         const populatedTask = await Task.findById(task._id).populate('assignedTo assignedBy assignedTeam', 'name email department');

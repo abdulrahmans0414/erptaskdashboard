@@ -1,316 +1,281 @@
+/**
+ * emailLogController.js
+ * 
+ * Fast, reliable email log management using MongoDB as single source of truth.
+ * NO IMAP calls on page load — those were causing 5-30 second delays.
+ * All emails sent by the system are already logged to MongoDB via emailService.js.
+ * 
+ * Features:
+ *  - In-memory cache with 2-minute TTL (avoids hammering MongoDB on every SSE reload)
+ *  - Full CRUD: list, get, delete, bulk-delete, resend
+ *  - Optional manual IMAP sync (triggered by user, not auto-loaded)
+ *  - Stats aggregation (cached separately)
+ */
+
 import EmailLog from '../models/EmailLog.js';
 import { resendLoggedEmail } from '../utils/emailService.js';
-import { fetchGmailMails } from '../utils/gmailImapService.js';
-import { ImapFlow } from 'imapflow';
-import Settings from '../models/Settings.js';
 
-// Helper to get IMAP credentials (strips spaces from app passwords)
-const getImapCredentials = async () => {
-    let user = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '';
-    let pass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s/g, '') : '';
+// ─── In-Memory Cache ────────────────────────────────────────────────────────
+// Simple TTL cache to avoid repeated DB queries on rapid page refreshes.
+// Cleared on any write operation (delete, resend, new email sent).
+const _cache = new Map();
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
-    try {
-        const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
-        if (settings?.emailConfig?.user && settings?.emailConfig?.pass) {
-            user = settings.emailConfig.user.trim();
-            pass = settings.emailConfig.pass.replace(/\s/g, '');
-        }
-    } catch (e) {
-        // Ignore DB error, use .env fallback
+const cacheGet = (key) => {
+    const entry = _cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.ts > CACHE_TTL_MS) {
+        _cache.delete(key);
+        return null;
     }
-
-    return { user, pass };
+    return entry.data;
 };
 
-// @desc    Get all email logs (MongoDB primary, Gmail IMAP optional enrichment)
-// @route   GET /api/email-logs
-// @access  Private
+const cacheSet = (key, data) => _cache.set(key, { data, ts: Date.now() });
+
+export const cacheClear = () => _cache.clear();
+
+// ─── GET EMAIL LOGS ─────────────────────────────────────────────────────────
 export const getEmailLogs = async (req, res) => {
     try {
-        const { page = 1, limit = 15, search = '', type, status } = req.query;
-        const pageNumber = parseInt(page, 10);
-        const limitNumber = parseInt(limit, 10);
-        const skip = (pageNumber - 1) * limitNumber;
+        const {
+            page = 1,
+            limit = 20,
+            type,
+            status,
+            search,
+            startDate,
+            endDate,
+        } = req.query;
 
-        // Try fetching real-time emails directly from Gmail IMAP (optional enrichment)
-        const { user: imapUser, pass: imapPass } = await getImapCredentials();
-        if (imapUser && imapPass) {
-            try {
-                let folder = 'ALL';
-                if (status === 'sent') folder = 'SENT';
-                else if (status === 'failed') folder = 'FAILED';
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const skip = (pageNum - 1) * limitNum;
 
-                let mappedType = 'ALL';
-                if (type === 'OTP') mappedType = 'SECURITY';
-                else if (type === 'WELCOME') mappedType = 'WELCOME';
-                else if (type === 'TASK_ASSIGNED' || type === 'TASKS') mappedType = 'TASKS';
-
-                const result = await fetchGmailMails(req.user.email, req.user.role, {
-                    folder,
-                    search,
-                    limit: limitNumber,
-                    page: pageNumber,
-                    type: mappedType
-                });
-
-                // fetchGmailMails returns null when credentials fail or IMAP is unavailable
-                if (result !== null) {
-                    return res.status(200).json({
-                        success: true,
-                        data: result.mails || [],
-                        pagination: {
-                            total: result.total || 0,
-                            page: result.page || pageNumber,
-                            pages: result.pages || 1,
-                            limit: result.limit || limitNumber
-                        }
-                    });
-                }
-            } catch (imapError) {
-                console.warn('⚠️ Gmail IMAP fetch failed, falling back to MongoDB logs:', imapError.message);
-            }
+        // Build cache key from query params
+        const cacheKey = `logs:${JSON.stringify(req.query)}`;
+        const cached = cacheGet(cacheKey);
+        if (cached) {
+            return res.json(cached);
         }
 
-        // ==================== PRIMARY: MONGO DB LOGS ====================
-        const queryFilter = {};
-
-        // Security scoping for non-admins
-        if (req.user.role !== 'admin') {
-            queryFilter.$or = [
-                { recipient: req.user.email.toLowerCase().trim() },
-                { senderId: req.user._id }
+        // Build MongoDB query
+        const query = {};
+        if (type && type !== 'all') query.type = type;
+        if (status && status !== 'all') query.status = status;
+        if (search) {
+            query.$or = [
+                { recipient: { $regex: search, $options: 'i' } },
+                { subject: { $regex: search, $options: 'i' } },
+                { contentSnippet: { $regex: search, $options: 'i' } },
             ];
         }
-
-        // Keyword Search
-        if (search && search.trim()) {
-            const searchRegex = new RegExp(search.trim(), 'i');
-            const searchCondition = {
-                $or: [
-                    { recipient: searchRegex },
-                    { subject: searchRegex },
-                    { contentSnippet: searchRegex }
-                ]
-            };
-
-            if (queryFilter.$or) {
-                queryFilter.$and = [
-                    { $or: queryFilter.$or },
-                    searchCondition
-                ];
-                delete queryFilter.$or;
-            } else {
-                Object.assign(queryFilter, searchCondition);
-            }
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = new Date(startDate);
+            if (endDate) query.createdAt.$lte = new Date(endDate);
         }
 
-        // Type filter
-        if (type && type !== 'ALL') {
-            queryFilter.type = type;
-        }
+        // Run count and data queries in parallel
+        const [logs, total] = await Promise.all([
+            EmailLog.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum)
+                .lean(),
+            EmailLog.countDocuments(query),
+        ]);
 
-        // Status filter
-        if (status && status !== 'ALL') {
-            queryFilter.status = status;
-        }
-
-        const totalLogs = await EmailLog.countDocuments(queryFilter);
-        const logs = await EmailLog.find(queryFilter)
-            .populate('taskId', 'title description priority dueDate status')
-            .populate('senderId', 'name email role')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limitNumber)
-            .lean();
-
-        res.status(200).json({
+        const response = {
             success: true,
             data: logs,
             pagination: {
-                total: totalLogs,
-                page: pageNumber,
-                pages: Math.ceil(totalLogs / limitNumber),
-                limit: limitNumber
-            }
-        });
+                total,
+                page: pageNum,
+                pages: Math.ceil(total / limitNum),
+                limit: limitNum,
+            },
+        };
+
+        cacheSet(cacheKey, response);
+        res.json(response);
     } catch (error) {
-        console.error('Error fetching email logs:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch email logs',
-            error: error.message
-        });
+        console.error('getEmailLogs error:', error.message);
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @desc    Delete an email (Directly from Gmail IMAP or MongoDB fallback)
-// @route   DELETE /api/email-logs/:id
-// @access  Private
+// ─── GET SINGLE EMAIL LOG ───────────────────────────────────────────────────
+export const getEmailLogById = async (req, res) => {
+    try {
+        const log = await EmailLog.findById(req.params.id).lean();
+        if (!log) {
+            return res.status(404).json({ success: false, message: 'Email log not found' });
+        }
+        res.json({ success: true, data: log });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ─── GET STATS ──────────────────────────────────────────────────────────────
+export const getEmailStats = async (req, res) => {
+    try {
+        const cached = cacheGet('stats');
+        if (cached) return res.json(cached);
+
+        const [total, sent, failed, byType] = await Promise.all([
+            EmailLog.countDocuments(),
+            EmailLog.countDocuments({ status: 'sent' }),
+            EmailLog.countDocuments({ status: 'failed' }),
+            EmailLog.aggregate([
+                { $group: { _id: '$type', count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+            ]),
+        ]);
+
+        const response = {
+            success: true,
+            data: {
+                total,
+                sent,
+                failed,
+                successRate: total > 0 ? Math.round((sent / total) * 100) : 0,
+                byType: Object.fromEntries(byType.map(t => [t._id, t.count])),
+            },
+        };
+
+        cacheSet('stats', response);
+        res.json(response);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ─── DELETE SINGLE LOG ──────────────────────────────────────────────────────
 export const deleteEmailLog = async (req, res) => {
     try {
-        const idOrUid = req.params.id;
-
-        // 1. If it's a Gmail IMAP UID (numeric string), delete directly from Gmail
-        if (/^\d+$/.test(idOrUid)) {
-            try {
-                const { user, pass } = await getImapCredentials();
-
-                if (user && pass) {
-                    const client = new ImapFlow({
-                        host: 'imap.gmail.com',
-                        port: 993,
-                        secure: true,
-                        auth: { user, pass },
-                        logger: false,
-                        tls: { rejectUnauthorized: false }
-                    });
-
-                    client.on('error', (err) => {
-                        console.warn('⚠️ ImapFlow delete connection warning:', err.message);
-                    });
-
-                    await client.connect();
-                    await client.mailboxOpen('[Gmail]/All Mail');
-                    await client.messageDelete(idOrUid);
-                    await client.logout();
-
-                    return res.status(200).json({
-                        success: true,
-                        message: 'Email successfully deleted from your Gmail!'
-                    });
-                }
-            } catch (err) {
-                console.warn('⚠️ Gmail direct deletion failed, checking MongoDB fallback:', err.message);
-            }
-        }
-
-        // 2. MongoDB fallback
-        const log = await EmailLog.findById(idOrUid);
-
+        const log = await EmailLog.findByIdAndDelete(req.params.id);
         if (!log) {
-            return res.status(404).json({
-                success: false,
-                message: 'Email record not found'
-            });
+            return res.status(404).json({ success: false, message: 'Email log not found' });
         }
-
-        // Authorization checks
-        if (
-            req.user.role !== 'admin' &&
-            log.recipient.toLowerCase().trim() !== req.user.email.toLowerCase().trim() &&
-            log.senderId?.toString() !== req.user._id.toString()
-        ) {
-            return res.status(403).json({
-                success: false,
-                message: 'You are not authorized to delete this log'
-            });
-        }
-
-        await EmailLog.findByIdAndDelete(idOrUid);
-
-        res.status(200).json({
-            success: true,
-            message: 'Email log successfully deleted'
-        });
+        cacheClear(); // Invalidate all caches after write
+        res.json({ success: true, message: 'Email log deleted' });
     } catch (error) {
-        console.error('Error deleting email log:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to delete email',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @desc    Resend a logged email
-// @route   POST /api/email-logs/:id/resend
-// @access  Private
-export const resendEmailLog = async (req, res) => {
+// ─── BULK DELETE ────────────────────────────────────────────────────────────
+export const bulkDeleteEmailLogs = async (req, res) => {
     try {
-        const logId = req.params.id;
-        let log = await EmailLog.findById(logId);
+        const { ids, filter } = req.body;
 
-        // If numeric UID (IMAP message), fetch details from Gmail first
-        if (!log && /^\d+$/.test(logId)) {
-            try {
-                const { user, pass } = await getImapCredentials();
+        let result;
+        if (ids && Array.isArray(ids) && ids.length > 0) {
+            // Delete specific IDs
+            result = await EmailLog.deleteMany({ _id: { $in: ids } });
+        } else if (filter) {
+            // Delete by filter (e.g. all failed, all older than X days)
+            const query = {};
+            if (filter.status) query.status = filter.status;
+            if (filter.type) query.type = filter.type;
+            if (filter.olderThanDays) {
+                query.createdAt = {
+                    $lt: new Date(Date.now() - filter.olderThanDays * 24 * 60 * 60 * 1000),
+                };
+            }
+            if (Object.keys(query).length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Provide specific IDs or a filter (status, type, olderThanDays)',
+                });
+            }
+            result = await EmailLog.deleteMany(query);
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: 'Provide ids array or filter object',
+            });
+        }
 
-                if (user && pass) {
-                    const client = new ImapFlow({
-                        host: 'imap.gmail.com',
-                        port: 993,
-                        secure: true,
-                        auth: { user, pass },
-                        logger: false,
-                        tls: { rejectUnauthorized: false }
-                    });
+        cacheClear();
+        res.json({
+            success: true,
+            message: `${result.deletedCount} email log(s) deleted`,
+            deletedCount: result.deletedCount,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 
-                    client.on('error', (err) => {
-                        console.warn('⚠️ ImapFlow resend connection warning:', err.message);
-                    });
+// ─── RESEND EMAIL ───────────────────────────────────────────────────────────
+export const resendEmail = async (req, res) => {
+    try {
+        const sent = await resendLoggedEmail(req.params.id);
+        cacheClear();
+        if (sent) {
+            res.json({ success: true, message: 'Email resent successfully' });
+        } else {
+            res.status(500).json({ success: false, message: 'Failed to resend email' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 
-                    await client.connect();
-                    await client.mailboxOpen('[Gmail]/All Mail');
-                    const msg = await client.fetchOne(logId, { envelope: true });
-                    await client.logout();
+// ─── MANUAL GMAIL IMAP SYNC (Optional, user-triggered) ─────────────────────
+// Called only when user clicks "Sync from Gmail" button.
+// NOT called on page load.
+export const syncFromGmail = async (req, res) => {
+    try {
+        const { fetchGmailMails } = await import('../utils/gmailImapService.js');
+        const mails = await fetchGmailMails(20);
 
-                    if (msg?.envelope) {
-                        const toAddr = msg.envelope.to?.[0];
-                        const toEmail = toAddr ? `${toAddr.mailbox}@${toAddr.host}` : req.user.email;
-                        log = await EmailLog.create({
-                            recipient: toEmail,
-                            subject: msg.envelope.subject || 'Resent Gmail Message',
-                            contentSnippet: 'Resent direct Gmail communication.',
-                            body: `<p>Resent copy of: <strong>${msg.envelope.subject}</strong> — originally sent on ${msg.envelope.date}.</p>`,
-                            type: 'WELCOME',
-                            status: 'sent',
-                            senderId: req.user._id
-                        });
-                    }
-                }
-            } catch (err) {
-                console.warn('⚠️ Gmail details fetch for resend failed:', err.message);
+        if (!mails || mails.length === 0) {
+            return res.json({
+                success: true,
+                message: 'No new emails found in Gmail inbox (IMAP may be unavailable or inbox is empty)',
+                synced: 0,
+            });
+        }
+
+        // Upsert by subject+recipient (avoid duplicates)
+        let synced = 0;
+        for (const mail of mails) {
+            const exists = await EmailLog.findOne({
+                recipient: mail.to || 'inbox',
+                subject: mail.subject,
+                createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+            }).select('_id');
+
+            if (!exists) {
+                await EmailLog.create({
+                    recipient: mail.to || 'inbox',
+                    subject: mail.subject || '(no subject)',
+                    type: 'INBOX',
+                    sender: mail.from,
+                    body: mail.body,
+                    contentSnippet: (mail.body || '').substring(0, 200),
+                    status: 'sent',
+                    source: 'gmail_sync',
+                });
+                synced++;
             }
         }
 
-        if (!log) {
-            return res.status(404).json({
-                success: false,
-                message: 'Email log not found for resend operation'
-            });
-        }
-
-        // Authorization
-        if (
-            req.user.role !== 'admin' &&
-            log.recipient.toLowerCase().trim() !== req.user.email.toLowerCase().trim() &&
-            log.senderId?.toString() !== req.user._id.toString()
-        ) {
-            return res.status(403).json({
-                success: false,
-                message: 'You are not authorized to resend this email'
-            });
-        }
-
-        const sent = await resendLoggedEmail(log._id);
-
-        if (sent) {
-            res.status(200).json({
-                success: true,
-                message: 'Email successfully resent!'
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: 'Failed to resend the email via SMTP'
-            });
-        }
+        cacheClear();
+        res.json({
+            success: true,
+            message: `Synced ${synced} new email(s) from Gmail`,
+            synced,
+        });
     } catch (error) {
-        console.error('Error resending email log:', error);
+        console.error('Gmail sync error:', error.message);
         res.status(500).json({
             success: false,
-            message: 'An error occurred during the resending process',
-            error: error.message
+            message: `Gmail sync failed: ${error.message}. Check IMAP credentials.`,
         });
     }
 };

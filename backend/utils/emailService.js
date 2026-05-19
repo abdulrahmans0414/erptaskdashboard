@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 
 import Settings from '../models/Settings.js';
 import EmailLog from '../models/EmailLog.js';
+import eventBus, { EVENTS } from './eventBus.js';
 
 // ── Transporter ────────────────────────
 const createTransporter = async () => {
@@ -197,6 +198,7 @@ export const sendOTPEmail = async (toEmail, userName, otp, otpExpiresAt) => {
             contentSnippet: `OTP: ${otp}`,
             status: 'sent'
         });
+        eventBus.emit('data_change', { type: EVENTS.EMAIL_LOG_UPDATED });
 
         console.log(`✅ OTP email sent to ${toEmail}`);
         return true;
@@ -210,6 +212,7 @@ export const sendOTPEmail = async (toEmail, userName, otp, otpExpiresAt) => {
             status: 'failed',
             error: error.message
         });
+        eventBus.emit('data_change', { type: EVENTS.EMAIL_LOG_UPDATED });
         return false;
     }
 };
@@ -289,6 +292,7 @@ export const sendWelcomeEmail = async (toEmail, userName, role, department) => {
             type: 'WELCOME',
             status: 'sent'
         });
+        eventBus.emit('data_change', { type: EVENTS.EMAIL_LOG_UPDATED });
 
         console.log(`✅ Welcome email sent to ${toEmail}`);
         return true;
@@ -470,6 +474,7 @@ export const sendEmailNotification = async (toEmail, type, data, attachments = [
             })),
             status: 'sent'
         });
+        eventBus.emit('data_change', { type: EVENTS.EMAIL_LOG_UPDATED });
 
         console.log(`✅ ${type} email sent to ${toEmail}`);
         return true;
@@ -485,6 +490,7 @@ export const sendEmailNotification = async (toEmail, type, data, attachments = [
                 status: 'failed',
                 error: error.message
             });
+            eventBus.emit('data_change', { type: EVENTS.EMAIL_LOG_UPDATED });
         } catch (logErr) {
             console.error('Failed to log failed email:', logErr);
         }

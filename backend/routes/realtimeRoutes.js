@@ -59,8 +59,14 @@ router.get('/stream', protect, async (req, res) => {
     };
 
     // Listen for data changes
-    const onChange = async () => {
-        await pushData();
+    const onChange = async (payload) => {
+        if (payload && payload.type === 'email_log_updated') {
+            if (!res.writableEnded) {
+                res.write(`event: invalidate_emails\ndata: ${JSON.stringify({ timestamp: Date.now() })}\n\n`);
+            }
+        } else {
+            await pushData();
+        }
     };
 
     eventBus.on('data_change', onChange);
