@@ -562,7 +562,7 @@ export const sendEmailNotification = async (toEmail, type, data, attachments = [
             taskId: data.taskId || null,
             senderId: data.senderId || null,
             contentSnippet: data.feedback ? data.feedback.substring(0, 200) : '',
-            attachments: attachments.map(a => ({
+            attachments: (attachments || []).map(a => ({
                 filename: a.filename,
                 fileUrl: a.fileUrl,
                 fileSize: a.fileSize
