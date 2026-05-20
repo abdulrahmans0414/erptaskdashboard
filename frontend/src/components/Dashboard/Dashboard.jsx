@@ -144,93 +144,124 @@ const DashboardSkeleton = () => (
 // ==================== EMPLOYEE MINI CARD ====================
 const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
   const colors = {
-    IT: "from-blue-600 to-cyan-500",
-    HR: "from-pink-500 to-rose-400",
-    Graphic: "from-purple-500 to-indigo-500",
-    Academic: "from-violet-600 to-purple-400",
-    Finance: "from-emerald-600 to-teal-500",
-    Marketing: "from-amber-500 to-orange-500",
-    Legal: "from-slate-600 to-slate-400",
-    Transport: "from-yellow-500 to-amber-500",
-    Operations: "from-cyan-600 to-blue-500",
+    IT: "from-blue-600 to-indigo-500 shadow-blue-100",
+    HR: "from-pink-500 to-rose-500 shadow-pink-100",
+    Graphic: "from-purple-500 to-violet-500 shadow-purple-100",
+    Academic: "from-violet-600 to-indigo-600 shadow-violet-100",
+    Finance: "from-emerald-500 to-teal-500 shadow-emerald-100",
+    Marketing: "from-amber-500 to-orange-500 shadow-amber-100",
+    Legal: "from-slate-600 to-slate-500 shadow-slate-100",
+    Transport: "from-yellow-500 to-amber-500 shadow-yellow-100",
+    Operations: "from-cyan-600 to-blue-500 shadow-cyan-100",
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "?";
+    const parts = name.split(" ");
+    if (parts.length > 1) {
+      return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+    }
+    return name.charAt(0).toUpperCase();
   };
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-2xl border border-gray-100 p-5 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-50/50 hover-lift cursor-pointer group animate-fadeInUp stagger-${(index % 6) + 1}`}
+      className={`group relative bg-white rounded-3xl border border-slate-100/80 p-5 hover:border-blue-200/80 hover:shadow-[0_20px_40px_rgba(59,130,246,0.06)] hover-lift cursor-pointer transition-all duration-300 animate-fadeInUp stagger-${(index % 6) + 1}`}
     >
-      {/* Top Header */}
-      <div className="flex items-start justify-between mb-3.5">
-        <div className="flex items-center gap-3 min-w-0">
-          {emp.avatar ? (
-            <img
-              src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
-              alt={emp.name}
-              className="w-11 h-11 rounded-xl object-cover shadow-sm ring-2 ring-gray-50 group-hover:scale-105 transition-transform"
-              onError={(e) => {
-                e.currentTarget.src = "";
-                e.currentTarget.removeAttribute("src");
-              }}
-            />
-          ) : (
-            <div
-              className={`w-11 h-11 bg-gradient-to-br ${colors[emp.department] || "from-gray-500 to-slate-600"} rounded-xl flex items-center justify-center text-white font-black text-sm shadow-sm group-hover:scale-105 transition-transform`}
-            >
-              {emp.name?.charAt(0)?.toUpperCase()}
-            </div>
-          )}
+      {/* Decorative hover gradient glow */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/0 via-indigo-500/0 to-indigo-500/[0.02] rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+      {/* Top Header Row */}
+      <div className="flex items-start justify-between mb-4 relative z-10">
+        <div className="flex items-center gap-3.5 min-w-0">
+          {/* Avatar Container */}
+          <div className="relative flex-shrink-0">
+            {emp.avatar ? (
+              <img
+                src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
+                alt={emp.name}
+                className="w-12 h-12 rounded-2xl object-cover shadow-sm ring-4 ring-slate-50 group-hover:ring-blue-50 transition-all duration-300 group-hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.src = "";
+                  e.currentTarget.removeAttribute("src");
+                }}
+              />
+            ) : (
+              <div
+                className={`w-12 h-12 bg-gradient-to-br ${colors[emp.department] || "from-slate-500 to-slate-600"} rounded-2xl flex items-center justify-center text-white font-extrabold text-sm shadow-md transition-all duration-300 group-hover:scale-105 group-hover:rotate-3`}
+              >
+                {getInitials(emp.name)}
+              </div>
+            )}
+            {/* Online status dot */}
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
+          </div>
+
           <div className="min-w-0">
-            <h4 className="font-bold text-gray-800 text-sm truncate group-hover:text-blue-600 transition-colors">
+            <h4 className="font-bold text-slate-800 text-sm tracking-tight truncate group-hover:text-blue-600 transition-colors duration-200">
               {emp.name}
             </h4>
-            <span className="text-[10px] text-gray-400 capitalize truncate block">
-              {emp.role?.replace(/-/g, " ")}
+            <span className="text-[10px] font-semibold text-slate-400 capitalize truncate block tracking-wide mt-0.5">
+              {emp.role?.replace(/-/g, " ") || "Member"}
             </span>
           </div>
         </div>
 
-        {/* Employee ID Badge on top-right */}
-        <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100/50 uppercase tracking-wider">
-          {emp.employeeId || "N/A"}
+        {/* Employee ID Badge */}
+        <span className="text-[9px] font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 group-hover:border-blue-100 group-hover:bg-blue-50/30 group-hover:text-blue-600 transition-all duration-200 tracking-wider">
+          #{emp.employeeId || "N/A"}
         </span>
       </div>
 
-      {/* Info Section (Email & Phone) */}
-      <div className="space-y-1.5 my-3.5 text-[11px] text-gray-600 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/60">
-        <div className="flex items-center gap-2 truncate" title={emp.email}>
-          <span className="text-gray-400">📧</span>
-          <span className="truncate font-medium text-gray-700">{emp.email}</span>
+      {/* Info Panel: Email & Phone with SVG Icons */}
+      <div className="space-y-2 mb-4 p-3 bg-slate-50/50 group-hover:bg-blue-50/10 rounded-2xl border border-slate-100/50 transition-all duration-300 relative z-10">
+        <div className="flex items-center gap-2.5 min-w-0 text-slate-500 group-hover:text-slate-600 transition-colors" title={emp.email}>
+          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <span className="text-xs truncate font-medium">{emp.email || "No Email"}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400">📞</span>
-          <span className="font-semibold text-gray-700">{emp.phone || "Not Provided"}</span>
-        </div>
-      </div>
-
-      {/* Task Breakdowns */}
-      <div className="grid grid-cols-3 gap-1.5 mb-3.5 text-center">
-        <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/20">
-          <p className="text-xs font-black text-emerald-700">{stats.completed}</p>
-          <p className="text-[8px] text-emerald-600 font-extrabold uppercase tracking-wider">Done</p>
-        </div>
-        <div className="bg-blue-50/50 p-2 rounded-xl border border-blue-100/20">
-          <p className="text-xs font-black text-blue-700">{stats.inProgress}</p>
-          <p className="text-[8px] text-blue-600 font-extrabold uppercase tracking-wider">Progress</p>
-        </div>
-        <div className="bg-amber-50/50 p-2 rounded-xl border border-amber-100/20">
-          <p className="text-xs font-black text-amber-700">{stats.pending}</p>
-          <p className="text-[8px] text-amber-600 font-extrabold uppercase tracking-wider">Pending</p>
+        <div className="flex items-center gap-2.5 min-w-0 text-slate-500 group-hover:text-slate-600 transition-colors">
+          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+          </svg>
+          <span className="text-xs font-semibold tracking-wide">{emp.phone || "Not Provided"}</span>
         </div>
       </div>
 
-      {/* Card Footer Split */}
-      <div className="flex items-center justify-between text-[10px] text-gray-400 border-t border-gray-50 pt-3">
-        <span className="flex items-center gap-1 font-semibold text-gray-500">
-          🏢 <span className="truncate max-w-[80px]">{emp.department}</span>
+      {/* Task Performance Grid with mini indicators */}
+      <div className="grid grid-cols-3 gap-2 mb-4 relative z-10">
+        <div className="bg-white group-hover:bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100/70 text-center transition-all duration-300">
+          <div className="flex items-center justify-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <p className="text-xs font-extrabold text-slate-700">{stats.completed}</p>
+          </div>
+          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Done</p>
+        </div>
+        <div className="bg-white group-hover:bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100/70 text-center transition-all duration-300">
+          <div className="flex items-center justify-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            <p className="text-xs font-extrabold text-slate-700">{stats.inProgress}</p>
+          </div>
+          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Progress</p>
+        </div>
+        <div className="bg-white group-hover:bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100/70 text-center transition-all duration-300">
+          <div className="flex items-center justify-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <p className="text-xs font-extrabold text-slate-700">{stats.pending}</p>
+          </div>
+          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Pending</p>
+        </div>
+      </div>
+
+      {/* Footer Tags */}
+      <div className="flex items-center justify-between border-t border-slate-100/75 pt-3.5 relative z-10">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50/60 text-blue-600 rounded-lg text-[9px] font-bold border border-blue-100/30">
+          🏢 {emp.department}
         </span>
-        <span className="flex items-center gap-1 font-semibold text-gray-500">
-          📍 <span className="truncate max-w-[90px]">{emp.branch?.replace(" Branch", "")}</span>
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50/70 text-slate-500 rounded-lg text-[9px] font-bold border border-slate-100/50">
+          📍 {emp.branch?.replace(" Branch", "")}
         </span>
       </div>
     </div>
