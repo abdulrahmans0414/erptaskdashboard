@@ -67,8 +67,14 @@ const ProfileHeader = ({
                             {employee.role}
                         </span>
                     </div>
-                    <p className="opacity-90 text-sm mt-1 truncate">
-                        {employee.email}
+                    <p className="opacity-90 text-sm mt-1 flex flex-wrap gap-x-3 gap-y-1 justify-center sm:justify-start items-center">
+                        <span>{employee.email}</span>
+                        {employee.phone && (
+                            <>
+                                <span className="opacity-50">•</span>
+                                <span className="font-semibold tracking-wide">📞 {employee.phone}</span>
+                            </>
+                        )}
                     </p>
                     <div className="flex flex-wrap gap-3 mt-2 text-xs opacity-80 justify-center sm:justify-start">
                         <span className="inline-flex items-center gap-1">
