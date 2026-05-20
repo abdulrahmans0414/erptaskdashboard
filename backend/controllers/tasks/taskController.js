@@ -1448,7 +1448,7 @@ export const getEmployeeSummary = async (req, res) => {
         const employees = await User.find({ 
             ...match, 
             role: { $in: ['employee', 'hr', 'it', 'graphic', 'branch-head', 'department-head'] } // include heads in HR/Admin view if needed, or keep to workers. Wait, we should probably let them see all non-admin. Let's just exclude admin.
-        }).select('name department branch role avatar employeeId').lean();
+        }).select('name department branch role avatar employeeId email phone').lean();
 
         // Use aggregation to count tasks for these employees
         const employeeIds = employees.map(e => e._id);
