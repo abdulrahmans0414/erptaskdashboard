@@ -115,6 +115,12 @@ const UserManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
+  // Wrapper to normalize toast calls — the rest of the component uses showToast(msg, type)
+  const showToast = (message, type = "success") => {
+    if (type === "error") toast.error(message);
+    else toast.success(message);
+  };
+
   const loadUsers = async () => {
     setLoading(true);
     try {

@@ -18,7 +18,7 @@ export const validate = (schema) => (req, res, next) => {
                 success: false,
                 errorCode: 'VALIDATION_FAILED',
                 message: 'Input validation failed',
-                errors: err.errors.map(e => ({
+                errors: (err.errors || []).map(e => ({
                     field: e.path.join('.').replace(/^(body|query|params)\./, ''),
                     message: e.message
                 }))
@@ -65,23 +65,44 @@ export const adminCreateUserSchema = z.object({
 
 /**
  * Schema for Task Creation Payload
+ *
+ * IMPORTANT: Fields match exactly what CreateTaskModal.jsx sends:
+ *   - dueDate  (not "deadline") — from the HTML date input
+ *   - assignedTo is OPTIONAL — team tasks send assignedTeam instead
+ *   - description is optional — UI label says "Optional description"
+ *   - priority, estimatedHours, estimatedMinutes, branch, department are all optional
  */
 export const createTaskSchema = z.object({
     body: z.object({
-        title: z.string().trim().min(3, 'Task title must be at least 3 characters').max(200, 'Task title must be under 200 characters'),
-        description: z.string().trim().min(1, 'Task description is required').max(5000, 'Description must be under 5000 characters'),
-        assignedTo: z.string().trim().regex(/^[0-9a-fA-F]{24}$/, 'Invalid assigned user ID format'),
-        priority: z.enum(['low', 'medium', 'high', 'urgent']),
-        deadline: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid deadline date format' })
-            .refine(val => new Date(val) > new Date(), { message: 'Deadline must be in the future' }),
+        // Required
+        title: z.string().trim().min(1, 'Task title is required').max(200, 'Task title must be under 200 characters'),
+        dueDate: z.string()
+            .min(1, 'Due date is required')
+            .refine(val => !isNaN(Date.parse(val)), { message: 'Invalid due date format' }),
+
+        // Optional description
+        description: z.string().trim().max(5000, 'Description must be under 5000 characters').optional().or(z.literal('')),
+
+        // Assignment: individual OR team (controller handles the logic)
+        assignedTo: z.string().trim().regex(/^[0-9a-fA-F]{24}$/, 'Invalid assigned user ID format').optional().or(z.literal('')),
+        assignedTeam: z.any().optional(),   // JSON string or array — parsed in controller
+        isTeamTask: z.any().optional(),     // 'true'/'false' string or boolean — parsed in controller
+
+        // Optional fields
+        priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium'),
+        estimatedHours: z.preprocess(
+            (val) => (val === undefined || val === '' ? undefined : Number(val)),
+            z.number().min(0).optional()
+        ),
         estimatedMinutes: z.preprocess(
             (val) => (val === undefined || val === '' ? undefined : Number(val)),
-            z.number().int().min(5).max(480).optional()
+            z.number().int().min(0).max(59).optional()
         ),
-        taskFormName: z.string().trim().optional(),
+        department: z.string().trim().optional().or(z.literal('')),
+        branch: z.string().trim().optional().or(z.literal('')),
+        taskFormName: z.string().trim().optional().or(z.literal('')),
         taskFormType: z.enum(['pdf', 'image', 'doc', 'other']).optional(),
-        taskFormAttachments: z.array(z.any()).optional(),
-        department: z.string().trim().optional(),
-        branch: z.string().trim().optional(),
+        taskFormAttachments: z.any().optional(),
+        collaboratingDepartments: z.any().optional(),
     })
 });

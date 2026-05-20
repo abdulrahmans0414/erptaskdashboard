@@ -260,10 +260,10 @@ export const createTask = async (req, res) => {
             .populate('individualProgress.userId', 'name email');
         
         res.status(201).json({ success: true, data: populatedTask });
-        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
+        try { eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED }); } catch(e) { console.warn('eventBus emit error:', e.message); }
     } catch (error) {
         console.error('Create task error:', error);
-        res.status(400).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 

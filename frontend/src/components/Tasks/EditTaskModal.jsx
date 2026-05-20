@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { updateTask, getUsers } from "../../services/api";
+import { useSettings } from "../../context/SettingsContext";
 import toast from "react-hot-toast";
 
 const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
+  const { settings } = useSettings();
+  const departments = settings?.departments || ["IT", "HR", "Graphic", "Academic", "Finance", "Marketing", "Legal", "Transport"];
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -14,6 +18,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
     estimatedMinutes: "",
   });
   const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -39,11 +44,14 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   }, [task, isOpen]);
 
   const loadUsers = async () => {
+    setUsersLoading(true);
     try {
       const response = await getUsers({ limit: 1000 });
       if (response.data.success) setUsers(response.data.data);
     } catch (error) {
       console.error("Error loading users:", error);
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -82,17 +90,6 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   };
 
   if (!isOpen) return null;
-
-  const departments = [
-    "IT",
-    "HR",
-    "Graphic",
-    "Academic",
-    "Finance",
-    "Marketing",
-    "Legal",
-    "Transport",
-  ];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

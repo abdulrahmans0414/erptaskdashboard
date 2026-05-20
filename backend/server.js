@@ -195,7 +195,7 @@ app.use((req, res) => {
 // Global Error Handler
 // Re-apply CORS headers on error so browser sees real error, not misleading CORS error
 app.use((err, req, res, next) => {
-    logger.error('❌ Server Error:', err.message || err);
+    logger.error('❌ Server Error:', { error: err.stack || err.message || err });
 
     const origin = req.headers.origin;
     if (origin && isOriginAllowed(origin)) {

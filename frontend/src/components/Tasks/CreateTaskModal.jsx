@@ -32,6 +32,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isTeamTask, setIsTeamTask] = useState(false);
@@ -63,6 +64,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   };
 
   const loadUsers = async () => {
+    setUsersLoading(true);
     try {
       const role = user?.role;
       const branch = user?.branch;
@@ -86,6 +88,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -390,8 +394,13 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 </label>
                 <p className="text-[10px] text-gray-400 mb-1">
                   📍{formData.branch} | 🏢{formData.department} |{" "}
-                  {filteredUsers.length} available
+                  {usersLoading ? "Loading..." : `${filteredUsers.length} available`}
                 </p>
+                {usersLoading ? (
+                  <div className="w-full px-3 py-3 border rounded-lg text-xs text-gray-400 text-center bg-gray-50">
+                    ⏳ Loading employees...
+                  </div>
+                ) : (
                 <select
                   multiple
                   value={selectedTeam}
@@ -409,12 +418,13 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                     </option>
                   ))}
                 </select>
+                )}
                 {selectedTeam.length > 0 && (
                   <p className="text-[10px] text-green-600 mt-1">
                     ✓ {selectedTeam.length} selected
                   </p>
                 )}
-                {filteredUsers.length === 0 && (
+                {!usersLoading && filteredUsers.length === 0 && (
                   <p className="text-[10px] text-yellow-600 mt-1">
                     ⚠️ No employees in this dept/branch
                   </p>
@@ -437,19 +447,20 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                         setShowUsers(true);
                         if (formData.assignedTo) setFormData(p => ({ ...p, assignedTo: "" }));
                       }}
-                      placeholder="Search by name or employee ID..."
-                      className="w-full pl-8 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50/50"
+                      placeholder={usersLoading ? "Loading employees..." : "Search by name or employee ID..."}
+                      disabled={usersLoading}
+                      className="w-full pl-8 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50/50 disabled:opacity-60"
                     />
                     <button 
                       type="button"
                       onClick={() => setShowUsers(!showUsers)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {showUsers ? "▴" : "▾"}
+                      {usersLoading ? "⏳" : showUsers ? "▴" : "▾"}
                     </button>
                   </div>
                   
-                  {showUsers && (
+                  {showUsers && !usersLoading && (
                     <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto border border-gray-100 rounded-xl divide-y bg-white shadow-xl animate-scaleIn origin-top">
                       {filteredUsers
                         .filter(u => 
@@ -485,9 +496,15 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                             )}
                           </div>
                         ))}
-                      {filteredUsers.length === 0 && (
+                      {filteredUsers.filter(u => 
+                        !userSearch || 
+                        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+                        u.employeeId?.toLowerCase().includes(userSearch.toLowerCase())
+                      ).length === 0 && (
                         <div className="p-4 text-center text-gray-400 text-xs italic">
-                          No employees found in this department.
+                          {filteredUsers.length === 0 
+                            ? "No employees found in this department/branch."
+                            : "No employees match your search."}
                         </div>
                       )}
                     </div>
