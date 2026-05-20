@@ -1,9 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import dns from 'dns';
 import User from './models/User.js';
 
+// ✅ DNS Configuration - Fix for MongoDB Atlas SRV lookup
+dns.setServers(['1.1.1.1', '8.8.8.8']);
+
 // Load env variables
-dotenv.config({ path: './.env' });
+dotenv.config();
 
 if (!process.env.MONGODB_URI) {
     console.error("Error: MONGODB_URI is not set in backend/.env");
