@@ -1524,6 +1524,8 @@ export const getEmployeeSummary = async (req, res) => {
                 avatar: emp.avatar,
                 role: emp.role,
                 employeeId: emp.employeeId,
+                email: emp.email,
+                phone: emp.phone,
                 totalTasks: stats.total, // map to Dashboard variable names
                 pending: stats.pending,
                 inProgress: stats.inProgress,
