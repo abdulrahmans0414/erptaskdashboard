@@ -19,7 +19,7 @@ const BRANCH_NAMES = [
 ];
 
 const EMPTY_FORM = {
-  name: "Gaurabagh",
+  name: "",
   code: "",
   location: "",
   address: "",
@@ -407,20 +407,16 @@ const BranchManagement = () => {
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Branch Name" required>
-                  <select
+                  <input
+                    type="text"
                     required
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
                     className={inputClass}
-                  >
-                    {BRANCH_NAMES.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Enter branch name (e.g. Gaurabagh Campus)"
+                  />
                 </Field>
                 <Field label="Branch Code" required>
                   <input

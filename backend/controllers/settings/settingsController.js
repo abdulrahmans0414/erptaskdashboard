@@ -1,4 +1,6 @@
 import Settings from '../../models/Settings.js';
+import Branch from '../../models/Branch.js';
+import Department from '../../models/Department.js';
 
 const getOrCreateSettings = async () => {
     let settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
@@ -22,7 +24,7 @@ export const getSettings = async (req, res) => {
              if (settingsObj.emailConfig) {
                  delete settingsObj.emailConfig;
              }
-        }
+         }
 
         res.json({ success: true, data: settingsObj });
     } catch (error) {
@@ -38,8 +40,40 @@ export const updateSettings = async (req, res) => {
         const { departments, branches, userCustomFields, emailConfig, departmentEmails, branchEmails } = req.body;
         const settings = await getOrCreateSettings();
 
-        if (departments) settings.departments = departments;
-        if (branches) settings.branches = branches;
+        if (departments) {
+            settings.departments = departments;
+            // Sync missing departments to Department collection
+            for (const dName of departments) {
+                const trimmed = dName.trim();
+                if (!trimmed) continue;
+                const exists = await Department.findOne({ name: trimmed });
+                if (!exists) {
+                    await Department.create({
+                        name: trimmed,
+                        code: trimmed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5) || ('DEP' + Math.floor(10 + Math.random() * 89)),
+                        isActive: true
+                    });
+                }
+            }
+        }
+        
+        if (branches) {
+            settings.branches = branches;
+            // Sync missing branches to Branch collection
+            for (const bName of branches) {
+                const trimmed = bName.trim();
+                if (!trimmed) continue;
+                const exists = await Branch.findOne({ name: trimmed });
+                if (!exists) {
+                    await Branch.create({
+                        name: trimmed,
+                        code: trimmed.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5) || ('BR' + Math.floor(10 + Math.random() * 89)),
+                        isActive: true
+                    });
+                }
+            }
+        }
+        
         if (userCustomFields) settings.userCustomFields = userCustomFields;
         if (departmentEmails) settings.departmentEmails = departmentEmails;
         if (branchEmails) settings.branchEmails = branchEmails;

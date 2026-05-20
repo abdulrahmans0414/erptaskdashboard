@@ -1,6 +1,11 @@
 import Branch from '../../models/Branch.js';
 import User from '../../models/User.js';
 import Task from '../../models/Task.js';
+import PendingRegistration from '../../models/PendingRegistration.js';
+import Settings from '../../models/Settings.js';
+import Employee from '../../models/Employee.js';
+import Notification from '../../models/Notification.js';
+import ActivityLog from '../../models/ActivityLog.js';
 
 // Keep Branch.headName/headEmail in sync with User(role='branch-head') for that branch.
 // This makes frontend Branch Management behave like seed.js se initial setup.
@@ -80,6 +85,15 @@ export const createBranch = async (req, res) => {
     try {
         const branch = await Branch.create(req.body);
         await syncBranchHeadUser(branch);
+        
+        // Auto sync to Settings branches array
+        const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
+        if (settings && !settings.branches.includes(branch.name)) {
+            settings.branches.push(branch.name);
+            settings.markModified('branches');
+            await settings.save();
+        }
+
         const updated = await Branch.findById(branch._id);
         res.status(201).json({ success: true, data: updated });
     } catch (error) {
@@ -92,6 +106,45 @@ export const updateBranch = async (req, res) => {
         const branch = await Branch.findById(req.params.id);
         if (!branch) {
             return res.status(404).json({ success: false, message: 'Branch not found' });
+        }
+
+        const oldName = branch.name;
+        const newName = req.body.name;
+
+        // If branch name is changing, check for duplicates and then cascade update references
+        if (newName && newName !== oldName) {
+            const dup = await Branch.findOne({ name: newName, _id: { $ne: req.params.id } });
+            if (dup) {
+                return res.status(400).json({ success: false, message: 'A branch with this name already exists' });
+            }
+
+            // Cascade update branch reference across collections
+            await User.updateMany({ branch: oldName }, { branch: newName });
+            await Task.updateMany({ branch: oldName }, { branch: newName });
+            await Task.updateMany(
+                { collaboratingBranches: oldName },
+                { $set: { "collaboratingBranches.$[elem]": newName } },
+                { arrayFilters: [{ "elem": oldName }] }
+            );
+            await PendingRegistration.updateMany({ branch: oldName }, { branch: newName });
+            await Employee.updateMany({ branch: oldName }, { branch: newName });
+
+            // Sync with Settings singleton branches and branchEmails map
+            const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
+            if (settings) {
+                const idx = settings.branches.indexOf(oldName);
+                if (idx !== -1) {
+                    settings.branches[idx] = newName;
+                    settings.markModified('branches');
+                }
+                if (settings.branchEmails && settings.branchEmails.has(oldName)) {
+                    const email = settings.branchEmails.get(oldName);
+                    settings.branchEmails.set(newName, email);
+                    settings.branchEmails.delete(oldName);
+                    settings.markModified('branchEmails');
+                }
+                await settings.save();
+            }
         }
 
         // Update allowed fields (Branch model will validate enums/required)
@@ -113,23 +166,42 @@ export const deleteBranch = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Branch not found' });
         }
 
-        // Check if there are Users or Tasks associated with this branch
-        const usersCount = await User.countDocuments({ branch: branch.name });
-        const tasksCount = await Task.countDocuments({ branch: branch.name });
+        const oldName = branch.name;
 
-        if (usersCount > 0 || tasksCount > 0) {
-            return res.status(400).json({ 
-                success: false, 
-                message: `Cannot delete branch. It contains ${usersCount} users and ${tasksCount} tasks. Reassign them or use Edit to rename the branch instead.` 
-            });
+        // Find all users in the branch to delete their notifications/activity logs
+        const users = await User.find({ branch: oldName }).select('_id');
+        const userIds = users.map(u => u._id);
+
+        // Find all tasks in the branch to delete their activity logs/notifications
+        const tasks = await Task.find({ branch: oldName }).select('_id');
+        const taskIds = tasks.map(t => t._id);
+
+        // Delete notifications & activity logs for all branch users and tasks
+        await Notification.deleteMany({ $or: [{ userId: { $in: userIds } }, { taskId: { $in: taskIds } }] });
+        await ActivityLog.deleteMany({ $or: [{ userId: { $in: userIds } }, { taskId: { $in: taskIds } }] });
+
+        // Delete users, tasks, pending registrations, and employee files in this branch
+        await User.deleteMany({ branch: oldName });
+        await Task.deleteMany({ branch: oldName });
+        await PendingRegistration.deleteMany({ branch: oldName });
+        await Employee.deleteMany({ branch: oldName });
+
+        // Pull branch from Settings list & emails map
+        const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
+        if (settings) {
+            settings.branches = settings.branches.filter(b => b !== oldName);
+            if (settings.branchEmails) {
+                settings.branchEmails.delete(oldName);
+            }
+            settings.markModified('branches');
+            settings.markModified('branchEmails');
+            await settings.save();
         }
 
+        // Finally, delete the branch document itself
         await branch.deleteOne();
 
-        // If branch is deleted, also delete branch-head user for that branch.
-        await User.deleteMany({ role: 'branch-head', branch: branch.name });
-
-        res.json({ success: true, message: 'Branch deleted successfully' });
+        res.json({ success: true, message: 'Branch and all its associated users, tasks, and settings deleted successfully (Full Tree Deletion)' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

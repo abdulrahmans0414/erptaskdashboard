@@ -80,6 +80,7 @@ const UserManagement = () => {
   const { settings } = useSettings();
   const departments = settings?.departments || ["IT"];
   const branches = settings?.branches || ["Gaurabagh"];
+  const finalBranches = dbBranches.length > 0 ? dbBranches.map(b => b.name) : branches;
   const roles = [
     "admin",
     "department-head",
@@ -214,7 +215,7 @@ const UserManagement = () => {
     setFormData({
         ...EMPTY_FORM,
         department: departments[0] || "IT",
-        branch: branches[0] || "Gaurabagh"
+        branch: finalBranches[0] || "Gaurabagh"
     });
     setShowPwd(false);
     setShowModal(true);
@@ -292,7 +293,7 @@ const UserManagement = () => {
             { label: "Total Users", value: userStats.total, color: "text-slate-900" },
             { label: "Active", value: userStats.active, color: "text-emerald-600" },
             { label: "Departments", value: departments.length, color: "text-blue-600" },
-            { label: "Branches", value: branches.length, color: "text-indigo-600" },
+            { label: "Branches", value: finalBranches.length, color: "text-indigo-600" },
             { label: "Admins", value: userStats.admins, color: "text-purple-600" },
           ].map((s) => (
             <div
@@ -337,7 +338,7 @@ const UserManagement = () => {
             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
           >
             <option value="all">All Branches</option>
-            {branches.map((b) => (
+            {finalBranches.map((b) => (
               <option key={b} value={b}>
                 {b}
               </option>
@@ -785,7 +786,7 @@ const UserManagement = () => {
                     }}
                     className={inputClass}
                   >
-                    {branches.map((b) => (
+                    {finalBranches.map((b) => (
                       <option key={b} value={b}>
                         {b}
                       </option>

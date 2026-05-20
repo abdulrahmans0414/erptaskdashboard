@@ -133,11 +133,27 @@ export const updateUser = async (req, res) => {
 
         const isSelf = req.user._id.toString() === req.params.id;
         const canEditAll = ['admin', 'it'].includes(req.user.role);
+        
+        // Dynamic access check for branch head and department head
+        const isBranchHead = req.user.role === 'branch-head' && user.branch === req.user.branch;
+        const isDeptHead = req.user.role === 'department-head' && user.branch === req.user.branch && user.department === req.user.department;
+        const canEditScoped = isBranchHead || isDeptHead;
 
-        if (canEditAll) {
+        if (canEditAll || canEditScoped) {
             if (name) user.name = name;
             if (email) user.email = email;
-            if (role) user.role = role;
+            
+            // Validate role update to prevent security escalation
+            if (role) {
+                if (canEditScoped && role !== user.role) {
+                    const elevatedRoles = ['admin', 'it', 'branch-head'];
+                    if (elevatedRoles.includes(role)) {
+                        return res.status(403).json({ success: false, message: 'You are not authorized to elevate users to this role' });
+                    }
+                }
+                user.role = role;
+            }
+            
             if (department) user.department = department;
             if (branch) user.branch = branch;
             if (isActive !== undefined) user.isActive = isActive;
@@ -156,12 +172,12 @@ export const updateUser = async (req, res) => {
             if (customFields) user.customFields = customFields;
             if (dateOfJoining) user.dateOfJoining = dateOfJoining;
         } else {
-            return res.status(403).json({ success: false, message: 'Only admins may update other users' });
+            return res.status(403).json({ success: false, message: 'Only admins and authorized heads may update users' });
         }
 
-        // ✅ FIX: Allow password update for self or admin - pre-save hook will hash it
+        // ✅ FIX: Allow password update for self, admin, or authorized manager - pre-save hook will hash it
         if (password && password.trim()) {
-            if (isSelf || canEditAll) user.password = password;
+            if (isSelf || canEditAll || canEditScoped) user.password = password;
         }
         
         await user.save();
