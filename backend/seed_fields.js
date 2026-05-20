@@ -1,7 +1,14 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import dns from 'dns';
+
+// Import all models to register their schemas in Mongoose
 import User from './models/User.js';
+import Task from './models/Task.js';
+import Department from './models/Department.js';
+import Branch from './models/Branch.js';
+import Employee from './models/Employee.js';
+import Settings from './models/Settings.js';
 
 // ✅ DNS Configuration - Fix for MongoDB Atlas SRV lookup
 dns.setServers(['1.1.1.1', '8.8.8.8']);
