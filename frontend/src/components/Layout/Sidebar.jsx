@@ -79,9 +79,9 @@ export default function Sidebar({
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-bold leading-tight truncate">SPIS</h1>
-              <p className="text-[10px] text-gray-400 truncate" title="Scholars Paradise International School">
-                Task Controller
+              <h1 className="text-sm font-extrabold leading-tight truncate text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">Scholars'</h1>
+              <p className="text-[10px] text-gray-400 truncate" title="Scholars' Group Of Institution">
+                Group of Institution
               </p>
             </div>
           </div>

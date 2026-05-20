@@ -95,7 +95,7 @@ const Header = ({
             </svg>
           </button>
           <span className="lg:hidden text-sm font-bold text-gray-800 truncate">
-            SPIS Task Controller
+            Scholars' Group Of Institution
           </span>
         </div>
 

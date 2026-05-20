@@ -8,6 +8,7 @@ import {
   login as loginApi,
 } from "../../services/api";
 import { useSettings } from "../../context/SettingsContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Constants ────────────────────────────────────────────────
 const DEPARTMENTS = [
@@ -536,29 +537,44 @@ export default function AuthPage() {
       {/* Toast */}
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-      <div className="w-full max-w-md animate-fade-in">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md"
+      >
         {/* Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl shadow-blue-200 mb-4 overflow-hidden border border-gray-100">
+        <div className="text-center mb-8 flex flex-col items-center">
+          <motion.div 
+            whileHover={{ scale: 1.08, rotate: 2 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl shadow-indigo-100/50 mb-4 overflow-hidden border border-gray-100 cursor-pointer"
+          >
             <img 
               src="/spis-logo.jpeg" 
-              alt="SPIS Logo" 
+              alt="Scholars Logo" 
               className="w-full h-full object-contain p-2"
               onError={(e) => {
                 e.target.onerror = null; 
                 e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = '<span class="text-3xl">📊</span>';
+                e.target.parentElement.innerHTML = '<span class="text-3.5xl">🎓</span>';
               }}
             />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">SPIS Task Controller</h1>
-          <p className="text-sm text-gray-500 mt-1 font-medium" title="Scholars Paradise International School">
-            Scholars Paradise International School
+          </motion.div>
+          <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 tracking-tight">
+            Scholars' Group Of Institution
+          </h1>
+          <p className="text-xs uppercase tracking-widest text-slate-500 mt-1.5 font-bold">
+            Task & Activity Controller
           </p>
         </div>
 
         {/* Main Card */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 p-6">
+        <motion.div 
+          layout
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/60 p-6 md:p-8"
+        >
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900">
@@ -577,9 +593,15 @@ export default function AuthPage() {
             )}
           </div>
 
-          {/* ═══════ LOGIN MODE ═══════ */}
-          {mode === "login" && (
-            <>
+          <AnimatePresence mode="wait">
+            {mode === "login" && (
+              <motion.div
+                key="login"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+              >
               <form onSubmit={handleLogin} className="space-y-4">
                 <Input
                   label="Email or Employee ID"
@@ -671,12 +693,18 @@ export default function AuthPage() {
                   Check registration status
                 </button>
               </div>
-            </>
+            </motion.div>
           )}
 
           {/* ═══════ REGISTER MODE ═══════ */}
           {mode === "register" && (
-            <>
+            <motion.div
+              key="register"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25 }}
+            >
               {/* Steps Indicator */}
               <div className="flex items-center gap-2 mb-6">
                 {[1, 2].map((step) => (
@@ -933,12 +961,18 @@ export default function AuthPage() {
                   Sign in
                 </button>
               </p>
-            </>
+            </motion.div>
           )}
 
           {/* ═══════ OTP VERIFICATION MODE ═══════ */}
           {mode === "otp" && (
-            <>
+            <motion.div
+              key="otp"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25 }}
+            >
               <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-xl p-4 mb-6">
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">📧</span>
@@ -1026,12 +1060,18 @@ export default function AuthPage() {
                   </button>
                 </p>
               </div>
-            </>
+            </motion.div>
           )}
 
           {/* ═══════ STATUS CHECK MODE ═══════ */}
           {mode === "status" && (
-            <>
+            <motion.div
+              key="status"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25 }}
+            >
               <form onSubmit={handleCheckStatus} className="space-y-4">
                 <Input
                   label="Your Email Address"
@@ -1134,15 +1174,16 @@ export default function AuthPage() {
                   ← Back to Sign In
                 </button>
               </p>
-            </>
+            </motion.div>
           )}
-        </div>
+          </AnimatePresence>
+        </motion.div>
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-400 mt-6 font-medium">
-          TaskGrid ERP v2.0 • © 2026 Abdul Rahman
+          TaskGrid ERP v2.0 • © 2026 Scholars' Group Of Institution
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

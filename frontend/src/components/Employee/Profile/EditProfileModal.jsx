@@ -61,7 +61,7 @@ const EditProfileModal = ({
                         </label>
                         <textarea
                             value={editForm.address || ""}
-                            onChange={(e) => setEditForm({ ...editForm, [f.key]: e.target.value })}
+                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                             className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition"
                             rows="2"
                         />
