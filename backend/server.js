@@ -26,7 +26,8 @@ import logger from './logger.js';
 // Load .env FIRST before anything else
 dotenv.config();
 
-// DNS Configuration - Fix for MongoDB Atlas SRV lookup
+// DNS Configuration - Prefer IPv4 first to avoid unreachable IPv6 socket timeouts/hang-ups
+dns.setDefaultResultOrder('ipv4first');
 dns.setServers(['1.1.1.1', '8.8.8.8']);
 
 const __filename = fileURLToPath(import.meta.url);
