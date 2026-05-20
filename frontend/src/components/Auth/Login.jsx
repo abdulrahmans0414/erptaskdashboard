@@ -117,6 +117,56 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
+const BackgroundShapes = () => (
+  <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
+    {/* Orb 1 */}
+    <motion.div
+      className="absolute w-[350px] h-[350px] rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-400/20 blur-3xl"
+      animate={{
+        x: [0, 80, -40, 0],
+        y: [0, -60, 50, 0],
+        scale: [1, 1.2, 0.9, 1],
+      }}
+      transition={{
+        duration: 15,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+      style={{ top: "10%", left: "10%" }}
+    />
+    {/* Orb 2 */}
+    <motion.div
+      className="absolute w-[400px] h-[400px] rounded-full bg-gradient-to-br from-purple-400/15 to-pink-500/15 blur-3xl"
+      animate={{
+        x: [0, -90, 60, 0],
+        y: [0, 80, -70, 0],
+        scale: [1, 0.85, 1.15, 1],
+      }}
+      transition={{
+        duration: 18,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+      style={{ bottom: "10%", right: "10%" }}
+    />
+    {/* Orb 3 */}
+    <motion.div
+      className="absolute w-[250px] h-[250px] rounded-full bg-gradient-to-br from-cyan-400/20 to-teal-400/20 blur-3xl"
+      animate={{
+        x: [0, 50, -50, 0],
+        y: [0, 90, -40, 0],
+        scale: [1, 1.1, 0.8, 1],
+      }}
+      transition={{
+        duration: 12,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+      style={{ top: "40%", left: "40%" }}
+    />
+  </div>
+);
+
 // ─── Form Components ───────────────────────────────────────
 const Input = ({ label, error, icon, ...props }) => (
   <div className="space-y-1.5">
@@ -533,38 +583,42 @@ export default function AuthPage() {
   // RENDER
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50/50 flex items-center justify-center p-4 overflow-hidden">
+      {/* Dynamic Background shapes */}
+      <BackgroundShapes />
+
       {/* Toast */}
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
       <motion.div
+        layout
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className={`w-full transition-all duration-300 ${mode === 'register' ? 'max-w-2xl' : 'max-w-md'}`}
       >
         {/* Brand */}
-        <div className="text-center mb-8 flex flex-col items-center">
+        <div className="text-center mb-4 flex flex-col items-center">
           <motion.div 
-            whileHover={{ scale: 1.08, rotate: 2 }}
+            whileHover={{ scale: 1.05, rotate: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl shadow-indigo-100/50 mb-4 overflow-hidden border border-gray-100 cursor-pointer"
+            className="inline-flex items-center justify-center w-14 h-14 bg-white rounded-2xl shadow-lg shadow-indigo-100/50 mb-2 overflow-hidden border border-gray-100 cursor-pointer"
           >
             <img 
               src="/spis-logo.jpeg" 
               alt="Scholars Logo" 
-              className="w-full h-full object-contain p-2"
+              className="w-full h-full object-contain p-1.5"
               onError={(e) => {
                 e.target.onerror = null; 
                 e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = '<span class="text-3.5xl">🎓</span>';
+                e.target.parentElement.innerHTML = '<span class="text-2.5xl">🎓</span>';
               }}
             />
           </motion.div>
-          <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 tracking-tight">
+          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 tracking-tight">
             Scholars' Group Of Institution
           </h1>
-          <p className="text-xs uppercase tracking-widest text-slate-500 mt-1.5 font-bold">
+          <p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1 font-extrabold">
             Task & Activity Controller
           </p>
         </div>
@@ -573,7 +627,7 @@ export default function AuthPage() {
         <motion.div 
           layout
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/60 p-6 md:p-8"
+          className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-white/60 p-5 md:p-6"
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -650,28 +704,27 @@ export default function AuthPage() {
               </form>
 
               {/* Demo Accounts */}
-              <div className="mt-6 pt-6 border-t border-gray-100">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 text-center">
                   Quick Demo Access
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   {DEMO_ACCOUNTS.map((demo, i) => (
                     <button
                       key={i}
+                      type="button"
                       onClick={() => fillDemoAccount(demo)}
-                      className="text-left p-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                      title={`Login as ${demo.label} (${demo.email})`}
+                      className="flex flex-col items-center justify-center p-2 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm transition-all group"
                     >
                       <div
-                        className={`w-8 h-8 bg-gradient-to-br ${demo.color} rounded-lg flex items-center justify-center text-sm mb-1.5 shadow`}
+                        className={`w-8 h-8 bg-gradient-to-br ${demo.color} rounded-lg flex items-center justify-center text-sm mb-1 shadow group-hover:scale-105 transition-transform`}
                       >
                         {demo.icon}
                       </div>
-                      <div className="text-xs font-semibold text-gray-700 group-hover:text-blue-700">
+                      <span className="text-[10px] font-bold text-gray-600 truncate w-full text-center group-hover:text-blue-600">
                         {demo.label}
-                      </div>
-                      <div className="text-[10px] text-gray-400 truncate">
-                        {demo.email}
-                      </div>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -754,22 +807,24 @@ export default function AuthPage() {
                     <h3 className="text-sm font-bold text-gray-700">
                       📋 Personal Information
                     </h3>
-                    <Input
-                      label="Full Name *"
-                      placeholder="Abdul Rahman"
-                      value={form.name}
-                      onChange={updateForm("name")}
-                      error={errors.name}
-                    />
-                    <Input
-                      label="Email Address *"
-                      type="email"
-                      icon="📧"
-                      placeholder="you@gmail.com"
-                      value={form.email}
-                      onChange={updateForm("email")}
-                      error={errors.email}
-                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        label="Full Name *"
+                        placeholder="Abdul Rahman"
+                        value={form.name}
+                        onChange={updateForm("name")}
+                        error={errors.name}
+                      />
+                      <Input
+                        label="Email Address *"
+                        type="email"
+                        icon="📧"
+                        placeholder="you@gmail.com"
+                        value={form.email}
+                        onChange={updateForm("email")}
+                        error={errors.email}
+                      />
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <Input
                         label="Phone *"
@@ -787,12 +842,20 @@ export default function AuthPage() {
                         error={errors.employeeId}
                       />
                     </div>
-                    <Input
-                      label="Designation"
-                      placeholder="e.g., Software Developer"
-                      value={form.designation}
-                      onChange={updateForm("designation")}
-                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        label="Designation"
+                        placeholder="e.g., Software Developer"
+                        value={form.designation}
+                        onChange={updateForm("designation")}
+                      />
+                      <Select
+                        label="Role *"
+                        value={form.role}
+                        onChange={updateForm("role")}
+                        options={ROLES}
+                      />
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <Select
                         label="Department *"
@@ -810,12 +873,6 @@ export default function AuthPage() {
                         options={branches.map((b) => ({ value: b, label: b }))}
                       />
                     </div>
-                    <Select
-                      label="Role"
-                      value={form.role}
-                      onChange={updateForm("role")}
-                      options={ROLES}
-                    />
 
                     {/* High privilege request flow */}
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">

@@ -348,14 +348,17 @@ export const getTasks = async (req, res) => {
                 query.createdAt.$gte = start;
             }
         } else if (startDate || endDate) {
-            query.createdAt = query.createdAt || {};
-            if (startDate && !isNaN(new Date(startDate))) {
-                query.createdAt.$gte = new Date(startDate);
+            const dateQuery = {};
+            if (startDate && startDate !== 'null' && startDate !== 'undefined' && !isNaN(new Date(startDate).getTime())) {
+                dateQuery.$gte = new Date(startDate);
             }
-            if (endDate && !isNaN(new Date(endDate))) {
+            if (endDate && endDate !== 'null' && endDate !== 'undefined' && !isNaN(new Date(endDate).getTime())) {
                 const d = new Date(endDate);
                 d.setHours(23, 59, 59, 999);
-                query.createdAt.$lte = d;
+                dateQuery.$lte = d;
+            }
+            if (Object.keys(dateQuery).length > 0) {
+                query.createdAt = { ...(query.createdAt || {}), ...dateQuery };
             }
         }
         
