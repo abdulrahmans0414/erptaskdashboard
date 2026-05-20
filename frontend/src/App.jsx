@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
 import {
@@ -8,19 +9,20 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout/Layout";
-import Dashboard from "./components/Dashboard/Dashboard";
-import Tasks from "./components/Tasks/Tasks";
-import Reports from "./components/Performance/Reports";
-import Login from "./components/Auth/Login";
-import EmployeeProfile from "./components/Employee/EmployeeProfile";
-import UserManagement from "./components/Admin/UserManagement";
-import BranchManagement from "./components/Admin/BranchManagement";
-import PendingRegistrations from "./components/Admin/PendingRegistrations";
-import SystemSettings from "./components/Admin/SystemSettings";
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from "./components/Common/ErrorBoundary";
 import { SettingsProvider } from "./context/SettingsContext";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
+
+const Dashboard = lazy(() => import("./components/Dashboard/Dashboard"));
+const Tasks = lazy(() => import("./components/Tasks/Tasks"));
+const Reports = lazy(() => import("./components/Performance/Reports"));
+const Login = lazy(() => import("./components/Auth/Login"));
+const EmployeeProfile = lazy(() => import("./components/Employee/EmployeeProfile"));
+const UserManagement = lazy(() => import("./components/Admin/UserManagement"));
+const BranchManagement = lazy(() => import("./components/Admin/BranchManagement"));
+const PendingRegistrations = lazy(() => import("./components/Admin/PendingRegistrations"));
+const SystemSettings = lazy(() => import("./components/Admin/SystemSettings"));
 
 const Spinner = () => (
   <div className="flex justify-center items-center h-screen bg-slate-50">
@@ -68,22 +70,24 @@ function AppRoutes() {
   useRealtimeSync(isAuthenticated);
 
   return (
-    <Routes>
-      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-      <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
-      <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ManagerRoute>} />
-      
-      {/* Admin-only */}
-      <Route path="/admin/users" element={<AdminRoute><Layout><UserManagement /></Layout></AdminRoute>} />
-      <Route path="/admin/branches" element={<AdminRoute><Layout><BranchManagement /></Layout></AdminRoute>} />
-      <Route path="/admin/registrations" element={<AdminRoute><Layout><PendingRegistrations /></Layout></AdminRoute>} />
-      <Route path="/admin/settings" element={<AdminRoute><Layout><SystemSettings /></Layout></AdminRoute>} />
-      
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<Spinner />}>
+      <Routes>
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+        <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
+        <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ManagerRoute>} />
+        
+        {/* Admin-only */}
+        <Route path="/admin/users" element={<AdminRoute><Layout><UserManagement /></Layout></AdminRoute>} />
+        <Route path="/admin/branches" element={<AdminRoute><Layout><BranchManagement /></Layout></AdminRoute>} />
+        <Route path="/admin/registrations" element={<AdminRoute><Layout><PendingRegistrations /></Layout></AdminRoute>} />
+        <Route path="/admin/settings" element={<AdminRoute><Layout><SystemSettings /></Layout></AdminRoute>} />
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

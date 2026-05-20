@@ -39,6 +39,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [collaboratingDepts, setCollaboratingDepts] = useState([]);
   const [taskFormFiles, setTaskFormFiles] = useState([]);
   const [showUsers, setShowUsers] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
 
   const [dbBranches, setDbBranches] = useState([]);
 
@@ -127,6 +128,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     setSelectedTeam([]);
     setCollaboratingDepts([]);
     setTaskFormFiles([]);
+    setShowUsers(false);
+    setFileInputKey(Date.now());
     setError("");
   };
 
@@ -294,6 +297,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 📎 Attach Form / Document (optional)
               </label>
               <input
+                key={fileInputKey}
                 type="file"
                 multiple
                 accept="image/*,.pdf,.doc,.docx,.xlsx,.zip"

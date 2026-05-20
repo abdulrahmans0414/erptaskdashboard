@@ -19,6 +19,7 @@ import { seedDatabase } from './seed.js';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import hpp from 'hpp';
+import cookieParser from 'cookie-parser';
 import { initializeTokenCleanup, checkTokenBlacklist } from './middleware/tokenBlacklist.js';
 import { startEmailWorker } from './workers/emailWorker.js';
 import logger from './logger.js';
@@ -118,11 +119,19 @@ const loginLimiter = rateLimit({
     skip: (req) => !(req.method === 'POST' && req.path.includes('/login')),
 });
 
+// ==================== RATE LIMITING (Global) ====================
+// Global rate limiting runs before parsing the request body to prevent resource exhaustion attacks
+app.use(globalLimiter);
+
+// ==================== COOKIE PARSING ====================
+app.use(cookieParser());
+
 // ==================== BODY PARSING ====================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.use(globalLimiter);
+// ==================== RATE LIMITING (Login) ====================
+// Login rate limiter runs after body parser to inspect login email payloads securely
 app.use(loginLimiter);
 
 // ==================== ADDITIONAL SECURITY ====================
@@ -130,7 +139,7 @@ app.use(hpp({
     whitelist: ['sort', 'page', 'limit', 'search', 'filter', 'status', 'type'],
 }));
 
-// Token blacklist checking for all /api/ routes
+// Token blacklist checking for all /api/ routes (supports header-based and cookie-based JWT checking)
 app.use('/api/', checkTokenBlacklist);
 
 // Static files (uploads)

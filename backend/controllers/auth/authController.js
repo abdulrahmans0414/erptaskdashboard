@@ -238,6 +238,14 @@ export const verifyOtp = async (req, res) => {
         await sendWelcomeEmail(pending.email, pending.name, pending.role, pending.department);
 
         const token = generateToken(user._id);
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
+
         res.json({
             success: true,
             message: 'OTP verified! Account activated. Welcome to TaskGrid ERP!',
@@ -305,6 +313,14 @@ export const login = async (req, res) => {
         await user.save();
 
         const token = generateToken(user._id);
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
+
         res.json({
             success: true,
             data: { _id: user._id, name: user.name, email: user.email, role: user.role, department: user.department, branch: user.branch, avatar: user.avatar || null, token }
@@ -346,6 +362,14 @@ export const register = async (req, res) => {
         });
 
         const token = generateToken(user._id);
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
+
         res.status(201).json({ success: true, data: { _id: user._id, name: user.name, email: user.email, role: user.role, token } });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });

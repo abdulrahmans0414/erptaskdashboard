@@ -271,11 +271,27 @@ export const createTask = async (req, res) => {
 export const getTasks = async (req, res) => {
     try {
         const { role, _id } = req.user;
-        const { page = 1, limit = 50, search, status, priority, startDate, endDate, department, branch } = req.query;
+        const { page = 1, limit = 50, search, status, priority, startDate, endDate, department, branch, nextCursor } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
         
         // Base query from auth middleware
         let query = { ...(req.taskFilter || {}) };
+
+        // Keyset Cursor Pagination
+        if (nextCursor) {
+            try {
+                const decoded = Buffer.from(nextCursor, 'base64').toString('ascii');
+                const [createdAtStr, id] = decoded.split('_');
+                if (createdAtStr && id) {
+                    query.$or = [
+                        { createdAt: { $lt: new Date(createdAtStr) } },
+                        { createdAt: new Date(createdAtStr), _id: { $lt: id } }
+                    ];
+                }
+            } catch (err) {
+                console.error('Invalid cursor parsing:', err);
+            }
+        }
 
         // Additional filter drills for management
         if (department && department !== 'all' && ['admin', 'branch-head', 'hr', 'it'].includes(role)) {
@@ -337,22 +353,40 @@ export const getTasks = async (req, res) => {
             }
         }
         
-        const tasks = await Task.find(query)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(parseInt(limit))
+        let tasksQuery = Task.find(query).sort({ createdAt: -1, _id: -1 });
+
+        if (!nextCursor) {
+            tasksQuery = tasksQuery.skip(skip);
+        }
+
+        const limitVal = parseInt(limit);
+        const tasks = await tasksQuery
+            .limit(limitVal + 1)
             .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
             .lean();
+
+        const hasNextPage = tasks.length > limitVal;
+        if (hasNextPage) {
+            tasks.pop();
+        }
+
+        let nextCursorEncoded = null;
+        if (tasks.length > 0 && hasNextPage) {
+            const lastTask = tasks[tasks.length - 1];
+            const cursorPayload = `${new Date(lastTask.createdAt).toISOString()}_${lastTask._id}`;
+            nextCursorEncoded = Buffer.from(cursorPayload).toString('base64');
+        }
 
         const total = await Task.countDocuments(query);
 
         res.json({ 
             success: true, 
             data: tasks,
+            nextCursor: nextCursorEncoded,
             pagination: {
                 total,
-                page: parseInt(page),
-                pages: Math.ceil(total / parseInt(limit))
+                page: nextCursor ? null : parseInt(page),
+                pages: Math.ceil(total / limitVal)
             }
         });
     } catch (error) {

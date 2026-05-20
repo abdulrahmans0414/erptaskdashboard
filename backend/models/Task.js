@@ -347,6 +347,7 @@ taskSchema.index({ department: 1, branch: 1, createdAt: -1 }); // Added for dash
 taskSchema.index({ branch: 1, status: 1 });
 taskSchema.index({ branch: 1, createdAt: -1 }); // Added for branch-level time-filtering
 taskSchema.index({ createdAt: -1 });
+taskSchema.index({ createdAt: -1, _id: -1 });
 taskSchema.index({ dueDate: 1 });
 taskSchema.index({ status: 1 });
 

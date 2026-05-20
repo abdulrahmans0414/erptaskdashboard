@@ -8,6 +8,7 @@ import {
 } from '../controllers/tasks/taskController.js';
 import { protect, authorize, filterTasksByUserAccess, canModifyTask } from '../middleware/auth.js';
 import { uploadToCloudinary } from '../middleware/uploadMiddleware.js';
+import { validate, createTaskSchema } from '../middleware/validate.js';
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.post(
     '/',
     authorize('admin', 'it', 'department-head', 'branch-head', 'hr'),
     uploadToCloudinary('tasks/forms', 5, 'taskFormFiles', 5),
+    validate(createTaskSchema),
     createTask
 );
 
