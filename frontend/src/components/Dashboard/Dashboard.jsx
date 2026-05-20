@@ -155,30 +155,19 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
     Operations: "from-cyan-600 to-blue-500",
   };
 
-  const rate =
-    stats.totalTasks > 0
-      ? ((stats.completed / stats.totalTasks) * 100).toFixed(0)
-      : 0;
-
-  const performanceColor =
-    rate >= 80
-      ? "text-emerald-500"
-      : rate >= 50
-        ? "text-amber-500"
-        : "text-rose-500";
-
   return (
     <div
       onClick={onClick}
       className={`bg-white rounded-2xl border border-gray-100 p-5 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-50/50 hover-lift cursor-pointer group animate-fadeInUp stagger-${(index % 6) + 1}`}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+      {/* Top Header */}
+      <div className="flex items-start justify-between mb-3.5">
+        <div className="flex items-center gap-3 min-w-0">
           {emp.avatar ? (
             <img
               src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
               alt={emp.name}
-              className="w-12 h-12 rounded-xl object-cover shadow-md ring-2 ring-gray-50 group-hover:scale-105 transition-transform"
+              className="w-11 h-11 rounded-xl object-cover shadow-sm ring-2 ring-gray-50 group-hover:scale-105 transition-transform"
               onError={(e) => {
                 e.currentTarget.src = "";
                 e.currentTarget.removeAttribute("src");
@@ -186,7 +175,7 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
             />
           ) : (
             <div
-              className={`w-12 h-12 bg-gradient-to-br ${colors[emp.department] || "from-gray-500 to-slate-600"} rounded-xl flex items-center justify-center text-white font-black text-base shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform`}
+              className={`w-11 h-11 bg-gradient-to-br ${colors[emp.department] || "from-gray-500 to-slate-600"} rounded-xl flex items-center justify-center text-white font-black text-sm shadow-sm group-hover:scale-105 transition-transform`}
             >
               {emp.name?.charAt(0)?.toUpperCase()}
             </div>
@@ -195,21 +184,32 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
             <h4 className="font-bold text-gray-800 text-sm truncate group-hover:text-blue-600 transition-colors">
               {emp.name}
             </h4>
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[10px] text-gray-400 capitalize truncate max-w-[100px]">
-                {emp.role?.replace(/-/g, " ")}
-              </span>
-            </div>
+            <span className="text-[10px] text-gray-400 capitalize truncate block">
+              {emp.role?.replace(/-/g, " ")}
+            </span>
           </div>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-xs font-extrabold text-gray-700 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100/50">
-            {stats.totalTasks} <span className="text-[9px] font-normal text-gray-400">tasks</span>
-          </span>
+
+        {/* Employee ID Badge on top-right */}
+        <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100/50 uppercase tracking-wider">
+          {emp.employeeId || "N/A"}
+        </span>
+      </div>
+
+      {/* Info Section (Email & Phone) */}
+      <div className="space-y-1.5 my-3.5 text-[11px] text-gray-600 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/60">
+        <div className="flex items-center gap-2 truncate" title={emp.email}>
+          <span className="text-gray-400">📧</span>
+          <span className="truncate font-medium text-gray-700">{emp.email}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">📞</span>
+          <span className="font-semibold text-gray-700">{emp.phone || "Not Provided"}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5 mb-4 text-center">
+      {/* Task Breakdowns */}
+      <div className="grid grid-cols-3 gap-1.5 mb-3.5 text-center">
         <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/20">
           <p className="text-xs font-black text-emerald-700">{stats.completed}</p>
           <p className="text-[8px] text-emerald-600 font-extrabold uppercase tracking-wider">Done</p>
@@ -224,26 +224,8 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
         </div>
       </div>
 
-      <div className="space-y-1 mb-3">
-        <div className="flex justify-between items-center text-[10px]">
-          <span className="font-bold text-gray-400 uppercase tracking-wider">Completion</span>
-          <span className={`font-black ${performanceColor}`}>{rate}%</span>
-        </div>
-        <div className="h-1.5 bg-gray-50 rounded-full overflow-hidden border border-gray-100/30">
-          <div
-            className={`h-full bg-gradient-to-r ${
-              rate >= 80
-                ? "from-emerald-400 to-teal-500"
-                : rate >= 50
-                  ? "from-amber-400 to-orange-500"
-                  : "from-rose-400 to-pink-500"
-            } rounded-full transition-all duration-500`}
-            style={{ width: `${rate}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between text-[10px] text-gray-400 border-t border-gray-50 pt-2.5">
+      {/* Card Footer Split */}
+      <div className="flex items-center justify-between text-[10px] text-gray-400 border-t border-gray-50 pt-3">
         <span className="flex items-center gap-1 font-semibold text-gray-500">
           🏢 <span className="truncate max-w-[80px]">{emp.department}</span>
         </span>
