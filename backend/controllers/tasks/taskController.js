@@ -1202,9 +1202,7 @@ export const getDashboardStats = async (req, res) => {
         const now = new Date();
         const queryWithDate = { ...query, ...dateQuery };
 
-        // 📊 NEW: Aggregate branch-wise stats on the server
-        // Use Promise.all with simple aggregations for maximum speed and stability
-        const [statsAgg, branchAgg, recentTasks] = await Promise.all([
+        const [statsAgg, branchAgg] = await Promise.all([
             Task.aggregate([
                 { $match: queryWithDate },
                 {
@@ -1246,14 +1244,10 @@ export const getDashboardStats = async (req, res) => {
                     submitted: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } }
                 }},
                 { $sort: { total: -1 } }
-            ]),
-            Task.find(queryWithDate)
-                .sort({ updatedAt: -1 })
-                .limit(10)
-                .select('title status priority updatedAt dueDate assignedTo')
-                .populate('assignedTo', 'name avatar')
-                .lean()
+            ])
         ]);
+
+        const recentTasks = [];
 
         const summaryData = statsAgg[0] || {
             totalTasks: 0,

@@ -46,6 +46,7 @@ export const getEmailLogs = async (req, res) => {
             search,
             startDate,
             endDate,
+            taskId,
         } = req.query;
 
         const pageNum = Math.max(1, parseInt(page));
@@ -61,6 +62,7 @@ export const getEmailLogs = async (req, res) => {
 
         // Build MongoDB query
         const query = {};
+        if (taskId) query.taskId = taskId;
         if (type && type !== 'all') query.type = type;
         if (status && status !== 'all') query.status = status;
         if (search) {
@@ -255,18 +257,18 @@ export const syncFromGmail = async (req, res) => {
         let synced = 0;
         for (const mail of mails) {
             const exists = await EmailLog.findOne({
-                recipient: mail.to || 'inbox',
+                recipient: mail.recipient || 'inbox',
                 subject: mail.subject,
                 createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
             }).select('_id');
 
             if (!exists) {
                 await EmailLog.create({
-                    recipient: mail.to || 'inbox',
+                    recipient: mail.recipient || 'inbox',
                     subject: mail.subject || '(no subject)',
-                    type: 'INBOX',
-                    sender: mail.from,
-                    body: mail.body,
+                    type: mail.type || 'INBOX',
+                    sender: mail.sender || '',
+                    body: mail.body || '',
                     contentSnippet: (mail.body || '').substring(0, 200),
                     status: 'sent',
                     source: 'gmail_sync',

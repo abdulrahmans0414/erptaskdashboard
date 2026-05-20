@@ -18,8 +18,13 @@ const emailLogSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['OTP', 'WELCOME', 'TASK_ASSIGNED', 'TASK_SUBMITTED', 'TASK_APPROVED', 'TASK_REJECTED', 'TASK_UPDATED'],
+        enum: ['OTP', 'WELCOME', 'TASK_ASSIGNED', 'TASK_SUBMITTED', 'TASK_APPROVED', 'TASK_REJECTED', 'TASK_UPDATED', 'INBOX', 'TASKS', 'SECURITY'],
         required: true
+    },
+    source: {
+        type: String,
+        enum: ['system', 'gmail_sync'],
+        default: 'system'
     },
     taskId: {
         type: mongoose.Schema.Types.ObjectId,

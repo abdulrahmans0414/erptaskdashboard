@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import {
   startTask,
@@ -6,7 +6,7 @@ import {
   addTaskComment,
 } from "../../store/features/tasks";
 import { useAuth } from "../../context/AuthContext";
-import { updateTask, reassignTask, getUsers, deleteTask } from "../../services/api";
+import { updateTask, reassignTask, getUsers, deleteTask, getEmailLogs, resendEmailLog } from "../../services/api";
 import { useSettings } from "../../context/SettingsContext";
 import toast from "react-hot-toast";
 
@@ -794,6 +794,30 @@ function ActivityDrawer({ task, onClose }) {
   const { user } = useAuth();
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailLogs, setEmailLogs] = useState([]);
+  const [fetchingEmails, setFetchingEmails] = useState(false);
+  const [resendingId, setResendingId] = useState(null);
+
+  const canManageEmails = ["admin", "it", "branch-head", "department-head"].includes(user?.role);
+
+  const fetchEmails = async () => {
+    if (!canManageEmails) return;
+    setFetchingEmails(true);
+    try {
+      const response = await getEmailLogs({ taskId: task._id });
+      if (response?.data?.success) {
+        setEmailLogs(response.data.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to load email logs:", err);
+    } finally {
+      setFetchingEmails(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmails();
+  }, [task._id]);
 
   const handleComment = async () => {
     if (!comment.trim()) return;
@@ -871,6 +895,90 @@ function ActivityDrawer({ task, onClose }) {
           </div>
         )}
       </div>
+
+      {canManageEmails && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 text-xs space-y-3">
+          <div className="flex items-center justify-between border-b pb-2">
+            <span className="font-semibold text-gray-800 flex items-center gap-1.5">
+              📧 Email Notifications ({emailLogs.length})
+            </span>
+            <button
+              onClick={fetchEmails}
+              disabled={fetchingEmails}
+              className="text-blue-600 hover:text-blue-800 transition disabled:opacity-50 text-[10px] font-semibold flex items-center gap-1"
+            >
+              {fetchingEmails ? "Syncing..." : "🔄 Refresh"}
+            </button>
+          </div>
+          {fetchingEmails && emailLogs.length === 0 ? (
+            <p className="text-gray-400 py-1 text-center">Loading email logs...</p>
+          ) : emailLogs.length === 0 ? (
+            <p className="text-gray-400 py-1 text-center">No email notifications sent for this task.</p>
+          ) : (
+            <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+              {emailLogs.map((log) => {
+                const isFailed = log.status === "failed";
+                return (
+                  <div
+                    key={log._id}
+                    className="p-2.5 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-700 truncate max-w-[150px]">
+                          {log.recipient}
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                            isFailed
+                              ? "bg-rose-50 text-rose-600 border border-rose-100"
+                              : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                          }`}
+                        >
+                          {log.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5" title={log.subject}>
+                        {log.subject}
+                      </p>
+                      {isFailed && log.error && (
+                        <p className="text-[9px] text-rose-500 font-medium mt-0.5 bg-rose-50/50 p-1 rounded border border-rose-100/50 break-words">
+                          ⚠️ {log.error}
+                        </p>
+                      )}
+                    </div>
+                    {isFailed && (
+                      <button
+                        onClick={async () => {
+                          setResendingId(log._id);
+                          try {
+                            const res = await resendEmailLog(log._id);
+                            if (res?.data?.success) {
+                              toast.success("Email resent successfully!");
+                              fetchEmails();
+                            } else {
+                              toast.error(res?.data?.message || "Failed to resend email");
+                            }
+                          } catch (err) {
+                            toast.error(err.response?.data?.message || "Failed to resend email");
+                          } finally {
+                            setResendingId(null);
+                          }
+                        }}
+                        disabled={resendingId === log._id}
+                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-[9px] transition shadow-sm disabled:opacity-50 flex-shrink-0"
+                      >
+                        {resendingId === log._id ? "Resending..." : "🚀 Resend"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="max-h-72 overflow-y-auto space-y-2 mb-4 pr-1">
         {all.length === 0 && (
           <p className="text-gray-400 text-sm text-center py-6">

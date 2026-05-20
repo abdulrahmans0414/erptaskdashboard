@@ -17,7 +17,6 @@ import UserManagement from "./components/Admin/UserManagement";
 import BranchManagement from "./components/Admin/BranchManagement";
 import PendingRegistrations from "./components/Admin/PendingRegistrations";
 import SystemSettings from "./components/Admin/SystemSettings";
-import EmailCenter from "./components/Email/EmailCenter";
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from "./components/Common/ErrorBoundary";
 import { SettingsProvider } from "./context/SettingsContext";
@@ -74,7 +73,6 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
-      <Route path="/mailbox" element={<ProtectedRoute><Layout><EmailCenter /></Layout></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
       <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ManagerRoute>} />
       

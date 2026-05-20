@@ -15,8 +15,8 @@ const router = express.Router();
 // All routes require authentication
 router.use(protect);
 
-// Require admin or IT role for email logs
-router.use(authorize('admin', 'it'));
+// Require admin, IT or management role for email logs
+router.use(authorize('admin', 'it', 'branch-head', 'department-head'));
 
 router.get('/stats', getEmailStats);
 router.post('/sync', syncFromGmail);
