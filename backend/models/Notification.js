@@ -12,10 +12,11 @@ const notificationSchema = new mongoose.Schema({
             'task_submitted',
             'task_approved',
             'task_rejected',
-            'task_branch_review_pending',  // ← ADD THIS
-            'task_completed',              // ← Optional, but good to have
-            'task_reassigned',             // ← Optional
-            'team_task_completed',         // ← Optional, for team tasks
+            'task_branch_review_pending',
+            'task_completed',
+            'task_reassigned',
+            'team_task_completed',
+            'task_updated',
             'registration_request',
             'otp_sent',
             'account_approved',
