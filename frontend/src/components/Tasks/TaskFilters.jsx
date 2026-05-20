@@ -11,7 +11,7 @@ const TaskFilters = ({ filters, setFilters, onRefresh }) => {
 
   const loadEmployees = async () => {
     try {
-      const r = await getUsers();
+      const r = await getUsers({ limit: 1000 });
       if (r.data.success)
         setEmployees(r.data.data.filter((e) => e.role !== "admin"));
     } catch (e) {

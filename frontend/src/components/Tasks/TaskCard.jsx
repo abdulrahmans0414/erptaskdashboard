@@ -626,7 +626,7 @@ function ReassignModal({ task, onClose, onDone }) {
   useState(() => {
     const load = async () => {
       try {
-        const res = await getUsers();
+        const res = await getUsers({ limit: 1000 });
         if (res.data.success) {
           setUsers(
             res.data.data.filter(

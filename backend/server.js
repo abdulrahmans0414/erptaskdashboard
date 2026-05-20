@@ -259,16 +259,16 @@ startServer().catch(err => {
 });
 
 // Execute test on startup and log to file
-setTimeout(async () => {
-    try {
-        const { sendEmailNotification } = await import('./utils/emailService.js');
-        logger.info('📧 Starting startup email test...');
-        const res = await sendEmailNotification('abdulrahmans0414@gmail.com', 'TASK_ASSIGNED', {
-            employeeName: 'Test',
-            taskTitle: 'Test Task',
-        }, [{ filename: 'test.pdf', fileUrl: 'https://httpstat.us/401' }]);
-        logger.info(`📧 Finished startup email test. Result: ${res}`);
-    } catch (e) {
-        logger.error(`❌ Startup email test error: ${e.message}\n${e.stack}`);
-    }
-}, 3000);
+// setTimeout(async () => {
+//     try {
+//         const { sendEmailNotification } = await import('./utils/emailService.js');
+//         logger.info('📧 Starting startup email test...');
+//         const res = await sendEmailNotification('abdulrahmans0414@gmail.com', 'TASK_ASSIGNED', {
+//             employeeName: 'Test',
+//             taskTitle: 'Test Task',
+//         }, [{ filename: 'test.pdf', fileUrl: 'https://httpstat.us/401' }]);
+//         logger.info(`📧 Finished startup email test. Result: ${res}`);
+//     } catch (e) {
+//         logger.error(`❌ Startup email test error: ${e.message}\n${e.stack}`);
+//     }
+// }, 3000);

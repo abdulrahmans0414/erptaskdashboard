@@ -72,7 +72,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       if (role === "branch-head" && branch) r = await getUsersByBranch(branch);
       else if (role === "department-head" && department)
         r = await getUsersByDepartment(department);
-      else r = await getUsers(); // admin/it/hr
+      else r = await getUsers({ limit: 1000 }); // admin/it/hr
 
       if (r?.data?.success) {
         let list = r.data.data || [];

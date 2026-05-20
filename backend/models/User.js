@@ -72,27 +72,7 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Scoped department logic
-userSchema.pre('save', async function(next) {
-    try {
-        if (this.branch && this.branch !== 'Central Gaurabagh') {
-            const Branch = mongoose.model('Branch');
-            const branchObj = await Branch.findOne({ name: this.branch }).lean();
-            if (branchObj && branchObj.departments && branchObj.departments.length > 0) {
-                if (!branchObj.departments.includes(this.department)) {
-                    this.department = branchObj.departments.includes('Admin') ? 'Admin' : branchObj.departments[0];
-                }
-            } else {
-                if (this.department && this.department !== 'Academic') {
-                    this.department = 'Admin';
-                }
-            }
-        }
-        next();
-    } catch (err) {
-        next(err);
-    }
-});
+
 
 // Hash password before saving (only when modified)
 userSchema.pre('save', async function(next) {

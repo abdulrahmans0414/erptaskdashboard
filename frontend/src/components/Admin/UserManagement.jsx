@@ -77,10 +77,11 @@ const Field = ({ label, children, required }) => (
 );
 
 const UserManagement = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { settings } = useSettings();
   const departments = settings?.departments || ["IT"];
   const branches = settings?.branches || ["Gaurabagh"];
-  const finalBranches = dbBranches.length > 0 ? dbBranches.map(b => b.name) : branches;
   const roles = [
     "admin",
     "department-head",
@@ -103,7 +104,10 @@ const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [dbBranches, setDbBranches] = useState([]);
   
+  const finalBranches = dbBranches.length > 0 ? dbBranches.map(b => b.name) : branches;
+
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -132,8 +136,6 @@ const UserManagement = () => {
     }
     setLoading(false);
   };
-
-  const [dbBranches, setDbBranches] = useState([]);
 
   const loadDbBranches = async () => {
     try {
@@ -280,12 +282,14 @@ const UserManagement = () => {
               </p>
             </div>
           </div>
-          <button
-            onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-[.98] text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-blue-200/70 transition-all w-full sm:w-auto"
-          >
-            <span className="text-lg leading-none">+</span> Add User
-          </button>
+          {isAdmin && (
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-[.98] text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-blue-200/70 transition-all w-full sm:w-auto"
+            >
+              <span className="text-lg leading-none">+</span> Add User
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -458,12 +462,14 @@ const UserManagement = () => {
                           >
                             ✏️ Edit
                           </button>
-                          <button
-                            onClick={() => setConfirmDelete(user)}
-                            className="inline-flex items-center gap-1 text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg text-sm font-medium transition"
-                          >
-                            🗑️ Delete
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => setConfirmDelete(user)}
+                              className="inline-flex items-center gap-1 text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg text-sm font-medium transition"
+                            >
+                              🗑️ Delete
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -558,12 +564,14 @@ const UserManagement = () => {
                         >
                           ✏️ Edit
                         </button>
-                        <button
-                          onClick={() => setConfirmDelete(user)}
-                          className="flex-1 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition"
-                        >
-                          🗑️ Delete
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setConfirmDelete(user)}
+                            className="flex-1 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition"
+                          >
+                            🗑️ Delete
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

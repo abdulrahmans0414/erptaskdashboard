@@ -270,6 +270,17 @@ const Header = ({
                       >
                         View My Team
                       </MenuItem>
+                      {isBranchHead && (
+                        <MenuItem
+                          icon="🏢"
+                          onClick={() => {
+                            navigate("/admin/branches");
+                            setShowMenu(false);
+                          }}
+                        >
+                          Branch Management
+                        </MenuItem>
+                      )}
                     </>
                   )}
 

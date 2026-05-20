@@ -17,7 +17,7 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
 
   const loadUsers = async () => {
     try {
-      const r = await getUsers();
+      const r = await getUsers({ limit: 1000 });
       if (r.data.success)
         setUsers(
           r.data.data.filter(

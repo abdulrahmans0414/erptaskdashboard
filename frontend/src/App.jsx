@@ -65,6 +65,17 @@ const ManagerRoute = ({ children }) => {
   );
 };
 
+const BranchHeadRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading && !user) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  return ["admin", "branch-head"].includes(user.role) ? (
+    children
+  ) : (
+    <Navigate to="/" replace />
+  );
+};
+
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
   useRealtimeSync(isAuthenticated);
@@ -79,9 +90,9 @@ function AppRoutes() {
         <Route path="/profile" element={<ProtectedRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
         <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ManagerRoute>} />
         
-        {/* Admin-only */}
-        <Route path="/admin/users" element={<AdminRoute><Layout><UserManagement /></Layout></AdminRoute>} />
-        <Route path="/admin/branches" element={<AdminRoute><Layout><BranchManagement /></Layout></AdminRoute>} />
+        {/* Managed & Admin Routes */}
+        <Route path="/admin/users" element={<ManagerRoute><Layout><UserManagement /></Layout></ManagerRoute>} />
+        <Route path="/admin/branches" element={<BranchHeadRoute><Layout><BranchManagement /></Layout></BranchHeadRoute>} />
         <Route path="/admin/registrations" element={<AdminRoute><Layout><PendingRegistrations /></Layout></AdminRoute>} />
         <Route path="/admin/settings" element={<AdminRoute><Layout><SystemSettings /></Layout></AdminRoute>} />
         

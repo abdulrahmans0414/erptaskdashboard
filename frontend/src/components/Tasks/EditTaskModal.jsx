@@ -40,7 +40,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
 
   const loadUsers = async () => {
     try {
-      const response = await getUsers();
+      const response = await getUsers({ limit: 1000 });
       if (response.data.success) setUsers(response.data.data);
     } catch (error) {
       console.error("Error loading users:", error);

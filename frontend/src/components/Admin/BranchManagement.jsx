@@ -6,6 +6,7 @@ import {
   deleteBranch,
 } from "../../services/api";
 import { useSettings } from "../../context/SettingsContext";
+import { useAuth } from "../../context/AuthContext";
 
 const BRANCH_NAMES = [
   "Gaurabagh",
@@ -36,6 +37,8 @@ const EMPTY_FORM = {
 import toast from "react-hot-toast";
 
 const BranchManagement = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { settings } = useSettings();
   const allDepts = settings?.departments || [
     "IT", "HR", "Graphic", "Academic", "Finance", "Marketing", "Legal", "Transport", "Operations", "Admin"
@@ -180,12 +183,14 @@ const BranchManagement = () => {
               </div>
             </div>
           </div>
-          <button
-            onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-[.98] text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-blue-200/70 transition-all w-full sm:w-auto"
-          >
-            <span className="text-lg leading-none">+</span> Add Branch
-          </button>
+          {isAdmin && (
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-[.98] text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-blue-200/70 transition-all w-full sm:w-auto"
+            >
+              <span className="text-lg leading-none">+</span> Add Branch
+            </button>
+          )}
         </div>
 
         {/* Stats + search */}
@@ -281,22 +286,24 @@ const BranchManagement = () => {
                       {branch.code}
                     </span>
                   </div>
-                  <div className="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => openEdit(branch)}
-                      title="Edit"
-                      className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => setConfirmDelete(branch)}
-                      title="Delete"
-                      className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition"
-                    >
-                      🗑️
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => openEdit(branch)}
+                        title="Edit"
+                        className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(branch)}
+                        title="Delete"
+                        className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 text-sm text-slate-600 space-y-1.5">
