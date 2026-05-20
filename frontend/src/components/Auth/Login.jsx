@@ -121,48 +121,35 @@ const BackgroundShapes = () => (
   <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
     {/* Orb 1 */}
     <motion.div
-      className="absolute w-[350px] h-[350px] rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-400/20 blur-3xl"
+      className="absolute w-[450px] h-[450px] rounded-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 blur-[100px]"
       animate={{
-        x: [0, 80, -40, 0],
-        y: [0, -60, 50, 0],
-        scale: [1, 1.2, 0.9, 1],
+        x: [0, 60, -40, 0],
+        y: [0, -50, 60, 0],
+        scale: [1, 1.15, 0.9, 1],
+        borderRadius: ["40%", "50%", "45%", "40%"],
       }}
       transition={{
-        duration: 15,
+        duration: 20,
         repeat: Infinity,
         ease: "easeInOut",
       }}
-      style={{ top: "10%", left: "10%" }}
+      style={{ top: "-10%", left: "-10%" }}
     />
     {/* Orb 2 */}
     <motion.div
-      className="absolute w-[400px] h-[400px] rounded-full bg-gradient-to-br from-purple-400/15 to-pink-500/15 blur-3xl"
+      className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-500/8 to-cyan-500/8 blur-[120px]"
       animate={{
-        x: [0, -90, 60, 0],
-        y: [0, 80, -70, 0],
-        scale: [1, 0.85, 1.15, 1],
+        x: [0, -70, 50, 0],
+        y: [0, 60, -50, 0],
+        scale: [1, 0.9, 1.1, 1],
+        borderRadius: ["50%", "42%", "48%", "50%"],
       }}
       transition={{
-        duration: 18,
+        duration: 25,
         repeat: Infinity,
         ease: "easeInOut",
       }}
-      style={{ bottom: "10%", right: "10%" }}
-    />
-    {/* Orb 3 */}
-    <motion.div
-      className="absolute w-[250px] h-[250px] rounded-full bg-gradient-to-br from-cyan-400/20 to-teal-400/20 blur-3xl"
-      animate={{
-        x: [0, 50, -50, 0],
-        y: [0, 90, -40, 0],
-        scale: [1, 1.1, 0.8, 1],
-      }}
-      transition={{
-        duration: 12,
-        repeat: Infinity,
-        ease: "easeInOut",
-      }}
-      style={{ top: "40%", left: "40%" }}
+      style={{ bottom: "-15%", right: "-15%" }}
     />
   </div>
 );
@@ -171,25 +158,25 @@ const BackgroundShapes = () => (
 const Input = ({ label, error, icon, ...props }) => (
   <div className="space-y-1.5">
     {label && (
-      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
         {label}
       </label>
     )}
     <div className="relative">
       {icon && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
           {icon}
         </span>
       )}
       <input
         className={`w-full px-3 py-2.5 ${icon ? "pl-9" : ""} border rounded-xl text-sm transition-all duration-200
-          ${error ? "border-rose-300 bg-rose-50 focus:ring-rose-400" : "border-gray-200 bg-gray-50 focus:bg-white focus:ring-blue-400"}
-          focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-gray-400`}
+          ${error ? "border-rose-500/50 bg-rose-950/20 text-rose-200 focus:ring-rose-500" : "border-slate-800 bg-slate-950/60 text-slate-100 focus:bg-slate-950 focus:ring-blue-500"}
+          focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-600`}
         {...props}
       />
     </div>
     {error && (
-      <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+      <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1">
         ⚠ {error}
       </p>
     )}
@@ -199,23 +186,23 @@ const Input = ({ label, error, icon, ...props }) => (
 const Select = ({ label, options, error, ...props }) => (
   <div className="space-y-1.5">
     {label && (
-      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
         {label}
       </label>
     )}
     <select
-      className={`w-full px-3 py-2.5 border rounded-xl text-sm bg-white transition-all duration-200
-        ${error ? "border-rose-300" : "border-gray-200"}
-        focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent`}
+      className={`w-full px-3 py-2.5 border rounded-xl text-sm bg-slate-950/60 text-slate-100 transition-all duration-200
+        ${error ? "border-rose-500/50" : "border-slate-800"}
+        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
       {...props}
     >
       {options.map((opt) => (
-        <option key={opt.value || opt} value={opt.value || opt}>
+        <option key={opt.value || opt} value={opt.value || opt} className="bg-slate-900 text-slate-100">
           {opt.label || opt}
         </option>
       ))}
     </select>
-    {error && <p className="text-xs text-rose-500 font-medium">⚠ {error}</p>}
+    {error && <p className="text-xs text-rose-400 font-medium">⚠ {error}</p>}
   </div>
 );
 
@@ -228,12 +215,12 @@ const Button = ({
 }) => {
   const variants = {
     primary:
-      "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-200",
+      "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-900/30",
     success:
-      "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-200",
+      "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg shadow-emerald-900/30",
     outline:
-      "border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700",
-    ghost: "hover:bg-gray-100 text-gray-600",
+      "border-2 border-slate-800 hover:border-slate-700 hover:bg-slate-900/50 text-slate-300",
+    ghost: "hover:bg-slate-900 text-slate-400 hover:text-slate-200",
   };
 
   return (
@@ -583,7 +570,7 @@ export default function AuthPage() {
   // RENDER
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50/50 flex items-center justify-center p-4 overflow-hidden">
+    <div className="relative min-h-screen bg-[#090D1A] flex items-center justify-center p-4 overflow-hidden text-slate-100">
       {/* Dynamic Background shapes */}
       <BackgroundShapes />
 
@@ -602,7 +589,7 @@ export default function AuthPage() {
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="inline-flex items-center justify-center w-14 h-14 bg-white rounded-2xl shadow-lg shadow-indigo-100/50 mb-2 overflow-hidden border border-gray-100 cursor-pointer"
+            className="inline-flex items-center justify-center w-14 h-14 bg-slate-900 rounded-2xl shadow-xl shadow-blue-950/20 mb-2 overflow-hidden border border-slate-800 cursor-pointer"
           >
             <img 
               src="/spis-logo.jpeg" 
@@ -615,7 +602,7 @@ export default function AuthPage() {
               }}
             />
           </motion.div>
-          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 tracking-tight">
+          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 tracking-tight">
             Scholars' Group Of Institution
           </h1>
           <p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1 font-extrabold">
@@ -627,11 +614,11 @@ export default function AuthPage() {
         <motion.div 
           layout
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-white/60 p-5 md:p-6"
+          className="bg-slate-900/60 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-800 p-5 md:p-6"
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-slate-100">
               {mode === "login" && "Welcome Back 👋"}
               {mode === "register" && "Create Account"}
               {mode === "otp" && "Verify OTP"}
@@ -640,7 +627,7 @@ export default function AuthPage() {
             {mode === "login" && (
               <button
                 onClick={() => setMode("register")}
-                className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
+                className="text-sm text-blue-400 hover:text-blue-300 font-semibold"
               >
                 Register →
               </button>
@@ -669,11 +656,11 @@ export default function AuthPage() {
                 />
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     Password
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
                       🔒
                     </span>
                     <input
@@ -686,12 +673,12 @@ export default function AuthPage() {
                           password: e.target.value,
                         }))
                       }
-                      className="w-full pl-9 pr-10 py-2.5 border border-gray-200 bg-gray-50 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+                      className="w-full pl-9 pr-10 py-2.5 border border-slate-800 bg-slate-950/60 text-slate-100 rounded-xl text-sm focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-600"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                     >
                       {showPassword ? "🙈" : "👁️"}
                     </button>
@@ -704,8 +691,8 @@ export default function AuthPage() {
               </form>
 
               {/* Demo Accounts */}
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 text-center">
+              <div className="mt-4 pt-4 border-t border-slate-800">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
                   Quick Demo Access
                 </p>
                 <div className="grid grid-cols-4 gap-2">
@@ -715,14 +702,14 @@ export default function AuthPage() {
                       type="button"
                       onClick={() => fillDemoAccount(demo)}
                       title={`Login as ${demo.label} (${demo.email})`}
-                      className="flex flex-col items-center justify-center p-2 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm transition-all group"
+                      className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 hover:border-blue-500/50 hover:bg-blue-950/20 hover:shadow-sm transition-all group"
                     >
                       <div
                         className={`w-8 h-8 bg-gradient-to-br ${demo.color} rounded-lg flex items-center justify-center text-sm mb-1 shadow group-hover:scale-105 transition-transform`}
                       >
                         {demo.icon}
                       </div>
-                      <span className="text-[10px] font-bold text-gray-600 truncate w-full text-center group-hover:text-blue-600">
+                      <span className="text-[10px] font-bold text-slate-400 truncate w-full text-center group-hover:text-blue-400">
                         {demo.label}
                       </span>
                     </button>
@@ -734,14 +721,14 @@ export default function AuthPage() {
               <div className="mt-6 space-y-2 text-center">
                 <button
                   onClick={() => setMode("otp")}
-                  className="text-xs text-blue-600 hover:underline font-medium"
+                  className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-medium"
                 >
                   Already approved? Verify OTP →
                 </button>
                 <br />
                 <button
                   onClick={() => setMode("status")}
-                  className="text-xs text-blue-600 hover:underline font-medium"
+                  className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-medium"
                 >
                   Check registration status
                 </button>
@@ -765,13 +752,13 @@ export default function AuthPage() {
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                         registerStep >= step
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
-                          : "bg-gray-200 text-gray-400"
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                          : "bg-slate-800 text-slate-500"
                       }`}
                     >
                       {registerStep > step ? "✓" : step}
                     </div>
-                    <div className="flex-1 h-1 rounded-full bg-gray-200 last:hidden">
+                    <div className="flex-1 h-1 rounded-full bg-slate-800 last:hidden">
                       {registerStep > step && (
                         <div className="h-full bg-blue-600 rounded-full" />
                       )}
@@ -781,21 +768,21 @@ export default function AuthPage() {
               </div>
 
               {/* Flow Info */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 mb-6">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-blue-700">
-                  <span className="bg-blue-100 px-2 py-0.5 rounded-full">
+              <div className="bg-gradient-to-r from-blue-950/20 to-indigo-950/20 border border-blue-900/30 rounded-xl p-4 mb-6">
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-blue-300">
+                  <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
                     1. Register
                   </span>
-                  <span className="text-blue-400">→</span>
-                  <span className="bg-blue-100 px-2 py-0.5 rounded-full">
+                  <span className="text-blue-600">→</span>
+                  <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
                     2. Admin Review
                   </span>
-                  <span className="text-blue-400">→</span>
-                  <span className="bg-blue-100 px-2 py-0.5 rounded-full">
+                  <span className="text-blue-600">→</span>
+                  <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
                     3. Get OTP via Email
                   </span>
-                  <span className="text-blue-400">→</span>
-                  <span className="bg-blue-100 px-2 py-0.5 rounded-full">
+                  <span className="text-blue-600">→</span>
+                  <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
                     4. Verify & Access
                   </span>
                 </div>
@@ -804,7 +791,7 @@ export default function AuthPage() {
               <form onSubmit={handleRegister}>
                 {registerStep === 1 && (
                   <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-sm font-bold text-gray-700">
+                    <h3 className="text-sm font-bold text-slate-300">
                       📋 Personal Information
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
@@ -875,8 +862,8 @@ export default function AuthPage() {
                     </div>
 
                     {/* High privilege request flow */}
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                      <p className="text-[11px] font-semibold text-amber-800 mb-2">
+                    <div className="bg-amber-950/15 border border-amber-900/30 rounded-xl p-3">
+                      <p className="text-[11px] font-semibold text-amber-400 mb-2">
                         🔒 High-privilege roles (Request-only)
                       </p>
                       <div className="grid grid-cols-2 gap-3">
@@ -898,10 +885,10 @@ export default function AuthPage() {
                           />
                         ) : (
                           <div className="space-y-1.5">
-                            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                               Requested Role
                             </label>
-                            <div className="w-full px-3 py-2.5 border rounded-xl text-sm bg-gray-50 border-amber-200 text-gray-500">
+                            <div className="w-full px-3 py-2.5 border rounded-xl text-sm bg-slate-950/60 border-slate-800 text-slate-500">
                               Select “Yes” to request
                             </div>
                           </div>
@@ -909,7 +896,7 @@ export default function AuthPage() {
                       </div>
                       {form.requestHighPrivilege === "yes" && (
                         <div className="mt-3">
-                          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                             Reason *
                           </label>
                           <textarea
@@ -919,18 +906,18 @@ export default function AuthPage() {
                             className={`w-full mt-1 px-3 py-2.5 border rounded-xl text-sm transition-all duration-200
                               ${
                                 errors.privilegeRequestReason
-                                  ? "border-rose-300 bg-rose-50 focus:ring-rose-400"
-                                  : "border-amber-200 bg-white focus:ring-blue-400"
+                                  ? "border-rose-500/50 bg-rose-950/20 text-rose-200 focus:ring-rose-500"
+                                  : "border-slate-800 bg-slate-950 text-slate-100 focus:ring-blue-500"
                               }
-                              focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-gray-400`}
+                              focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-600`}
                             placeholder="Why do you need this access? Mention branch/department, responsibilities, and approving person if any."
                           />
                           {errors.privilegeRequestReason && (
-                            <p className="text-xs text-rose-500 font-medium mt-1">
+                            <p className="text-xs text-rose-400 font-medium mt-1">
                               ⚠ {errors.privilegeRequestReason}
                             </p>
                           )}
-                          <p className="text-[10px] text-amber-700 mt-1">
+                          <p className="text-[10px] text-amber-500/80 mt-1">
                             Note: Admin will verify before approval.
                           </p>
                         </div>
@@ -945,7 +932,7 @@ export default function AuthPage() {
 
                 {registerStep === 2 && (
                   <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-sm font-bold text-gray-700">
+                    <h3 className="text-sm font-bold text-slate-300">
                       🔐 Account Security
                     </h3>
                     <div>
@@ -984,36 +971,36 @@ export default function AuthPage() {
                 )}
               </form>
 
-              <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3">
+              <div className="mt-6 pt-4 border-t border-slate-800 grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setMode("otp")}
-                  className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-center"
+                  className="p-3 border border-slate-800 rounded-xl hover:bg-slate-900/50 transition-colors text-center"
                 >
                   <div className="text-2xl mb-1">✉️</div>
-                  <div className="text-xs font-semibold text-gray-600">
+                  <div className="text-xs font-semibold text-slate-300">
                     Verify OTP
                   </div>
-                  <div className="text-[10px] text-gray-400">
+                  <div className="text-[10px] text-slate-500">
                     Already approved?
                   </div>
                 </button>
                 <button
                   onClick={() => setMode("status")}
-                  className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-center"
+                  className="p-3 border border-slate-800 rounded-xl hover:bg-slate-900/50 transition-colors text-center"
                 >
                   <div className="text-2xl mb-1">🔍</div>
-                  <div className="text-xs font-semibold text-gray-600">
+                  <div className="text-xs font-semibold text-slate-300">
                     Check Status
                   </div>
-                  <div className="text-[10px] text-gray-400">Track request</div>
+                  <div className="text-[10px] text-slate-500">Track request</div>
                 </button>
               </div>
 
-              <p className="text-center text-xs text-gray-500 mt-4">
+              <p className="text-center text-xs text-slate-400 mt-4">
                 Already have an account?{" "}
                 <button
                   onClick={() => setMode("login")}
-                  className="text-blue-600 hover:underline font-semibold"
+                  className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
                 >
                   Sign in
                 </button>
@@ -1030,14 +1017,14 @@ export default function AuthPage() {
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.25 }}
             >
-              <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-xl p-4 mb-6">
+              <div className="bg-gradient-to-r from-emerald-950/20 to-teal-950/20 border border-emerald-900/30 rounded-xl p-4 mb-6">
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">📧</span>
                   <div>
-                    <p className="text-sm font-semibold text-emerald-800">
+                    <p className="text-sm font-semibold text-emerald-400">
                       Check Your Email
                     </p>
-                    <p className="text-xs text-emerald-700 mt-1">
+                    <p className="text-xs text-emerald-300/80 mt-1">
                       We've sent a 6-digit OTP to your email. Also check spam
                       folder if not found.
                     </p>
@@ -1058,7 +1045,7 @@ export default function AuthPage() {
                 />
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-3">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3 text-center">
                     Enter 6-Digit OTP
                   </label>
                   <div
@@ -1076,13 +1063,13 @@ export default function AuthPage() {
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                         className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-xl transition-all
-                          ${otpError ? "border-rose-300 bg-rose-50" : digit ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-gray-50"}
-                          focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent`}
+                          ${otpError ? "border-rose-500/50 bg-rose-950/20 text-rose-200" : digit ? "border-blue-500/50 bg-blue-950/20 text-blue-200" : "border-slate-800 bg-slate-950 text-slate-100"}
+                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                       />
                     ))}
                   </div>
                   {otpError && (
-                    <p className="text-xs text-rose-500 text-center mt-2 font-medium">
+                    <p className="text-xs text-rose-400 text-center mt-2 font-medium">
                       ⚠ {otpError}
                     </p>
                   )}
@@ -1099,19 +1086,19 @@ export default function AuthPage() {
               </form>
 
               <div className="mt-6 text-center space-y-3">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-400">
                   Didn't receive OTP?{" "}
                   <button
                     onClick={() => setMode("status")}
-                    className="text-blue-600 hover:underline font-semibold"
+                    className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
                   >
                     Check status
                   </button>
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-400">
                   <button
                     onClick={() => setMode("login")}
-                    className="text-blue-600 hover:underline font-semibold"
+                    className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
                   >
                     ← Back to Sign In
                   </button>
@@ -1154,14 +1141,14 @@ export default function AuthPage() {
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold
                     ${
                       statusData.result.status === "approved"
-                        ? "bg-emerald-100 text-emerald-700"
+                        ? "bg-emerald-950/45 text-emerald-400 border border-emerald-900/30"
                         : statusData.result.status === "pending"
-                          ? "bg-amber-100 text-amber-700"
+                          ? "bg-amber-950/45 text-amber-400 border border-amber-900/30"
                           : statusData.result.status === "otp_sent"
-                            ? "bg-blue-100 text-blue-700"
+                            ? "bg-blue-950/45 text-blue-400 border border-blue-900/30"
                             : statusData.result.status === "rejected"
-                              ? "bg-rose-100 text-rose-700"
-                              : "bg-gray-100 text-gray-700"
+                              ? "bg-rose-950/45 text-rose-400 border border-rose-900/30"
+                              : "bg-slate-800 text-slate-400"
                     }`}
                   >
                     {statusData.result.status === "approved" &&
@@ -1174,15 +1161,15 @@ export default function AuthPage() {
                   </div>
 
                   {statusData.result.status === "not_found" && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                      <p className="text-sm text-blue-700">
+                    <div className="bg-blue-950/20 border border-blue-900/30 rounded-xl p-4 text-blue-300">
+                      <p className="text-sm">
                         No registration found. Please register first.
                       </p>
                     </div>
                   )}
                   {statusData.result.status === "pending" && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                      <p className="text-sm text-amber-700">
+                    <div className="bg-amber-950/20 border border-amber-900/30 rounded-xl p-4 text-amber-300">
+                      <p className="text-sm">
                         Your request is under admin review. You'll receive an
                         email when approved.
                       </p>
@@ -1190,8 +1177,8 @@ export default function AuthPage() {
                   )}
                   {statusData.result.status === "otp_sent" && (
                     <div className="space-y-3">
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                        <p className="text-sm text-emerald-700">
+                      <div className="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4 text-emerald-300">
+                        <p className="text-sm">
                           Admin has approved! Check your email for OTP.
                         </p>
                       </div>
@@ -1202,8 +1189,8 @@ export default function AuthPage() {
                   )}
                   {statusData.result.status === "approved" && (
                     <div className="space-y-3">
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                        <p className="text-sm text-emerald-700">
+                      <div className="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4 text-emerald-300">
+                        <p className="text-sm">
                           Account is active! You can sign in now.
                         </p>
                       </div>
@@ -1213,8 +1200,8 @@ export default function AuthPage() {
                     </div>
                   )}
                   {statusData.result.status === "rejected" && (
-                    <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
-                      <p className="text-sm text-rose-700">
+                    <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-4 text-rose-300">
+                      <p className="text-sm">
                         {statusData.result.message ||
                           "Registration was rejected. Please contact admin."}
                       </p>
@@ -1223,10 +1210,10 @@ export default function AuthPage() {
                 </div>
               )}
 
-              <p className="text-center text-xs text-gray-500 mt-4">
+              <p className="text-center text-xs text-slate-400 mt-4">
                 <button
                   onClick={() => setMode("login")}
-                  className="text-blue-600 hover:underline font-semibold"
+                  className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
                 >
                   ← Back to Sign In
                 </button>
@@ -1237,9 +1224,14 @@ export default function AuthPage() {
         </motion.div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-6 font-medium">
-          TaskGrid ERP v2.0 • © 2026 Scholars' Group Of Institution
-        </p>
+        <div className="text-center mt-6 space-y-1">
+          <p className="text-xs text-slate-500 font-medium">
+            TaskGrid ERP v2.0 • © 2026 Scholars' Group Of Institution
+          </p>
+          <p className="text-[10px] text-slate-400/80 font-bold uppercase tracking-widest">
+            Developed By Abdul Rahman
+          </p>
+        </div>
       </motion.div>
     </div>
   );

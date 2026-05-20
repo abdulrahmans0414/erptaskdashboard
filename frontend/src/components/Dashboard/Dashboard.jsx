@@ -144,15 +144,15 @@ const DashboardSkeleton = () => (
 // ==================== EMPLOYEE MINI CARD ====================
 const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
   const colors = {
-    IT: "from-blue-500 to-cyan-500",
-    HR: "from-purple-500 to-pink-500",
-    Graphic: "from-rose-500 to-pink-500",
-    Academic: "from-indigo-500 to-violet-500",
-    Finance: "from-emerald-500 to-teal-500",
-    Marketing: "from-orange-500 to-amber-500",
-    Legal: "from-slate-500 to-gray-500",
-    Transport: "from-amber-500 to-yellow-500",
-    Operations: "from-cyan-500 to-blue-500",
+    IT: "from-blue-600 to-cyan-500",
+    HR: "from-pink-500 to-rose-400",
+    Graphic: "from-purple-500 to-indigo-500",
+    Academic: "from-violet-600 to-purple-400",
+    Finance: "from-emerald-600 to-teal-500",
+    Marketing: "from-amber-500 to-orange-500",
+    Legal: "from-slate-600 to-slate-400",
+    Transport: "from-yellow-500 to-amber-500",
+    Operations: "from-cyan-600 to-blue-500",
   };
 
   const rate =
@@ -162,77 +162,95 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
 
   const performanceColor =
     rate >= 80
-      ? "text-emerald-600"
+      ? "text-emerald-500"
       : rate >= 50
-        ? "text-amber-600"
-        : "text-rose-600";
+        ? "text-amber-500"
+        : "text-rose-500";
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-xl shadow-sm border p-4 hover-lift cursor-pointer group animate-fadeInUp stagger-${(index % 6) + 1}`}
+      className={`bg-white rounded-2xl border border-gray-100 p-5 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-50/50 hover-lift cursor-pointer group animate-fadeInUp stagger-${(index % 6) + 1}`}
     >
-      <div className="flex items-center gap-3 mb-3">
-        {emp.avatar ? (
-          <img
-            src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
-            alt={emp.name}
-            className="w-11 h-11 min-w-[44px] rounded-xl object-cover shadow-lg ring-1 ring-gray-200 group-hover:scale-110 transition-transform"
-            onError={(e) => {
-              e.currentTarget.src = "";
-              e.currentTarget.removeAttribute("src");
-            }}
-          />
-        ) : (
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          {emp.avatar ? (
+            <img
+              src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
+              alt={emp.name}
+              className="w-12 h-12 rounded-xl object-cover shadow-md ring-2 ring-gray-50 group-hover:scale-105 transition-transform"
+              onError={(e) => {
+                e.currentTarget.src = "";
+                e.currentTarget.removeAttribute("src");
+              }}
+            />
+          ) : (
+            <div
+              className={`w-12 h-12 bg-gradient-to-br ${colors[emp.department] || "from-gray-500 to-slate-600"} rounded-xl flex items-center justify-center text-white font-black text-base shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform`}
+            >
+              {emp.name?.charAt(0)?.toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <h4 className="font-bold text-gray-800 text-sm truncate group-hover:text-blue-600 transition-colors">
+              {emp.name}
+            </h4>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[10px] text-gray-400 capitalize truncate max-w-[100px]">
+                {emp.role?.replace(/-/g, " ")}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col items-end">
+          <span className="text-xs font-extrabold text-gray-700 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100/50">
+            {stats.totalTasks} <span className="text-[9px] font-normal text-gray-400">tasks</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-1.5 mb-4 text-center">
+        <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/20">
+          <p className="text-xs font-black text-emerald-700">{stats.completed}</p>
+          <p className="text-[8px] text-emerald-600 font-extrabold uppercase tracking-wider">Done</p>
+        </div>
+        <div className="bg-blue-50/50 p-2 rounded-xl border border-blue-100/20">
+          <p className="text-xs font-black text-blue-700">{stats.inProgress}</p>
+          <p className="text-[8px] text-blue-600 font-extrabold uppercase tracking-wider">Progress</p>
+        </div>
+        <div className="bg-amber-50/50 p-2 rounded-xl border border-amber-100/20">
+          <p className="text-xs font-black text-amber-700">{stats.pending}</p>
+          <p className="text-[8px] text-amber-600 font-extrabold uppercase tracking-wider">Pending</p>
+        </div>
+      </div>
+
+      <div className="space-y-1 mb-3">
+        <div className="flex justify-between items-center text-[10px]">
+          <span className="font-bold text-gray-400 uppercase tracking-wider">Completion</span>
+          <span className={`font-black ${performanceColor}`}>{rate}%</span>
+        </div>
+        <div className="h-1.5 bg-gray-50 rounded-full overflow-hidden border border-gray-100/30">
           <div
-            className={`w-11 h-11 min-w-[44px] bg-gradient-to-br ${colors[emp.department] || "from-gray-400 to-gray-500"} rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform`}
-          >
-            {emp.name?.charAt(0)?.toUpperCase()}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-800 text-sm truncate group-hover:text-blue-600 transition-colors">
-            {emp.name}
-          </p>
-          <div className="flex items-center gap-2 text-[11px] text-gray-500">
-            <span className="px-2 py-0.5 bg-gray-100 rounded-md font-medium">
-              {emp.department}
-            </span>
-            <span className="w-1 h-1 rounded-full bg-gray-300" />
-            <span className="capitalize">{emp.role}</span>
-          </div>
+            className={`h-full bg-gradient-to-r ${
+              rate >= 80
+                ? "from-emerald-400 to-teal-500"
+                : rate >= 50
+                  ? "from-amber-400 to-orange-500"
+                  : "from-rose-400 to-pink-500"
+            } rounded-full transition-all duration-500`}
+            style={{ width: `${rate}%` }}
+          />
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <p className="text-2xl font-bold text-gray-800">{stats.totalTasks}</p>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider">
-            Tasks
-          </p>
-        </div>
-        <div className={`text-lg font-bold ${performanceColor}`}>{rate}%</div>
-      </div>
-
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="flex-1 text-center bg-emerald-50 text-emerald-700 px-1.5 py-1 rounded-md text-[10px] font-medium">
-          ✓ {stats.completed}
+      <div className="flex items-center justify-between text-[10px] text-gray-400 border-t border-gray-50 pt-2.5">
+        <span className="flex items-center gap-1 font-semibold text-gray-500">
+          🏢 <span className="truncate max-w-[80px]">{emp.department}</span>
         </span>
-        <span className="flex-1 text-center bg-blue-50 text-blue-700 px-1.5 py-1 rounded-md text-[10px] font-medium">
-          ↻ {stats.inProgress}
-        </span>
-        <span className="flex-1 text-center bg-amber-50 text-amber-700 px-1.5 py-1 rounded-md text-[10px] font-medium">
-          ⏳ {stats.pending}
+        <span className="flex items-center gap-1 font-semibold text-gray-500">
+          📍 <span className="truncate max-w-[90px]">{emp.branch?.replace(" Branch", "")}</span>
         </span>
       </div>
-
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-500"
-          style={{ width: `${rate}%` }}
-        />
-      </div>
-      <p className="text-[10px] text-gray-400 mt-1">📍 {emp.branch}</p>
     </div>
   );
 };
