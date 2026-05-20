@@ -20,12 +20,10 @@ const employeeSchema = new mongoose.Schema({
     },
     department: {
         type: String,
-        enum: ['IT', 'HR', 'Graphic', 'Academic', 'Finance', 'Marketing', 'Legal', 'Transport', 'Operations'],
         required: true
     },
     branch: {
         type: String,
-        enum: ['Gaurabagh', 'Vikas Nagar', 'Kalyanpur', 'Kursi', 'Hive', 'Ring Road', 'Muazzam Nagar', 'Aziz Nagar'],
         required: true
     },
     designation: {
@@ -61,5 +59,15 @@ const employeeSchema = new mongoose.Schema({
         ref: 'User'
     }
 }, { timestamps: true });
+
+// Scoped department logic
+employeeSchema.pre('save', function(next) {
+    if (this.branch && this.branch !== 'Central Gaurabagh') {
+        if (this.department && this.department !== 'Academic') {
+            this.department = 'Admin';
+        }
+    }
+    next();
+});
 
 export default mongoose.model('Employee', employeeSchema);

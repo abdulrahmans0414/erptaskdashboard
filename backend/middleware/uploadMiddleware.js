@@ -100,8 +100,8 @@ export const uploadToCloudinary = (folder = 'erp/misc', maxCount = 10, fieldName
                     req.files.map(async (file) => {
                         const fileExt = path.extname(file.originalname);
                         const fileBase = path.basename(file.originalname, fileExt);
-                        // Treat PDFs as 'image' type under Cloudinary so they are delivered publicly without 401 raw blocks
-                        const isImageOrPdf = /\.(png|jpe?g|gif|webp|pdf)$/i.test(fileExt);
+                        // Treat only standard images as 'image' type under Cloudinary
+                        const isImage = /\.(png|jpe?g|gif|webp)$/i.test(fileExt);
 
                         // Clean, lowercase, and truncate filename to max 15 chars for clean URLs
                         const cleanBase = fileBase
@@ -114,13 +114,13 @@ export const uploadToCloudinary = (folder = 'erp/misc', maxCount = 10, fieldName
                         const shortName = `${uniqueId}_${cleanBase}`;
 
                         // Cloudinary automatically appends extensions for 'image' types, but not for 'raw' files
-                        const customPublicId = isImageOrPdf
+                        const customPublicId = isImage
                             ? shortName
                             : `${shortName}${fileExt.toLowerCase()}`;
 
                         const result = await uploadBufferToCloudinary(file.buffer, {
                             folder: `erp/${folder}`,
-                            resource_type: isImageOrPdf ? 'image' : 'raw',
+                            resource_type: isImage ? 'image' : 'raw',
                             public_id: customPublicId,
                             overwrite: false,
                         });

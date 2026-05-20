@@ -7,23 +7,79 @@ import Task from './models/Task.js';
 import Department from './models/Department.js';
 import Branch from './models/Branch.js';
 import Employee from './models/Employee.js';
-
+import Settings from './models/Settings.js';
 
 // ✅ DNS Configuration - Fix for MongoDB Atlas SRV lookup (same as server.js)
 dns.setServers(['1.1.1.1', '8.8.8.8']);
 
 dotenv.config();
 
-// 8 Branch names
+// 8 Branch names with exact names, heads, and departments
 const BRANCHES = [
-    { name: 'Gaurabagh', code: 'GB', city: 'Lucknow', headName: 'Abdul Samad kavi khan', headEmail: 'abdul.habib@company.com' },
-    { name: 'Vikas Nagar', code: 'VN', city: 'Lucknow', headName: 'Mohd Aman Idrishi', headEmail: 'rakesh.sharma@company.com' },
-    { name: 'Kalyanpur', code: 'KP', city: 'Lucknow', headName: 'Anil Kumar', headEmail: 'anil.kumar@company.com' },
-    { name: 'Kursi', code: 'KR', city: 'Lucknow', headName: 'Mohd Irfan', headEmail: 'mohd.irfan@company.com' },
-    { name: 'Hive', code: 'HV', city: 'Lucknow', headName: 'Gishan', headEmail: 'sanjay.gupta@company.com' },
-    { name: 'Ring Road', code: 'RR', city: 'Lucknow', headName: 'Shan', headEmail: 'rajesh.verma@company.com' },
-    { name: 'Muazzam Nagar', code: 'MN', city: 'Lucknow', headName: 'Adil', headEmail: 'imran.khan@company.com' },
-    { name: 'Aziz Nagar', code: 'AN', city: 'Lucknow', headName: 'Shahid Ali', headEmail: 'shahid.ali@company.com' }
+    { 
+        name: 'Central Gaurabagh', 
+        code: 'GB', 
+        city: 'Lucknow', 
+        headName: 'Abdul Samad Kavi', 
+        headEmail: 'samad.kavi@company.com', 
+        departments: ['IT', 'HR', 'Graphic', 'Academic', 'Finance', 'Marketing', 'Legal', 'Transport', 'Operations', 'Admin'] 
+    },
+    { 
+        name: 'Vikas Nagar', 
+        code: 'VN', 
+        city: 'Lucknow', 
+        headName: 'Aman', 
+        headEmail: 'aman@company.com', 
+        departments: ['Admin', 'Academic'] 
+    },
+    { 
+        name: 'Hive', 
+        code: 'SH', 
+        city: 'Lucknow', 
+        headName: 'Zeeshan', 
+        headEmail: 'zeeshan@company.com', 
+        departments: ['Admin', 'Academic'] 
+    },
+    { 
+        name: 'Hifz Academy', 
+        code: 'SHA', 
+        city: 'Lucknow', 
+        headName: 'Shan', 
+        headEmail: 'shan@company.com', 
+        departments: ['Admin', 'Academic'] 
+    },
+    { 
+        name: 'Kursi Road', 
+        code: 'KR', 
+        city: 'Lucknow', 
+        headName: 'Amir', 
+        headEmail: 'amir@company.com', 
+        departments: ['Admin', 'Academic'] 
+    },
+    { 
+        name: 'Muazzam Nagar', 
+        code: 'MN', 
+        city: 'Lucknow', 
+        headName: 'Adil', 
+        headEmail: 'adil@company.com', 
+        departments: ['Admin', 'Academic'] 
+    },
+    { 
+        name: 'Aziz Nagar', 
+        code: 'AN', 
+        city: 'Lucknow', 
+        headName: 'Taj', 
+        headEmail: 'taj@company.com', 
+        departments: ['Admin', 'Academic'] 
+    },
+    { 
+        name: 'Mailaraiganj', 
+        code: 'MG', 
+        city: 'Lucknow', 
+        headName: 'Zakaria', 
+        headEmail: 'zakaria@company.com', 
+        departments: ['Admin', 'Academic'] 
+    }
 ];
 
 // Departments with managers
@@ -35,21 +91,25 @@ const DEPARTMENTS = [
     { name: 'Finance', code: 'FN', icon: '💰', color: 'emerald', isActive: true, manager: 'Irfan Khan', managerEmail: 'irfan.khan@company.com' },
     { name: 'Marketing', code: 'MK', icon: '📢', color: 'pink', isActive: true, manager: 'Salman Ali', managerEmail: 'salman.ali@company.com' },
     { name: 'Legal', code: 'LG', icon: '⚖️', color: 'slate', isActive: true, manager: 'Adv. Sharma', managerEmail: 'sharma@company.com' },
-    { name: 'Transport', code: 'TR', icon: '🚚', color: 'amber', isActive: true, manager: 'Rizwan Ahmed', managerEmail: 'rizwan@company.com' }
+    { name: 'Transport', code: 'TR', icon: '🚚', color: 'amber', isActive: true, manager: 'Rizwan Ahmed', managerEmail: 'rizwan@company.com' },
+    { name: 'Operations', code: 'OP', icon: '⚙️', color: 'slate', isActive: true, manager: 'Operations Manager', managerEmail: 'ops.manager@company.com' },
+    { name: 'Admin', code: 'AD', icon: '💼', color: 'indigo', isActive: true, manager: 'Office Admin', managerEmail: 'admin.office@company.com' }
 ];
 
 // Branch Code Mapping
 const BRANCH_MAPPING = {
     'VN': 'Vikas Nagar',
-    'GB': 'Gaurabagh',
+    'GB': 'Central Gaurabagh',
     'MN': 'Muazzam Nagar',
-    'KR': 'Kursi',
+    'KR': 'Kursi Road',
     'SH': 'Hive',
-    'SHA': 'Hive',
+    'SHA': 'Hifz Academy',
     'AN': 'Aziz Nagar',
-    'CN': 'Ring Road',
-    'SOPL': 'Ring Road',
-    'MG': 'Kalyanpur'
+    'CN': 'Central Gaurabagh',
+    'SOPL': 'Central Gaurabagh',
+    'KP': 'Central Gaurabagh',
+    'RR': 'Central Gaurabagh',
+    'MG': 'Mailaraiganj'
 };
 
 // Complete Employee Data
@@ -363,9 +423,18 @@ export const seedDatabase = async (isApi = false) => {
         await Branch.deleteMany({});
         await Employee.deleteMany({});
         await Task.deleteMany({});
+        await Settings.deleteMany({});
         
         console.log('🗑️ Cleared existing data\n');
         
+        // Seed Settings Singleton Document
+        await Settings.create({
+            singleton: 'SYSTEM_SETTINGS',
+            departments: ['IT', 'HR', 'Graphic', 'Academic', 'Finance', 'Marketing', 'Legal', 'Transport', 'Operations', 'Admin'],
+            branches: ['Central Gaurabagh', 'Vikas Nagar', 'Hive', 'Hifz Academy', 'Kursi Road', 'Muazzam Nagar', 'Aziz Nagar', 'Mailaraiganj']
+        });
+        console.log('✅ Settings singleton seeded');
+
         // Create branches
         const createdBranches = await Branch.insertMany(BRANCHES);
         console.log(`✅ ${createdBranches.length} branches created`);
@@ -374,18 +443,41 @@ export const seedDatabase = async (isApi = false) => {
         const createdDepts = await Department.insertMany(DEPARTMENTS);
         console.log(`✅ ${createdDepts.length} departments created`);
         
-        // CREATE ADMIN USER
+        // CREATE ADMIN USER (Director)
         const admin = await User.create({
-            name: 'Admin User',
+            name: 'Director User',
             email: 'admin@example.com',
             password: 'admin123',
             role: 'admin',
             department: 'IT',
-            branch: 'Gaurabagh',
+            branch: 'Central Gaurabagh',
             isActive: true
         });
         console.log(`✅ Admin user: admin@example.com / admin123`);
         
+        // CREATE OVERALL MANAGERS
+        await User.create({
+            name: 'Abdul Habeeb',
+            email: 'abdul.habib@company.com',
+            password: 'branch123',
+            role: 'admin',
+            department: 'Admin',
+            branch: 'Central Gaurabagh',
+            isActive: true
+        });
+        console.log(`✅ Overall Branch Manager: abdul.habib@company.com / branch123`);
+
+        await User.create({
+            name: 'Asiya Arif',
+            email: 'asiya.arif@company.com',
+            password: 'academic123',
+            role: 'admin',
+            department: 'Academic',
+            branch: 'Central Gaurabagh',
+            isActive: true
+        });
+        console.log(`✅ Overall Academic Manager: asiya.arif@company.com / academic123`);
+
         // CREATE BRANCH HEADS
         for (const branch of BRANCHES) {
             await User.create({
@@ -393,14 +485,14 @@ export const seedDatabase = async (isApi = false) => {
                 email: branch.headEmail,
                 password: 'branch123',
                 role: 'branch-head',
-                department: 'Operations',
+                department: 'Admin',
                 branch: branch.name,
                 isActive: true
             });
             console.log(`✅ Branch Head: ${branch.headName} (${branch.name})`);
         }
         
-        // CREATE DEPARTMENT MANAGERS
+        // CREATE DEPARTMENT MANAGERS (assigned to Central Gaurabagh)
         for (const dept of DEPARTMENTS) {
             await User.create({
                 name: dept.manager,
@@ -408,20 +500,20 @@ export const seedDatabase = async (isApi = false) => {
                 password: 'manager123',
                 role: 'department-head',
                 department: dept.name,
-                branch: 'Gaurabagh',
+                branch: 'Central Gaurabagh',
                 isActive: true
             });
             console.log(`✅ Department Manager: ${dept.manager} (${dept.name})`);
         }
         
-        // Create HR User
+        // Create HR User (assigned to Central Gaurabagh)
         await User.create({
             name: 'HR Manager',
             email: 'hr@example.com',
             password: 'hr1234',
             role: 'hr',
             department: 'HR',
-            branch: 'Gaurabagh',
+            branch: 'Central Gaurabagh',
             isActive: true
         });
         console.log(`✅ HR user: hr@example.com / hr1234`);
@@ -433,9 +525,17 @@ export const seedDatabase = async (isApi = false) => {
         
         for (let idx = 0; idx < EMPLOYEES.length; idx++) {
             const emp = EMPLOYEES[idx];
-            const branchName = BRANCH_MAPPING[emp.branchCode] || 'Gaurabagh';
-            const department = emp.department || 'Academic';
+            const branchName = BRANCH_MAPPING[emp.branchCode] || 'Central Gaurabagh';
+            let department = emp.department || 'Academic';
             
+            // Scoped department logic: only Central Gaurabagh gets all depts.
+            // All other branches are strictly limited to Admin and Academic.
+            if (branchName !== 'Central Gaurabagh') {
+                if (department !== 'Academic') {
+                    department = 'Admin';
+                }
+            }
+
             const email = generateEmail(emp.name, emp.empCode);
             
             // CREATE USER (for authentication)
@@ -506,9 +606,11 @@ export const seedDatabase = async (isApi = false) => {
         
         console.log('\n🎉 ========== SEEDING COMPLETE ==========');
         console.log('\n📝 Login Credentials:');
-        console.log('   👑 Admin: admin@example.com / admin123');
+        console.log('   👑 Director (Admin): admin@example.com / admin123');
+        console.log('   🏢 Overall Branch Manager: abdul.habib@company.com / branch123');
+        console.log('   📚 Overall Academic Manager: asiya.arif@company.com / academic123');
         console.log('   👥 HR: hr@example.com / hr1234');
-        console.log('   🏢 Branch Head (GB): abdul.habib@company.com / branch123');
+        console.log('   🏢 Branch Head (GB): samad.kavi@company.com / branch123');
         console.log('   👨‍💼 Dept Manager: abdul.rahman@company.com / manager123');
         console.log('   👨‍💼 Employee: use email shown above / employee123');
         
