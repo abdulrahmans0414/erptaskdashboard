@@ -7,6 +7,7 @@ import TaskCard from "./TaskCard";
 import CreateTaskModal from "./CreateTaskModal";
 
 import { useSettings } from "../../context/SettingsContext";
+import { getBranches } from "../../services/api";
 
 export default function Tasks() {
   const dispatch = useDispatch();
@@ -15,8 +16,12 @@ export default function Tasks() {
   const navigate = useNavigate();
   const { items: allTasks, pagination, loading, dashboardStats } = useSelector((s) => s.tasks);
 
-  const BRANCHES = settings?.branches || ["Gaurabagh"];
-  const DEPTS = settings?.departments || ["IT"];
+  const BRANCHES = settings?.branches || [
+    "Central Gaurabagh", "Vikas Nagar", "Hive", "Hifz Academy", "Kursi Road", "Muazzam Nagar", "Aziz Nagar", "Mailaraiganj"
+  ];
+  const DEPTS = settings?.departments || [
+    "IT", "HR", "Graphic", "Academic", "Finance", "Marketing", "Legal", "Transport", "Operations", "Admin"
+  ];
 
   const [showCreate, setShowCreate] = useState(false);
   const [filters, setFilters] = useState({
@@ -27,6 +32,21 @@ export default function Tasks() {
     branch: "all",
   });
   const [page, setPage] = useState(1);
+  const [dbBranches, setDbBranches] = useState([]);
+
+  useEffect(() => {
+    const fetchB = async () => {
+      try {
+        const res = await getBranches();
+        if (res?.data?.success) {
+          setDbBranches(res.data.data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch branches in Tasks:", e);
+      }
+    };
+    fetchB();
+  }, []);
   const canManage = ["admin", "department-head", "branch-head"].includes(
     user?.role,
   );
@@ -129,14 +149,35 @@ export default function Tasks() {
     return [user.branch].filter(Boolean);
   })();
 
-  const deptFilterOptions = (() => {
-    if (!user?.role) return ["all", ...DEPTS];
-    if (["admin", "it"].includes(user.role)) return ["all", ...DEPTS];
-    if (user.role === "department-head")
-      return [user.department].filter(Boolean);
-    if (user.role === "hr") return ["HR"];
-    return ["all", ...DEPTS];
-  })();
+  const deptFilterOptions = useMemo(() => {
+    let baseDepts = DEPTS;
+    if (filters.branch !== "all") {
+      const branchObj = dbBranches.find(b => b.name === filters.branch);
+      if (branchObj && branchObj.departments && branchObj.departments.length > 0) {
+        baseDepts = branchObj.departments.filter(dept => DEPTS.includes(dept));
+      } else if (filters.branch !== "Central Gaurabagh" && filters.branch !== "Gaurabagh") {
+        baseDepts = DEPTS.filter((d) => d === "Admin" || d === "Academic");
+      }
+    }
+    if (!user?.role) return ["all", ...baseDepts];
+    if (["admin", "it"].includes(user.role)) return ["all", ...baseDepts];
+    if (user.role === "department-head") {
+      const allowed = baseDepts.includes(user.department);
+      return allowed ? [user.department] : [];
+    }
+    if (user.role === "hr") {
+      const allowed = baseDepts.includes("HR");
+      return allowed ? ["HR"] : [];
+    }
+    return ["all", ...baseDepts];
+  }, [filters.branch, DEPTS, user, dbBranches]);
+
+  useEffect(() => {
+    if (filters.department !== "all" && !deptFilterOptions.includes(filters.department)) {
+      setFilters((p) => ({ ...p, department: "all" }));
+      setPage(1);
+    }
+  }, [filters.branch, deptFilterOptions, filters.department]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-5 p-4 md:p-6">

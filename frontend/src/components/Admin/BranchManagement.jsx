@@ -38,7 +38,7 @@ import toast from "react-hot-toast";
 const BranchManagement = () => {
   const { settings } = useSettings();
   const allDepts = settings?.departments || [
-    "IT", "HR", "Graphic", "Academic", "Finance", "Marketing", "Legal", "Transport", "Operations"
+    "IT", "HR", "Graphic", "Academic", "Finance", "Marketing", "Legal", "Transport", "Operations", "Admin"
   ];
 
   const [branches, setBranches] = useState([]);

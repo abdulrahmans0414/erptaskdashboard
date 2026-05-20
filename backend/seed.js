@@ -112,6 +112,18 @@ const BRANCH_MAPPING = {
     'MG': 'Mailaraiganj'
 };
 
+// Mapping of branch head employee codes to their branches/emails
+const BRANCH_HEADS_MAP = {
+    '190014': { branch: 'Central Gaurabagh', email: 'samad.kavi@company.com', headName: 'Abdul Samad Kavi' },
+    '230028': { branch: 'Vikas Nagar', email: 'aman@company.com', headName: 'Aman' },
+    '170009': { branch: 'Hive', email: 'zeeshan@company.com', headName: 'Zeeshan' },
+    '230032': { branch: 'Hifz Academy', email: 'shan@company.com', headName: 'Shan' },
+    '170005': { branch: 'Kursi Road', email: 'amir@company.com', headName: 'Amir' },
+    '210017': { branch: 'Muazzam Nagar', email: 'adil@company.com', headName: 'Adil' },
+    '260002': { branch: 'Aziz Nagar', email: 'taj@company.com', headName: 'Taj' },
+    '250168': { branch: 'Mailaraiganj', email: 'zakaria@company.com', headName: 'Zakaria' }
+};
+
 // Complete Employee Data
 const EMPLOYEES = [
     // Vikas Nagar (VN) - 14 employees
@@ -234,9 +246,29 @@ const EMPLOYEES = [
     { empCode: '260014', name: 'Bushra Khalid Umar', branchCode: 'KR', doj: '2026-03-02', department: 'Academic' },
     { empCode: '260050', name: 'Sabreen Bano', branchCode: 'KR', doj: '2026-04-18', department: 'Academic' },
     
-    // Hive (SH) - 2 employees
-    { empCode: '180011', name: 'Mohammad Adil EK', branchCode: 'SH', doj: '2018-08-07', department: 'IT' },
-    { empCode: '210018', name: 'Syed Sadiq Ali', branchCode: 'SH', doj: '2021-08-13', department: 'IT' },
+    // Hive (SH) - 9 employees
+    { empCode: '160003', name: 'Anjum', branchCode: 'SH', doj: '2016-06-15', department: 'Academic' },
+    { empCode: '170009', name: 'Zeeshan Ahamad', branchCode: 'SH', doj: '2017-09-01', department: 'IT' },
+    { empCode: '220027', name: 'Aisha Ansari', branchCode: 'SH', doj: '2022-10-10', department: 'Academic' },
+    { empCode: '250145', name: 'Bushra Quraishi', branchCode: 'SH', doj: '2025-08-01', department: 'Academic' },
+    { empCode: '250154', name: 'Seema Ishaque', branchCode: 'SH', doj: '2025-09-15', department: 'Academic' },
+    { empCode: '260019', name: 'Saltanat Naaz', branchCode: 'SH', doj: '2026-03-05', department: 'Academic' },
+    { empCode: '260025', name: 'Arifa Khatoon', branchCode: 'SH', doj: '2026-03-20', department: 'Academic' },
+    { empCode: '260036', name: 'Shaziya Siddiqui', branchCode: 'SH', doj: '2026-04-10', department: 'Academic' },
+    { empCode: '260038', name: 'Aliya Bano', branchCode: 'SH', doj: '2026-04-15', department: 'Academic' },
+    
+    // Hifz Academy (SHA) - 11 employees
+    { empCode: '180011', name: 'Mohammad Adil Ekra', branchCode: 'SHA', doj: '2018-08-07', department: 'Academic' },
+    { empCode: '210018', name: 'Syed Sadiq Ali', branchCode: 'SHA', doj: '2021-08-13', department: 'Academic' },
+    { empCode: '230032', name: 'Shan Ahmad', branchCode: 'SHA', doj: '2023-03-01', department: 'IT' },
+    { empCode: '230034', name: 'Mohd Abdullah Haris', branchCode: 'SHA', doj: '2023-03-10', department: 'Academic' },
+    { empCode: '240063', name: 'Mohd Ghufran', branchCode: 'SHA', doj: '2024-07-20', department: 'Academic' },
+    { empCode: '240089', name: 'Faheemuddin Malik', branchCode: 'SHA', doj: '2025-01-10', department: 'Academic' },
+    { empCode: '250093', name: 'Insha Khan', branchCode: 'SHA', doj: '2025-02-15', department: 'Academic' },
+    { empCode: '250121', name: 'Tamish Hasan', branchCode: 'SHA', doj: '2025-05-01', department: 'Academic' },
+    { empCode: '240090', name: 'Imamuddin', branchCode: 'SHA', doj: '2024-11-15', department: 'Academic' },
+    { empCode: '250122', name: 'Hira Mariyam', branchCode: 'SHA', doj: '2025-05-05', department: 'Academic' },
+    { empCode: '260027', name: 'Habibullah Khan', branchCode: 'SHA', doj: '2026-04-01', department: 'Academic' },
     
     // Aziz Nagar (AN) - 5 employees
     { empCode: '260002', name: 'Taj Ahmad', branchCode: 'AN', doj: '2026-02-02', department: 'IT' },
@@ -480,16 +512,21 @@ export const seedDatabase = async (isApi = false) => {
 
         // CREATE BRANCH HEADS
         for (const branch of BRANCHES) {
-            await User.create({
+            const empCode = Object.keys(BRANCH_HEADS_MAP).find(code => BRANCH_HEADS_MAP[code].branch === branch.name);
+            const headUser = await User.create({
                 name: branch.headName,
                 email: branch.headEmail,
                 password: 'branch123',
                 role: 'branch-head',
                 department: 'Admin',
                 branch: branch.name,
-                isActive: true
+                isActive: true,
+                employeeId: empCode || undefined
             });
-            console.log(`✅ Branch Head: ${branch.headName} (${branch.name})`);
+            
+            // Link to Branch document's manager field
+            await Branch.updateOne({ name: branch.name }, { manager: headUser._id });
+            console.log(`✅ Branch Head: ${branch.headName} (${branch.name}) linked as manager`);
         }
         
         // CREATE DEPARTMENT MANAGERS (assigned to Central Gaurabagh)
@@ -536,21 +573,36 @@ export const seedDatabase = async (isApi = false) => {
                 }
             }
 
-            const email = generateEmail(emp.name, emp.empCode);
-            
-            // CREATE USER (for authentication)
-            const user = await User.create({
-                name: emp.name,
-                email: email,
-                password: 'employee123',
-                role: 'employee',
-                department: department,
-                branch: branchName,
-                isActive: true,
-                employeeId: emp.empCode
-            });
+            const branchHeadConfig = BRANCH_HEADS_MAP[emp.empCode];
+            let user;
+            let email;
+
+            if (branchHeadConfig) {
+                // Find existing branch head user record to prevent duplicate accounts
+                user = await User.findOne({ email: branchHeadConfig.email });
+                if (user) {
+                    user.name = emp.name; // Keep spreadsheet official name
+                    await user.save();
+                }
+                email = branchHeadConfig.email;
+                console.log(`🔄 Reusing existing Branch Head User for employee code: ${emp.empCode} | ${emp.name}`);
+            } else {
+                email = generateEmail(emp.name, emp.empCode);
+                // CREATE USER (for authentication)
+                user = await User.create({
+                    name: emp.name,
+                    email: email,
+                    password: 'employee123',
+                    role: 'employee',
+                    department: department,
+                    branch: branchName,
+                    isActive: true,
+                    employeeId: emp.empCode
+                });
+                console.log(`✅ Created User: ${emp.empCode} | ${emp.name} | ${branchName} | ${department}`);
+            }
+
             users.push(user);
-            console.log(`✅ Created User: ${emp.empCode} | ${emp.name} | ${branchName} | ${department}`);
             
             // CREATE EMPLOYEE RECORD (for HR details)
             const employee = await Employee.create({
@@ -560,12 +612,12 @@ export const seedDatabase = async (isApi = false) => {
                 phone: `9${Math.floor(Math.random() * 900000000) + 100000000}`,
                 department: department,
                 branch: branchName,
-                designation: department === 'IT' ? 'Technical Staff' : 'Staff',
+                designation: branchHeadConfig ? 'Branch Head' : (department === 'IT' ? 'Technical Staff' : 'Staff'),
                 joiningDate: new Date(emp.doj),
                 isActive: true,
                 salary: {
-                    basic: 20000,
-                    netSalary: 30000
+                    basic: branchHeadConfig ? 25000 : 20000,
+                    netSalary: branchHeadConfig ? 35000 : 30000
                 },
                 leaveBalance: {
                     casualLeave: 12,

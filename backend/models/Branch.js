@@ -34,10 +34,12 @@ const branchSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 branchSchema.pre('save', function(next) {
-    if (this.name === 'Central Gaurabagh') {
-        this.departments = ['IT', 'HR', 'Graphic', 'Academic', 'Finance', 'Marketing', 'Legal', 'Transport', 'Operations', 'Admin'];
-    } else {
-        this.departments = ['Admin', 'Academic'];
+    if (this.isNew && (!this.departments || this.departments.length === 0)) {
+        if (this.name === 'Central Gaurabagh') {
+            this.departments = ['IT', 'HR', 'Graphic', 'Academic', 'Finance', 'Marketing', 'Legal', 'Transport', 'Operations', 'Admin'];
+        } else {
+            this.departments = ['Admin', 'Academic'];
+        }
     }
     next();
 });

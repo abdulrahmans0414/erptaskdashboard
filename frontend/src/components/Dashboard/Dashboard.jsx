@@ -5,7 +5,8 @@ import {
   getUsers,
   getUsersByBranch,
   getUsersByDepartment,
-  getEmployeeSummary
+  getEmployeeSummary,
+  getBranches
 } from "../../services/api";
 import { reviewTask } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -489,6 +490,7 @@ const Dashboard = () => {
   const [customEnd, setCustomEnd] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
+  const [dbBranches, setDbBranches] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -498,7 +500,7 @@ const Dashboard = () => {
   // Lock filters for branch-head / department-head so UI matches access level.
   useEffect(() => {
     if (!user) return;
-    if (user.role === "branch-head" && user.branch)
+    if ((user.role === "branch-head" || user.role === "department-head") && user.branch)
       setSelectedBranch(user.branch);
     if (user.role === "department-head" && user.department)
       setSelectedDepartment(user.department);
@@ -525,16 +527,31 @@ const Dashboard = () => {
     "Legal",
     "Transport",
     "Operations",
+    "Admin",
   ];
 
   const visibleBranches =
-    user?.role === "branch-head" && user?.branch ? [user.branch] : branches;
+    (user?.role === "branch-head" || user?.role === "department-head") && user?.branch
+      ? [user.branch]
+      : branches;
   const visibleDepartments =
     user?.role === "department-head" && user?.department
       ? [user.department]
       : departments;
 
-  const departmentsForSelectedBranch = visibleDepartments;
+  const departmentsForSelectedBranch = useMemo(() => {
+    if (selectedBranch === "all") {
+      return visibleDepartments;
+    }
+    const branchObj = dbBranches.find(b => b.name === selectedBranch);
+    if (branchObj && branchObj.departments && branchObj.departments.length > 0) {
+      return branchObj.departments.filter(dept => visibleDepartments.includes(dept));
+    }
+    if (selectedBranch === "Central Gaurabagh" || selectedBranch === "Gaurabagh") {
+      return visibleDepartments;
+    }
+    return visibleDepartments.filter((dept) => dept === "Admin" || dept === "Academic");
+  }, [selectedBranch, visibleDepartments, dbBranches]);
 
   const branchColors = [
     "bg-gradient-to-br from-blue-500 to-blue-600",
@@ -603,6 +620,14 @@ const Dashboard = () => {
     const loadData = async () => {
       if (allTasks.length === 0) setLoading(true);
       await loadEmployees();
+      try {
+        const res = await getBranches();
+        if (res?.data?.success) {
+          setDbBranches(res.data.data);
+        }
+      } catch (e) {
+        console.error("Failed to load branches in Dashboard:", e);
+      }
       setLoading(false);
     };
     loadData();
