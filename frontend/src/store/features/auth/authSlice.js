@@ -42,6 +42,16 @@ export const updateProfile = createAsyncThunk('auth/updateProfile', async (userD
     }
 });
 
+export const logoutUser = createAsyncThunk('auth/logout', async (_, { dispatch }) => {
+    try {
+        await api.post('/auth/logout');
+    } catch (err) {
+        console.warn('Backend logout failed:', err.message);
+    } finally {
+        dispatch(logoutLocal());
+    }
+});
+
 const parseStoredUser = () => {
     try { return JSON.parse(localStorage.getItem('user') || 'null'); }
     catch { return null; }
@@ -57,7 +67,7 @@ const authSlice = createSlice({
         isAuthenticated: !!localStorage.getItem('token'),
     },
     reducers: {
-        logout: (state) => {
+        logoutLocal: (state) => {
             state.user = null; state.token = null; state.isAuthenticated = false; state.error = null;
             localStorage.removeItem('token'); localStorage.removeItem('user');
         },
@@ -82,5 +92,6 @@ const authSlice = createSlice({
     },
 });
 
-export const { logout, clearError, setUser } = authSlice.actions;
+export const { logoutLocal, clearError, setUser } = authSlice.actions;
+export { logoutUser as logout };
 export default authSlice.reducer;

@@ -350,5 +350,6 @@ taskSchema.index({ createdAt: -1 });
 taskSchema.index({ createdAt: -1, _id: -1 });
 taskSchema.index({ dueDate: 1 });
 taskSchema.index({ status: 1 });
+taskSchema.index({ title: 'text', description: 'text' });
 
 export default mongoose.model('Task', taskSchema);

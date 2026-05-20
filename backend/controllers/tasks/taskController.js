@@ -313,12 +313,18 @@ export const getTasks = async (req, res) => {
         
         if (search) {
             query.$and = query.$and || [];
-            query.$and.push({
-                $or: [
-                    { title: { $regex: search, $options: 'i' } },
-                    { description: { $regex: search, $options: 'i' } }
-                ]
-            });
+            if (search.trim().length >= 3) {
+                // Highly optimized MongoDB text search index lookup
+                query.$and.push({ $text: { $search: search } });
+            } else {
+                // Fallback for short terms to preserve partial matching
+                query.$and.push({
+                    $or: [
+                        { title: { $regex: search, $options: 'i' } },
+                        { description: { $regex: search, $options: 'i' } }
+                    ]
+                });
+            }
         }
 
         // Robust Date Filtering (Supports named filters or custom ranges)
