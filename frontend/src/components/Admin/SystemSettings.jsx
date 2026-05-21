@@ -18,6 +18,15 @@ const ArrayManager = ({ title, icon, items, setItems, placeholder, accent = "blu
     setError("");
   };
 
+  const handleRemove = (index, name) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to remove '${name}'?\n\nNote: This deletion is temporary and will only apply to the system after you click the 'Save Changes' button.`
+    );
+    if (confirmDelete) {
+      setItems(items.filter((_, j) => j !== index));
+    }
+  };
+
   return (
     <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
       <h3 className="font-bold text-gray-800 mb-1 flex items-center gap-2"><span>{icon}</span> {title}</h3>
@@ -35,7 +44,7 @@ const ArrayManager = ({ title, icon, items, setItems, placeholder, accent = "blu
         {items.map((item, i) => (
           <div key={i} className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200 group">
             <span className="text-sm font-medium text-gray-700">{item}</span>
-            <button onClick={() => setItems(items.filter((_, j) => j !== i))}
+            <button onClick={() => handleRemove(i, item)}
               className="text-gray-300 group-hover:text-rose-500 transition text-xs font-bold leading-none" title="Remove">✕</button>
           </div>
         ))}
@@ -56,6 +65,15 @@ const CustomFieldsManager = ({ customFields, setCustomFields, showToast }) => {
     if (customFields.find(f => f.id === id)) { showToast("Field already exists", "error"); return; }
     setCustomFields([...customFields, { ...newField, id }]);
     setNewField({ label: "", type: "text", required: false });
+  };
+
+  const handleRemove = (id, label) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the custom field '${label}'?\n\nNote: This deletion is temporary and will only apply to the system after you click 'Save Changes'.`
+    );
+    if (confirmDelete) {
+      setCustomFields(customFields.filter(x => x.id !== id));
+    }
   };
 
   return (
@@ -99,7 +117,7 @@ const CustomFieldsManager = ({ customFields, setCustomFields, showToast }) => {
               </div>
               {f.required && <span className="text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold uppercase">Required</span>}
             </div>
-            <button onClick={() => setCustomFields(customFields.filter(x => x.id !== f.id))}
+            <button onClick={() => handleRemove(f.id, f.label)}
               className="text-sm text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition font-medium">Delete</button>
           </div>
         ))}
@@ -257,8 +275,9 @@ const EmailRoutingPanel = ({ departments, branches, settings, updateSettings, sh
     try {
       await updateSettings({ departmentEmails: deptEmails, branchEmails });
       showToast("Email routing saved successfully!");
-    } catch {
-      showToast("Failed to save email routing", "error");
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || "Failed to save email routing";
+      showToast(errMsg, "error");
     }
     setSaving(false);
   };
@@ -343,12 +362,21 @@ const SystemSettings = () => {
     }
   }, [settings]);
 
+  const isDirty = settings ? (
+    JSON.stringify(departments) !== JSON.stringify(settings.departments || []) ||
+    JSON.stringify(branches) !== JSON.stringify(settings.branches || []) ||
+    JSON.stringify(customFields) !== JSON.stringify(settings.userCustomFields || [])
+  ) : false;
+
   const handleSave = async () => {
     setSaving(true);
     try {
       await updateSettings({ departments, branches, userCustomFields: customFields });
       showToast("Settings saved successfully!");
-    } catch { showToast("Failed to save settings", "error"); }
+    } catch (err) { 
+      const errMsg = err?.response?.data?.message || "Failed to save settings";
+      showToast(errMsg, "error"); 
+    }
     setSaving(false);
   };
 
@@ -360,7 +388,7 @@ const SystemSettings = () => {
   );
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6 animate-fadeIn">
 
       {/* Header */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -373,17 +401,34 @@ const SystemSettings = () => {
         </div>
         {(activeTab === "org" || activeTab === "fields") && (
           <button onClick={handleSave} disabled={saving}
-            className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50 shadow-md shadow-blue-200/70">
+            className={`flex-shrink-0 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 disabled:opacity-50 shadow-md ${
+              isDirty 
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white animate-pulse ring-2 ring-blue-400 ring-offset-2 shadow-blue-200" 
+                : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200/70"
+            }`}>
             {saving ? "Saving..." : "💾 Save Changes"}
           </button>
         )}
       </div>
 
+      {/* Unsaved changes warning bar */}
+      {isDirty && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-pulse shadow-sm shadow-amber-100/50">
+          <div className="flex items-center gap-2.5 text-sm font-semibold">
+            <span className="text-lg">⚠️</span>
+            <span>You have unsaved changes! Please click 'Save Changes' to permanently apply updates.</span>
+          </div>
+          <button onClick={handleSave} disabled={saving} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm self-start sm:self-auto">
+            {saving ? "Saving..." : "Save Now"}
+          </button>
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100 flex gap-1">
+      <div className="bg-white rounded-xl p-1.5 shadow-sm border border-gray-100 flex gap-1 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {TABS.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+            className={`flex-shrink-0 px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
               activeTab === tab.id ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md" : "text-gray-500 hover:bg-gray-50"
             }`}>
             <span>{tab.icon}</span><span>{tab.label}</span>

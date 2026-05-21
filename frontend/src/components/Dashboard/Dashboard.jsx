@@ -1467,12 +1467,12 @@ const Dashboard = () => {
         )}
 
         {/* Branch + Dept + Search */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-stretch lg:items-center gap-3">
           <select
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
             disabled={user?.role === "branch-head"}
-            className="px-3 py-2 border rounded-xl text-xs min-w-[150px] disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="w-full lg:w-auto px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition"
           >
             <option value="all">All Branches</option>
             {visibleBranches.map((b) => (
@@ -1485,7 +1485,7 @@ const Dashboard = () => {
             value={selectedDepartment}
             onChange={(e) => setSelectedDepartment(e.target.value)}
             disabled={user?.role === "department-head"}
-            className="px-3 py-2 border rounded-xl text-xs min-w-[150px] disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="w-full lg:w-auto px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition"
           >
             <option value="all">All Departments</option>
             {departmentsForSelectedBranch.map((d) => (
@@ -1494,7 +1494,7 @@ const Dashboard = () => {
               </option>
             ))}
           </select>
-          <div className="flex-1 min-w-[200px] relative" ref={searchInputRef}>
+          <div className="w-full lg:flex-1 lg:min-w-[200px] relative" ref={searchInputRef}>
             <input
               type="text"
               placeholder="🔍 Search..."
@@ -1503,7 +1503,7 @@ const Dashboard = () => {
                 setSearchQuery(e.target.value);
                 setShowSearchDropdown(true);
               }}
-              className="w-full px-4 py-2 border rounded-xl text-xs"
+              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
             />
             {showSearchDropdown && searchQuery && searchResults.length > 0 && (
               <div className="absolute z-20 top-full mt-2 w-full bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto">
@@ -1540,9 +1540,9 @@ const Dashboard = () => {
               setCustomStart("");
               setCustomEnd("");
             }}
-            className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold hover:bg-rose-100 border border-rose-200"
+            className="w-full lg:w-auto px-5 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold hover:bg-rose-100 border border-rose-200 active:scale-95 transition-all text-center flex items-center justify-center gap-1.5"
           >
-            ✕ Reset
+            <span>✕</span> <span>Reset</span>
           </button>
         </div>
 

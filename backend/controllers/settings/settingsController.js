@@ -1,6 +1,8 @@
 import Settings from '../../models/Settings.js';
 import Branch from '../../models/Branch.js';
 import Department from '../../models/Department.js';
+import User from '../../models/User.js';
+import Task from '../../models/Task.js';
 
 const getOrCreateSettings = async () => {
     let settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
@@ -41,6 +43,25 @@ export const updateSettings = async (req, res) => {
         const settings = await getOrCreateSettings();
 
         if (departments) {
+            // Validate deleted departments against existing database users/tasks
+            const removedDepts = (settings.departments || []).filter(d => !departments.includes(d));
+            if (removedDepts.length > 0) {
+                const activeRemoved = [];
+                for (const dept of removedDepts) {
+                    const u = await User.countDocuments({ department: dept });
+                    const t = await Task.countDocuments({ department: dept });
+                    if (u > 0 || t > 0) {
+                        activeRemoved.push(`'${dept}' (${u} employee${u !== 1 ? 's' : ''}, ${t} task${t !== 1 ? 's' : ''})`);
+                    }
+                }
+                if (activeRemoved.length > 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot delete department(s) because they are in active use: ${activeRemoved.join(', ')}. Please reassign them first.`
+                    });
+                }
+            }
+
             settings.departments = departments;
             // Sync missing departments to Department collection
             for (const dName of departments) {
@@ -58,6 +79,25 @@ export const updateSettings = async (req, res) => {
         }
         
         if (branches) {
+            // Validate deleted branches against existing database users/tasks
+            const removedBranches = (settings.branches || []).filter(b => !branches.includes(b));
+            if (removedBranches.length > 0) {
+                const activeRemoved = [];
+                for (const br of removedBranches) {
+                    const u = await User.countDocuments({ branch: br });
+                    const t = await Task.countDocuments({ branch: br });
+                    if (u > 0 || t > 0) {
+                        activeRemoved.push(`'${br}' (${u} employee${u !== 1 ? 's' : ''}, ${t} task${t !== 1 ? 's' : ''})`);
+                    }
+                }
+                if (activeRemoved.length > 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot delete branch(es) because they are in active use: ${activeRemoved.join(', ')}. Please reassign them first.`
+                    });
+                }
+            }
+
             settings.branches = branches;
             // Sync missing branches to Branch collection
             for (const bName of branches) {
