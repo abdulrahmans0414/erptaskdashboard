@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTasks, setPollingStatus, fetchDashboardStats } from "../../store/features/tasks";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import TaskCard from "./TaskCard";
 import CreateTaskModal from "./CreateTaskModal";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,12 +59,7 @@ export default function Tasks() {
   const [page, setPage] = useState(1);
   const [dbBranches, setDbBranches] = useState([]);
 
-  // ── Recycle Bin state ────────────────────────────────
-  const [showRecycleBin, setShowRecycleBin] = useState(false);
-  const [deletedTasks, setDeletedTasks] = useState([]);
-  const [recycleBinLoading, setRecycleBinLoading] = useState(false);
-  const [restoringId, setRestoringId] = useState(null);
-  const [restoreBanner, setRestoreBanner] = useState(null); // { type: 'success'|'error', message: '' }
+  // Deleted local Recycle Bin modal states
 
   useEffect(() => {
     const fetchB = async () => {
@@ -145,12 +140,7 @@ export default function Tasks() {
     });
   }, [user?.role, user?.branch, user?.department]);
 
-  // Auto-dismiss banner after 3s
-  useEffect(() => {
-    if (!restoreBanner) return;
-    const t = setTimeout(() => setRestoreBanner(null), 3500);
-    return () => clearTimeout(t);
-  }, [restoreBanner]);
+
 
   const stats = useMemo(() => {
     const apiStats = dashboardStats?.summary || {};
@@ -204,77 +194,12 @@ export default function Tasks() {
     }
   }, [filters.branch, deptFilterOptions, filters.department]);
 
-  // ── Recycle Bin handlers ─────────────────────────────
-  const handleOpenRecycleBin = useCallback(async () => {
-    setShowRecycleBin(true);
-    setRecycleBinLoading(true);
-    try {
-      const res = await getDeletedTasks();
-      if (res?.data?.success) {
-        setDeletedTasks(res.data.data || []);
-      }
-    } catch (err) {
-      setRestoreBanner({ type: "error", message: "Failed to load deleted tasks." });
-    } finally {
-      setRecycleBinLoading(false);
-    }
-  }, []);
 
-  const handleCloseRecycleBin = useCallback(() => {
-    setShowRecycleBin(false);
-    setDeletedTasks([]);
-  }, []);
-
-  const handleRestore = useCallback(async (taskId, taskTitle) => {
-    setRestoringId(taskId);
-    try {
-      await restoreTask(taskId);
-      setDeletedTasks((prev) => prev.filter((t) => t._id !== taskId));
-      setRestoreBanner({ type: "success", message: `✅ "${taskTitle}" has been restored successfully.` });
-      load(); // Refresh the active tasks grid
-    } catch (err) {
-      const msg = err?.response?.data?.message || "Failed to restore task.";
-      setRestoreBanner({ type: "error", message: `❌ ${msg}` });
-    } finally {
-      setRestoringId(null);
-    }
-  }, []);
-
-  const formatDeletedDate = (dateStr) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      day: "2-digit", month: "short", year: "numeric"
-    });
-  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-5 p-4 md:p-6 antialiased">
 
-      {/* ── Floating Banner Notification ─────────────── */}
-      <AnimatePresence>
-        {restoreBanner && (
-          <motion.div
-            key="restore-banner"
-            initial={{ opacity: 0, y: -24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -18, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[999] px-5 py-3 rounded-2xl shadow-xl border text-sm font-semibold flex items-center gap-2.5 whitespace-nowrap ${
-              restoreBanner.type === "success"
-                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                : "bg-red-50 border-red-200 text-red-800"
-            }`}
-          >
-            {restoreBanner.message}
-            <button
-              onClick={() => setRestoreBanner(null)}
-              className="ml-1 text-inherit opacity-60 hover:opacity-100 transition text-base leading-none"
-            >
-              ×
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* ── Header ───────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3">
@@ -293,12 +218,12 @@ export default function Tasks() {
           </button>
           {canAssign && (
             <>
-              <button
-                onClick={handleOpenRecycleBin}
+              <Link
+                to="/tasks/trash"
                 className="px-3 py-2 text-sm bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition font-medium text-slate-600 hover:text-red-600 shadow-sm flex items-center gap-1.5"
               >
                 🗑️ <span className="hidden sm:inline">Deleted Tasks</span>
-              </button>
+              </Link>
               <button
                 onClick={() => setShowCreate(true)}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition shadow-sm shadow-blue-500/20"
@@ -467,161 +392,7 @@ export default function Tasks() {
         onTaskCreated={load}
       />
 
-      {/* ── Recycle Bin Modal ─────────────────────────── */}
-      <AnimatePresence>
-        {showRecycleBin && (
-          <motion.div
-            key="recycle-bin-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-[98] antialiased"
-            onClick={(e) => { if (e.target === e.currentTarget) handleCloseRecycleBin(); }}
-          >
-            <motion.div
-              key="recycle-bin-panel"
-              initial={{ opacity: 0, scale: 0.97, y: 24 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 20 }}
-              transition={{ type: "spring", stiffness: 340, damping: 28 }}
-              className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden text-slate-800"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
-                <div>
-                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    🗑️ Deleted Tasks Archive
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Soft-deleted tasks — restore them to the active task board
-                  </p>
-                </div>
-                <button
-                  onClick={handleCloseRecycleBin}
-                  className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition text-sm"
-                  aria-label="Close Recycle Bin"
-                >
-                  ✕
-                </button>
-              </div>
 
-              {/* Modal Body */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {recycleBinLoading ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-3">
-                    <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm text-slate-500 font-medium">Loading deleted tasks...</p>
-                  </div>
-                ) : deletedTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-3">
-                    <p className="text-5xl">🗑️</p>
-                    <p className="text-slate-600 font-semibold">Recycle bin is empty</p>
-                    <p className="text-xs text-slate-400">No soft-deleted tasks found in the system</p>
-                  </div>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 z-10">
-                      <tr className="bg-slate-50 border-b border-slate-100">
-                        <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                          Task Title
-                        </th>
-                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 hidden sm:table-cell">
-                          Priority
-                        </th>
-                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 hidden md:table-cell">
-                          Department
-                        </th>
-                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 hidden lg:table-cell">
-                          Deleted
-                        </th>
-                        <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {deletedTasks.map((task) => {
-                        const priority = task.priority || "medium";
-                        const isRestoring = restoringId === task._id;
-                        return (
-                          <motion.tr
-                            key={task._id}
-                            layout
-                            initial={{ opacity: 0, x: -8 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 8, height: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="hover:bg-slate-50/80 transition-colors"
-                          >
-                            {/* Title */}
-                            <td className="px-5 py-3.5">
-                              <p className="font-semibold text-slate-800 truncate max-w-[180px] sm:max-w-[220px]">
-                                {task.title}
-                              </p>
-                              {task.department && (
-                                <p className="text-[10px] text-slate-400 mt-0.5 sm:hidden">{task.department}</p>
-                              )}
-                            </td>
-                            {/* Priority */}
-                            <td className="px-4 py-3.5 hidden sm:table-cell">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${PRIORITY_STYLES[priority] || PRIORITY_STYLES.medium}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOTS[priority] || PRIORITY_DOTS.medium}`} />
-                                {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                              </span>
-                            </td>
-                            {/* Department */}
-                            <td className="px-4 py-3.5 hidden md:table-cell">
-                              <span className="text-slate-600 text-xs font-medium">
-                                {task.department || "—"}
-                              </span>
-                            </td>
-                            {/* Deleted At */}
-                            <td className="px-4 py-3.5 hidden lg:table-cell">
-                              <span className="text-slate-400 text-xs">
-                                {formatDeletedDate(task.deletedAt)}
-                              </span>
-                            </td>
-                            {/* Restore Action */}
-                            <td className="px-4 py-3.5 text-right">
-                              <button
-                                onClick={() => handleRestore(task._id, task.title)}
-                                disabled={isRestoring}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 hover:text-emerald-800 text-xs font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
-                              >
-                                {isRestoring ? (
-                                  <>
-                                    <span className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                                    Restoring…
-                                  </>
-                                ) : (
-                                  <>🔄 Restore</>
-                                )}
-                              </button>
-                            </td>
-                          </motion.tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="flex items-center justify-between px-6 py-3 border-t border-slate-100 bg-slate-50/80 flex-shrink-0">
-                <span className="text-xs text-slate-500 font-medium">
-                  {deletedTasks.length} deleted task{deletedTasks.length !== 1 ? "s" : ""} in archive
-                </span>
-                <button
-                  onClick={handleCloseRecycleBin}
-                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-sm font-semibold text-slate-700 transition"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

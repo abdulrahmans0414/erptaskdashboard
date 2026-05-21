@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,8 +32,6 @@ import {
   updateUser,
   deleteUser,
   getBranches,
-  getDeletedUsers,
-  restoreUser,
   getTasks
 } from "../../services/api";
 import SearchableCombobox from "../Common/SearchableCombobox";
@@ -112,7 +111,7 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index * 0.02, 0.3) }}
-      className="hover:bg-slate-50/60 border-b border-slate-105 transition-colors bg-white"
+      className="hover:bg-slate-50/60 border-b border-slate-200 transition-colors bg-white"
     >
       <td className="py-3.5 px-5">
         <div className="flex items-center gap-3.5">
@@ -123,7 +122,7 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
             <p className="font-semibold text-slate-800 truncate hover:text-blue-600 transition-colors">
               {user.name}
             </p>
-            <p className="text-xs text-slate-550 truncate flex items-center gap-1">
+            <p className="text-xs text-slate-500 truncate flex items-center gap-1">
               <FiMail className="opacity-70" /> {user.email}
             </p>
           </div>
@@ -134,7 +133,7 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
       </td>
       <td className="py-3.5 px-5">
         <span
-          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${DEPT_BADGE[user.department] || "bg-slate-50 text-slate-600 border-slate-205"}`}
+          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${DEPT_BADGE[user.department] || "bg-slate-50 text-slate-600 border-slate-200"}`}
         >
           {user.department || "—"}
         </span>
@@ -146,7 +145,7 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
       </td>
       <td className="py-3.5 px-5">
         <span
-          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${ROLE_BADGE[user.role] || "bg-slate-50 text-slate-600 border-slate-205"}`}
+          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${ROLE_BADGE[user.role] || "bg-slate-50 text-slate-600 border-slate-200"}`}
         >
           {ROLE_LABELS[user.role] || user.role}
         </span>
@@ -236,11 +235,8 @@ const UserManagement = () => {
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tasksSearchQuery, setTasksSearchQuery] = useState("");
 
-  // Recycle Bin UI state
-  const [showRecycleBin, setShowRecycleBin] = useState(false);
-  const [deletedUsers, setDeletedUsers] = useState([]);
-  const [binLoading, setBinLoading] = useState(false);
-  const [restoringId, setRestoringId] = useState(null);
+  // Mobile layout step state
+  const [mobileStep, setMobileStep] = useState(1);
 
   // Dynamic Banner Notification for validation inline errors
   const [bannerError, setBannerError] = useState("");
@@ -303,28 +299,6 @@ const UserManagement = () => {
     }, 450);
     return () => clearTimeout(timer);
   }, [search, loadUsers]);
-
-  // Fetch deleted users for Recycle Bin
-  const loadDeletedUsers = useCallback(async () => {
-    setBinLoading(true);
-    try {
-      const response = await getDeletedUsers();
-      if (response.data.success) {
-        setDeletedUsers(response.data.data || []);
-      }
-    } catch (e) {
-      console.error("Error loading deleted users:", e);
-      toast.error("Failed to load Recycle Bin");
-    } finally {
-      setBinLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (showRecycleBin) {
-      loadDeletedUsers();
-    }
-  }, [showRecycleBin, loadDeletedUsers]);
 
   // Fetch tasks assigned to the user when editing
   useEffect(() => {
@@ -432,20 +406,6 @@ const UserManagement = () => {
     }
   }, [loadUsers]);
 
-  const handleRestore = useCallback(async (id, name) => {
-    setRestoringId(id);
-    try {
-      await restoreUser(id);
-      toast.success(`♻️ ${name} restored successfully!`);
-      loadDeletedUsers();
-      loadUsers();
-    } catch (e) {
-      console.error("Failed to restore user:", e);
-      toast.error(e.response?.data?.message || "Failed to restore user");
-    } finally {
-      setRestoringId(null);
-    }
-  }, [loadDeletedUsers, loadUsers]);
 
   const openCreate = useCallback(() => {
     setEditingUser(null);
@@ -457,6 +417,7 @@ const UserManagement = () => {
     setBannerError("");
     setShowPwd(false);
     setActiveRightTab("affiliation");
+    setMobileStep(1);
     setShowModal(true);
   }, [departments, finalBranches]);
 
@@ -480,6 +441,7 @@ const UserManagement = () => {
     setBannerError("");
     setShowPwd(false);
     setActiveRightTab("affiliation");
+    setMobileStep(1);
     setShowModal(true);
   }, []);
 
@@ -525,12 +487,12 @@ const UserManagement = () => {
             </div>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <button
-              onClick={() => setShowRecycleBin(true)}
+            <Link
+              to="/admin/users/trash"
               className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-350 active:scale-95 text-slate-700 px-5 py-2.5 rounded-xl font-semibold shadow-sm transition-all text-sm"
             >
               ♻️ Recycle Bin
-            </button>
+            </Link>
             {isAdmin && (
               <button
                 onClick={openCreate}
@@ -584,7 +546,7 @@ const UserManagement = () => {
             <select
               value={roleFilter}
               onChange={(e) => setPage(1) || setRoleFilter(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-750 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
+              className="bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
             >
               <option value="all">All Roles</option>
               {roles.map((r) => (
@@ -597,7 +559,7 @@ const UserManagement = () => {
             <select
               value={branchFilter}
               onChange={(e) => setPage(1) || setBranchFilter(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-750 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
+              className="bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
             >
               <option value="all">All Branches</option>
               {finalBranches.map((b) => (
@@ -682,7 +644,7 @@ const UserManagement = () => {
                     <button
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white text-slate-650 transition-colors"
+                      className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white text-slate-600 transition-colors"
                     >
                       ◀
                     </button>
@@ -702,7 +664,7 @@ const UserManagement = () => {
                     <button
                       onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
                       disabled={page === pagination.pages}
-                      className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white text-slate-650 transition-colors"
+                      className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white text-slate-600 transition-colors"
                     >
                       ▶
                     </button>
@@ -738,10 +700,10 @@ const UserManagement = () => {
                   </div>
                   
                   <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 text-[11px]">
-                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${ROLE_BADGE[item.role] || "bg-slate-50 text-slate-650"}`}>
+                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${ROLE_BADGE[item.role] || "bg-slate-50 text-slate-600"}`}>
                       {ROLE_LABELS[item.role] || item.role}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${DEPT_BADGE[item.department] || "bg-slate-50 text-slate-650"}`}>
+                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${DEPT_BADGE[item.department] || "bg-slate-50 text-slate-600"}`}>
                       {item.department || "IT"}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-lg border border-slate-100 bg-slate-50 text-slate-600">
@@ -772,150 +734,33 @@ const UserManagement = () => {
         )}
       </div>
 
-      {/* Recycle Bin Modal Overlay */}
-      <AnimatePresence>
-        {showRecycleBin && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden text-slate-800"
-            >
-              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-100 sticky top-0 bg-white z-10">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">♻️</span>
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-800">Recycle Bin</h2>
-                    <p className="text-xs text-slate-500">Soft-deleted users directory</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowRecycleBin(false)}
-                  className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-850 text-lg transition flex items-center justify-center"
-                >
-                  <FiX size={16} />
-                </button>
-              </div>
-
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
-                {binLoading ? (
-                  <div className="text-center py-12 text-slate-500 flex flex-col items-center justify-center gap-2">
-                    <FiRefreshCw size={24} className="animate-spin text-blue-600" />
-                    <span className="text-sm font-semibold">Scanning directory...</span>
-                  </div>
-                ) : deletedUsers.length === 0 ? (
-                  <div className="text-center py-16 text-slate-500">
-                    <FiCheckCircle size={44} className="mx-auto mb-3 text-emerald-500/80 animate-bounce" />
-                    <p className="font-bold text-slate-700">Recycle Bin is empty</p>
-                    <p className="text-xs text-slate-400 mt-1">Zero soft-deleted accounts found.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-100">
-                    {deletedUsers.map((item) => (
-                      <div
-                        key={item._id}
-                        className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-600 grid place-items-center font-bold text-xs uppercase">
-                            {item.name?.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-800 text-sm">{item.name}</p>
-                            <p className="text-xs text-slate-500">{item.email}</p>
-                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-450 font-semibold">
-                              <span>🏢 {item.department}</span>
-                              <span>•</span>
-                              <span>📍 {item.branch}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleRestore(item._id, item.name)}
-                          disabled={restoringId === item._id}
-                          className="self-start sm:self-center px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 text-emerald-700 text-xs font-bold tracking-wide transition flex items-center gap-1.5 disabled:opacity-50"
-                        >
-                          {restoringId === item._id ? (
-                            <>
-                              <FiRefreshCw className="animate-spin" /> Restoring...
-                            </>
-                          ) : (
-                            <>
-                              <FiRefreshCw /> Restore Account
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Confirmation Soft Delete Modal */}
-      <AnimatePresence>
-        {confirmDelete && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 w-full max-w-md text-center text-slate-800"
-            >
-              <div className="mx-auto h-12 w-12 rounded-full bg-red-50 text-red-505 grid place-items-center text-xl mb-4 border border-red-100 animate-pulse">
-                <FiAlertTriangle />
-              </div>
-              <h3 className="text-lg font-extrabold text-slate-850">Soft-Delete User?</h3>
-              <p className="text-sm text-slate-550 mt-2">
-                This will soft-delete <strong>{confirmDelete.name}</strong>. Their data, credentials, and profile remain completely archived in the Recycle Bin for restoration.
-              </p>
-              <div className="flex gap-2.5 mt-6">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(confirmDelete)}
-                  className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition shadow-md"
-                >
-                  Archive User
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Split-Pane Dual Modal (Add / Edit User View) */}
+      {/* High-Fidelity Split-Pane Modal */}
       <AnimatePresence>
         {showModal && (
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 z-[99] overflow-y-auto"
-            onClick={() => setShowModal(false)}
-          >
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm lg:flex lg:items-center lg:justify-center lg:p-4 z-[99]">
+            <div className="fixed inset-0 lg:block hidden" onClick={() => setShowModal(false)} />
             <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 30, scale: 0.98 }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white w-full sm:max-w-5xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[100vh] sm:max-h-[92vh] overflow-hidden flex flex-col border border-slate-200"
+              initial={{ scale: 0.97, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.97, y: 15, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.45 }}
+              className="bg-white w-full h-full fixed inset-0 z-[99] flex flex-col overflow-y-auto lg:relative lg:inset-auto lg:h-auto lg:max-h-[92vh] lg:w-full lg:max-w-5xl lg:rounded-3xl lg:shadow-2xl lg:overflow-hidden lg:border lg:border-slate-100 lg:z-50"
             >
               {/* Header section with notification banner */}
-              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-150 sticky top-0 bg-white z-20">
+              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
                 <div>
                   <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     {editingUser ? "✏️ Edit Employee Profile" : "👤 Provision New Corporate User"}
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Enterprise security classification matrix enabled</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    <span className="lg:hidden font-bold text-blue-600 block mb-1">
+                      Step {mobileStep} of 2: {mobileStep === 1 ? "Core Details" : "Affiliation / Workload"}
+                    </span>
+                    Enterprise security classification matrix enabled
+                  </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setShowModal(false)}
                   className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition"
                 >
@@ -933,10 +778,10 @@ const UserManagement = () => {
 
               {/* Split Pane Container */}
               <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
-                <div className="flex-1 overflow-y-auto md:grid md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+                <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
                   
                   {/* Left Column Pane (Core Information Inputs) */}
-                  <div className="p-6 space-y-4.5 md:col-span-7">
+                  <div className={`w-full lg:w-7/12 overflow-y-auto p-6 space-y-4.5 border-r border-slate-200 custom-scrollbar lg:block \${mobileStep === 1 ? "block" : "hidden"}`}>
                     <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                       <span>01.</span> Core Identity & Personal Details
                     </h3>
@@ -1070,7 +915,7 @@ const UserManagement = () => {
                   </div>
 
                   {/* Right Column Pane (Tabbed: Affiliation vs Workload Tasks) */}
-                  <div className="p-6 md:col-span-5 flex flex-col space-y-4">
+                  <div className={`w-full lg:w-5/12 flex flex-col p-6 space-y-4 bg-white lg:flex \${mobileStep === 2 ? "flex flex-col flex-1" : "hidden"}`}>
                     
                     {/* Modern Framer Motion Tabs Header */}
                     <div className="flex border border-slate-200 p-0.5 bg-slate-50 rounded-xl relative">
@@ -1244,21 +1089,78 @@ const UserManagement = () => {
                 </div>
 
                 {/* Split Pane Footer controls */}
-                <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 mt-auto">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 active:scale-98 text-slate-700 font-bold transition text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 transition-all active:scale-[.98] disabled:opacity-50 text-sm"
-                  >
-                    {submitting ? "Processing Registry..." : editingUser ? "Commit Profile Update" : "Establish Corporate Profile"}
-                  </button>
+                <div className="flex flex-col px-6 py-4 border-t border-slate-200 bg-slate-50 mt-auto flex-shrink-0">
+                  {/* Mobile controls */}
+                  <div className="flex lg:hidden w-full gap-3">
+                    {mobileStep === 1 ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setShowModal(false)}
+                          className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 active:scale-98 text-slate-700 font-bold transition text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!formData.name.trim()) {
+                              setBannerError("Name field is required.");
+                              return;
+                            }
+                            if (!formData.email.trim()) {
+                              setBannerError("Email address is required.");
+                              return;
+                            }
+                            if (!editingUser && !formData.password) {
+                              setBannerError("Password is required for new accounts.");
+                              return;
+                            }
+                            setBannerError("");
+                            setMobileStep(2);
+                          }}
+                          className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition text-sm shadow-md"
+                        >
+                          Next ➔
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setMobileStep(1)}
+                          className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 active:scale-98 text-slate-700 font-bold transition text-sm"
+                        >
+                          ➔ Back
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={submitting}
+                          className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 transition-all active:scale-[.98] disabled:opacity-50 text-sm"
+                        >
+                          {submitting ? "Processing Registry..." : editingUser ? "Commit Profile Update" : "Establish Corporate Profile"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Desktop controls */}
+                  <div className="hidden lg:flex w-full gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 active:scale-98 text-slate-700 font-bold transition text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 transition-all active:scale-[.98] disabled:opacity-50 text-sm"
+                    >
+                      {submitting ? "Processing Registry..." : editingUser ? "Commit Profile Update" : "Establish Corporate Profile"}
+                    </button>
+                  </div>
                 </div>
               </form>
             </motion.div>

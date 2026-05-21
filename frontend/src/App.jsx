@@ -23,6 +23,9 @@ const UserManagement = lazy(() => import("./components/Admin/UserManagement"));
 const BranchManagement = lazy(() => import("./components/Admin/BranchManagement"));
 const PendingRegistrations = lazy(() => import("./components/Admin/PendingRegistrations"));
 const SystemSettings = lazy(() => import("./components/Admin/SystemSettings"));
+const TrashBranches = lazy(() => import("./components/Admin/TrashBranches"));
+const TrashUsers = lazy(() => import("./components/Admin/TrashUsers"));
+const TrashTasks = lazy(() => import("./components/Tasks/TrashTasks"));
 
 const Spinner = () => (
   <div className="flex justify-center items-center h-screen bg-slate-50">
@@ -89,13 +92,16 @@ function AppRoutes() {
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/tasks/trash" element={<TrashTasks />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/profile" element={<EmployeeProfile />} />
           <Route path="/employee/:id" element={<ManagerRoute><EmployeeProfile /></ManagerRoute>} />
           
           {/* Managed & Admin Routes */}
           <Route path="/admin/users" element={<ManagerRoute><UserManagement /></ManagerRoute>} />
+          <Route path="/admin/users/trash" element={<ManagerRoute><TrashUsers /></ManagerRoute>} />
           <Route path="/admin/branches" element={<BranchHeadRoute><BranchManagement /></BranchHeadRoute>} />
+          <Route path="/admin/branches/trash" element={<BranchHeadRoute><TrashBranches /></BranchHeadRoute>} />
           <Route path="/admin/registrations" element={<AdminRoute><PendingRegistrations /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><SystemSettings /></AdminRoute>} />
         </Route>
