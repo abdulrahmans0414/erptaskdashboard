@@ -1,13 +1,42 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FiUsers,
+  FiUserPlus,
+  FiTrash2,
+  FiEdit2,
+  FiSearch,
+  FiRefreshCw,
+  FiCheck,
+  FiX,
+  FiShield,
+  FiAlertTriangle,
+  FiMapPin,
+  FiBriefcase,
+  FiPhone,
+  FiCalendar,
+  FiLock,
+  FiEye,
+  FiEyeOff,
+  FiGrid,
+  FiCheckCircle,
+  FiMail,
+  FiHeart
+} from "react-icons/fi";
 import {
   getUsers,
   createUser,
   updateUser,
   deleteUser,
   getBranches,
+  getDeletedUsers,
+  restoreUser,
+  getTasks
 } from "../../services/api";
+import SearchableCombobox from "../Common/SearchableCombobox";
+import toast from "react-hot-toast";
 
 const ROLE_LABELS = {
   admin: "Admin",
@@ -24,29 +53,29 @@ const ROLE_LABELS = {
 };
 
 const ROLE_BADGE = {
-  admin: "bg-red-100 text-red-700 border-red-200",
-  "department-head": "bg-orange-100 text-orange-700 border-orange-200",
-  "branch-head": "bg-indigo-100 text-indigo-700 border-indigo-200",
-  hr: "bg-purple-100 text-purple-700 border-purple-200",
-  it: "bg-blue-100 text-blue-700 border-blue-200",
-  graphic: "bg-pink-100 text-pink-700 border-pink-200",
-  coordinator: "bg-cyan-100 text-cyan-700 border-cyan-200",
-  mentor: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  teacher: "bg-teal-100 text-teal-700 border-teal-200",
-  student: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  employee: "bg-slate-100 text-slate-700 border-slate-200",
+  admin: "bg-red-500/10 text-red-400 border-red-500/20",
+  "department-head": "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  "branch-head": "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  hr: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  it: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+  graphic: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  coordinator: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+  mentor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  teacher: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+  student: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  employee: "bg-slate-500/10 text-slate-400 border-slate-500/20",
 };
 
 const DEPT_BADGE = {
-  IT: "bg-blue-100 text-blue-700 border-blue-200",
-  HR: "bg-purple-100 text-purple-700 border-purple-200",
-  Graphic: "bg-pink-100 text-pink-700 border-pink-200",
-  Finance: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  Academic: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  Marketing: "bg-amber-100 text-amber-700 border-amber-200",
-  Legal: "bg-rose-100 text-rose-700 border-rose-200",
-  Transport: "bg-cyan-100 text-cyan-700 border-cyan-200",
-  Operations: "bg-slate-100 text-slate-700 border-slate-200",
+  IT: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  HR: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  Graphic: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  Finance: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  Academic: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  Marketing: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  Legal: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  Transport: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+  Operations: "bg-slate-500/10 text-slate-400 border-slate-500/20",
 };
 
 const EMPTY_FORM = {
@@ -65,24 +94,108 @@ const EMPTY_FORM = {
   isActive: true,
 };
 
-import toast from "react-hot-toast";
-
-const Field = ({ label, children, required }) => (
-  <div className="space-y-1.5">
-    <label className="block text-sm font-semibold text-slate-700 ml-0.5">
-      {label} {required && <span className="text-rose-500">*</span>}
+const Field = React.memo(({ label, children, required }) => (
+  <div className="flex flex-col gap-1.5 w-full">
+    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
+      {label} {required && <span className="text-red-500">*</span>}
     </label>
     {children}
   </div>
-);
+));
+
+Field.displayName = "Field";
+
+// Memoized Table Row to prevent unnecessary list lag during updates
+const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => {
+  return (
+    <motion.tr
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: Math.min(index * 0.02, 0.3) }}
+      className="hover:bg-slate-800/40 border-b border-slate-800/60 transition-colors"
+    >
+      <td className="py-3.5 px-5">
+        <div className="flex items-center gap-3.5">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center font-bold text-sm shadow-md shadow-sky-500/15 uppercase">
+            {user.name?.charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-200 truncate hover:text-sky-400 transition-colors">
+              {user.name}
+            </p>
+            <p className="text-xs text-slate-400 truncate flex items-center gap-1">
+              <FiMail className="opacity-70" /> {user.email}
+            </p>
+          </div>
+        </div>
+      </td>
+      <td className="py-3.5 px-5 text-sm font-semibold text-slate-300">
+        {user.employeeId || "—"}
+      </td>
+      <td className="py-3.5 px-5">
+        <span
+          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${DEPT_BADGE[user.department] || "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}
+        >
+          {user.department || "—"}
+        </span>
+      </td>
+      <td className="py-3.5 px-5 text-sm text-slate-300 whitespace-nowrap">
+        <span className="flex items-center gap-1.5 text-slate-300">
+          <FiMapPin className="text-sky-400 text-xs" /> {user.branch || "Gaurabagh"}
+        </span>
+      </td>
+      <td className="py-3.5 px-5">
+        <span
+          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${ROLE_BADGE[user.role] || "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}
+        >
+          {ROLE_LABELS[user.role] || user.role}
+        </span>
+      </td>
+      <td className="py-3.5 px-5">
+        <span
+          className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold border ${
+            user.isActive !== false
+              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+              : "bg-red-500/10 text-red-400 border-red-500/20"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${user.isActive !== false ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`}
+          />
+          {user.isActive !== false ? "Active" : "Inactive"}
+        </span>
+      </td>
+      <td className="py-3.5 px-5 text-right whitespace-nowrap">
+        <div className="flex justify-end gap-1.5">
+          <button
+            onClick={() => onEdit(user)}
+            className="inline-flex items-center gap-1.5 text-sky-400 hover:bg-sky-500/10 active:scale-95 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border border-transparent hover:border-sky-500/20"
+          >
+            <FiEdit2 size={13} /> Edit
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => onDelete(user)}
+              className="inline-flex items-center gap-1.5 text-red-400 hover:bg-red-500/10 active:scale-95 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border border-transparent hover:border-red-500/20"
+            >
+              <FiTrash2 size={13} /> Delete
+            </button>
+          )}
+        </div>
+      </td>
+    </motion.tr>
+  );
+});
+
+UserTableRow.displayName = "UserTableRow";
 
 const UserManagement = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const { settings } = useSettings();
-  const departments = settings?.departments || ["IT"];
-  const branches = settings?.branches || ["Gaurabagh"];
-  const roles = [
+  const departments = useMemo(() => settings?.departments || ["IT"], [settings]);
+  const branches = useMemo(() => settings?.branches || ["Gaurabagh"], [settings]);
+  const roles = useMemo(() => [
     "admin",
     "department-head",
     "hr",
@@ -94,7 +207,7 @@ const UserManagement = () => {
     "mentor",
     "teacher",
     "student",
-  ];
+  ], []);
 
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
@@ -106,7 +219,9 @@ const UserManagement = () => {
   const [page, setPage] = useState(1);
   const [dbBranches, setDbBranches] = useState([]);
   
-  const finalBranches = dbBranches.length > 0 ? dbBranches.map(b => b.name) : branches;
+  const finalBranches = useMemo(() => {
+    return dbBranches.length > 0 ? dbBranches.map(b => b.name) : branches;
+  }, [dbBranches, branches]);
 
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -115,13 +230,22 @@ const UserManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  // Wrapper to normalize toast calls — the rest of the component uses showToast(msg, type)
-  const showToast = (message, type = "success") => {
-    if (type === "error") toast.error(message);
-    else toast.success(message);
-  };
+  // Split-pane layout Right Tab state ("affiliation" | "tasks")
+  const [activeRightTab, setActiveRightTab] = useState("affiliation");
+  const [userTasks, setUserTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksSearchQuery, setTasksSearchQuery] = useState("");
 
-  const loadUsers = async () => {
+  // Recycle Bin UI state
+  const [showRecycleBin, setShowRecycleBin] = useState(false);
+  const [deletedUsers, setDeletedUsers] = useState([]);
+  const [binLoading, setBinLoading] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
+
+  // Dynamic Banner Notification for validation inline errors
+  const [bannerError, setBannerError] = useState("");
+
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const response = await getUsers({
@@ -138,12 +262,12 @@ const UserManagement = () => {
       }
     } catch (error) {
       console.error("Error loading users:", error);
-      showToast("Failed to load users", "error");
+      toast.error("Failed to load users");
     }
     setLoading(false);
-  };
+  }, [page, search, roleFilter, branchFilter]);
 
-  const loadDbBranches = async () => {
+  const loadDbBranches = useCallback(async () => {
     try {
       const response = await getBranches();
       if (response.data.success) {
@@ -152,15 +276,15 @@ const UserManagement = () => {
     } catch (e) {
       console.error("Failed to load branches in UserManagement:", e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadUsers();
-  }, [page, roleFilter, branchFilter]);
+  }, [loadUsers]);
 
   useEffect(() => {
     loadDbBranches();
-  }, []);
+  }, [loadDbBranches]);
 
   // Read URL search query param if present on mount to interlink from Email Center
   useEffect(() => {
@@ -176,81 +300,190 @@ const UserManagement = () => {
     const timer = setTimeout(() => {
       if (page !== 1) setPage(1);
       else loadUsers();
-    }, 500);
+    }, 450);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, loadUsers]);
+
+  // Fetch deleted users for Recycle Bin
+  const loadDeletedUsers = useCallback(async () => {
+    setBinLoading(true);
+    try {
+      const response = await getDeletedUsers();
+      if (response.data.success) {
+        setDeletedUsers(response.data.data || []);
+      }
+    } catch (e) {
+      console.error("Error loading deleted users:", e);
+      toast.error("Failed to load Recycle Bin");
+    } finally {
+      setBinLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showRecycleBin) {
+      loadDeletedUsers();
+    }
+  }, [showRecycleBin, loadDeletedUsers]);
+
+  // Fetch tasks assigned to the user when editing
+  useEffect(() => {
+    const fetchUserTasks = async () => {
+      if (!editingUser || !showModal || activeRightTab !== "tasks") {
+        return;
+      }
+      setTasksLoading(true);
+      try {
+        const response = await getTasks({ assignedTo: editingUser._id });
+        if (response.data.success) {
+          setUserTasks(response.data.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to load user tasks:", err);
+      } finally {
+        setTasksLoading(false);
+      }
+    };
+    fetchUserTasks();
+  }, [editingUser, showModal, activeRightTab]);
+
+  const filteredUserTasks = useMemo(() => {
+    if (!tasksSearchQuery.trim()) return userTasks;
+    const q = tasksSearchQuery.toLowerCase().trim();
+    return userTasks.filter(t => 
+      t.title?.toLowerCase().includes(q) || 
+      t.description?.toLowerCase().includes(q)
+    );
+  }, [userTasks, tasksSearchQuery]);
+
+  const handleBranchChange = useCallback((nextBranch) => {
+    if (!nextBranch) return;
+    const branchObj = dbBranches.find((br) => br.name === nextBranch);
+    const branchDepts = (branchObj && branchObj.departments && branchObj.departments.length > 0)
+      ? branchObj.departments
+      : departments;
+    setFormData((prev) => ({
+      ...prev,
+      branch: nextBranch,
+      department: branchDepts[0] || "IT"
+    }));
+  }, [dbBranches, departments]);
+
+  const handleDeptChange = useCallback((nextDept) => {
+    setFormData((prev) => ({
+      ...prev,
+      department: nextDept
+    }));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    setBannerError("");
+
+    // Front-end validations
+    if (!formData.name.trim()) {
+      setBannerError("Name field is required.");
+      setSubmitting(false);
+      return;
+    }
+    if (!formData.email.trim()) {
+      setBannerError("Email address is required.");
+      setSubmitting(false);
+      return;
+    }
+    if (!editingUser && !formData.password) {
+      setBannerError("Password is required for new accounts.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       if (editingUser) {
         const updateData = { ...formData };
         if (!updateData.password) delete updateData.password;
         await updateUser(editingUser._id, updateData);
-        showToast("User updated");
+        toast.success("✅ User updated successfully!");
       } else {
         await createUser(formData);
-        showToast("User created");
+        toast.success("✅ User account created successfully!");
       }
       setShowModal(false);
       setEditingUser(null);
       loadUsers();
     } catch (error) {
       console.error("Error saving user:", error);
-      showToast(
-        error.response?.data?.message || error.message || "Save failed",
-        "error",
-      );
+      const msg = error.response?.data?.message || error.message || "Save operation failed";
+      setBannerError(msg);
+      toast.error(msg);
     }
     setSubmitting(false);
   };
 
-  const handleDelete = async (user) => {
+  const handleDelete = useCallback(async (userToDelete) => {
     try {
-      await deleteUser(user._id);
+      await deleteUser(userToDelete._id);
       setConfirmDelete(null);
-      showToast("User deleted");
+      toast.success(`🗑️ User ${userToDelete.name} soft-deleted. Accessible in Recycle Bin.`);
       loadUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
-      showToast("Error deleting user", "error");
+      toast.error(error.response?.data?.message || "Error deleting user");
     }
-  };
+  }, [loadUsers]);
 
-  const openCreate = () => {
+  const handleRestore = useCallback(async (id, name) => {
+    setRestoringId(id);
+    try {
+      await restoreUser(id);
+      toast.success(`♻️ ${name} restored successfully!`);
+      loadDeletedUsers();
+      loadUsers();
+    } catch (e) {
+      console.error("Failed to restore user:", e);
+      toast.error(e.response?.data?.message || "Failed to restore user");
+    } finally {
+      setRestoringId(null);
+    }
+  }, [loadDeletedUsers, loadUsers]);
+
+  const openCreate = useCallback(() => {
     setEditingUser(null);
     setFormData({
         ...EMPTY_FORM,
         department: departments[0] || "IT",
         branch: finalBranches[0] || "Gaurabagh"
     });
+    setBannerError("");
     setShowPwd(false);
+    setActiveRightTab("affiliation");
     setShowModal(true);
-  };
+  }, [departments, finalBranches]);
 
-  const handleEditClick = (user) => {
-    setEditingUser(user);
+  const handleEditClick = useCallback((userToEdit) => {
+    setEditingUser(userToEdit);
     setFormData({
-      name: user.name || "",
-      email: user.email || "",
+      name: userToEdit.name || "",
+      email: userToEdit.email || "",
       password: "", 
-      role: user.role || "employee",
-      department: user.department || "IT",
-      branch: user.branch || "Gaurabagh",
-      phone: user.phone || "",
-      address: user.address || "",
-      bloodGroup: user.bloodGroup || "",
-      dateOfJoining: user.dateOfJoining ? user.dateOfJoining.split('T')[0] : new Date().toISOString().split('T')[0],
-      employeeId: user.employeeId || "",
-      customFields: user.customFields || {},
-      isActive: user.isActive !== false,
+      role: userToEdit.role || "employee",
+      department: userToEdit.department || "IT",
+      branch: userToEdit.branch || "Gaurabagh",
+      phone: userToEdit.phone || "",
+      address: userToEdit.address || "",
+      bloodGroup: userToEdit.bloodGroup || "",
+      dateOfJoining: userToEdit.dateOfJoining ? userToEdit.dateOfJoining.split('T')[0] : new Date().toISOString().split('T')[0],
+      employeeId: userToEdit.employeeId || "",
+      customFields: userToEdit.customFields || {},
+      isActive: userToEdit.isActive !== false,
     });
+    setBannerError("");
     setShowPwd(false);
+    setActiveRightTab("affiliation");
     setShowModal(true);
-  };
+  }, []);
 
-  const departmentsForSelectedBranch = (() => {
+  const departmentsForSelectedBranch = useMemo(() => {
     const b = formData.branch;
     if (!b) return departments;
 
@@ -259,327 +492,278 @@ const UserManagement = () => {
       return branchObj.departments;
     }
     return departments;
-  })();
+  }, [formData.branch, dbBranches, departments]);
 
-  const filtered = users; // Server-side filtering is active
+  const inputClass = "w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 hover:border-slate-700 transition-all placeholder-slate-600";
 
-  const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all";
+  // Combobox Formats
+  const branchComboboxOptions = useMemo(() => {
+    return finalBranches.map(b => ({ value: b, label: b, subLabel: "Active Branch" }));
+  }, [finalBranches]);
+
+  const deptComboboxOptions = useMemo(() => {
+    return departmentsForSelectedBranch.map(d => ({ value: d, label: d, subLabel: "Department Section" }));
+  }, [departmentsForSelectedBranch]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
-      <style>{`
-        @keyframes slideUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        @keyframes scaleIn { from { opacity:0; transform:scale(.96) } to { opacity:1; transform:scale(1) } }
-      `}</style>
-
-      <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white grid place-items-center text-xl shadow-lg shadow-blue-200">
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100">
+      <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-7">
+        
+        {/* Modern Enterprise Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800/80 pb-6">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center text-2xl shadow-lg shadow-sky-500/20">
               👥
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-tight">
                 User Management
               </h1>
-              <p className="text-slate-500 text-sm">
-                Add, edit, or remove employees
+              <p className="text-slate-400 text-sm mt-0.5">
+                Configure corporate roles, branches, and monitor live workloads
               </p>
             </div>
           </div>
-          {isAdmin && (
+          <div className="flex flex-wrap gap-2.5">
             <button
-              onClick={openCreate}
-              className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-[.98] text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-blue-200/70 transition-all w-full sm:w-auto"
+              onClick={() => setShowRecycleBin(true)}
+              className="inline-flex items-center justify-center gap-2 bg-slate-900 border border-slate-800 hover:border-slate-700 active:scale-95 text-slate-300 px-5 py-2.5 rounded-xl font-semibold shadow-md transition-all text-sm"
             >
-              <span className="text-lg leading-none">+</span> Add User
+              ♻️ Recycle Bin
             </button>
-          )}
+            {isAdmin && (
+              <button
+                onClick={openCreate}
+                className="inline-flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg shadow-sky-500/10 transition-all text-sm"
+              >
+                <FiUserPlus size={16} /> Add User
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {/* Premium Dark Cards Statistics Dashboard */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: "Total Users", value: userStats.total, color: "text-slate-900" },
-            { label: "Active", value: userStats.active, color: "text-emerald-600" },
-            { label: "Departments", value: departments.length, color: "text-blue-600" },
-            { label: "Branches", value: finalBranches.length, color: "text-indigo-600" },
-            { label: "Admins", value: userStats.admins, color: "text-purple-600" },
-          ].map((s) => (
+            { label: "Total Accounts", value: userStats.total, color: "text-slate-100", icon: <FiUsers className="text-slate-400" /> },
+            { label: "Active Employees", value: userStats.active, color: "text-emerald-400", icon: <FiCheckCircle className="text-emerald-400/80" /> },
+            { label: "Company Divisions", value: departments.length, color: "text-sky-400", icon: <FiBriefcase className="text-sky-400/80" /> },
+            { label: "Active Branches", value: finalBranches.length, color: "text-indigo-400", icon: <FiMapPin className="text-indigo-400/80" /> },
+            { label: "Global Admins", value: userStats.admins, color: "text-purple-400", icon: <FiShield className="text-purple-400/80" /> },
+          ].map((s, idx) => (
             <div
-              key={s.label}
-              className="bg-white border border-slate-200/70 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow"
+              key={idx}
+              className="relative overflow-hidden bg-slate-900/60 border border-slate-800 rounded-2xl px-5 py-4 shadow-xl backdrop-blur-xl group hover:border-slate-750 transition-all duration-300"
             >
-              <p className="text-xs font-medium text-slate-500">{s.label}</p>
-              <p className={`text-2xl font-bold mt-0.5 ${s.color}`}>
+              <div className="absolute right-3 top-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                {s.icon}
+              </div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
+              <p className={`text-2xl font-bold mt-1.5 tracking-tight ${s.color}`}>
                 {s.value}
               </p>
             </div>
           ))}
         </div>
 
-        <div className="bg-white border border-slate-200/70 rounded-2xl p-3 flex flex-col md:flex-row gap-2 shadow-sm">
+        {/* Premium Filter Controls Grid */}
+        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-3 shadow-xl backdrop-blur-md">
           <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-              🔍
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+              <FiSearch size={16} />
             </span>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, email, role, department..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
+              placeholder="Search by name, email, employee ID..."
+              className="w-full bg-slate-950/70 border border-slate-850 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-100 transition placeholder-slate-600"
             />
           </div>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
-          >
-            <option value="all">All Roles</option>
-            {roles.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </option>
-            ))}
-          </select>
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
-          >
-            <option value="all">All Branches</option>
-            {finalBranches.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
+          
+          <div className="flex gap-2">
+            <select
+              value={roleFilter}
+              onChange={(e) => setPage(1) || setRoleFilter(e.target.value)}
+              className="bg-slate-950/75 border border-slate-850 text-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition cursor-pointer"
+            >
+              <option value="all">All Roles</option>
+              {roles.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+            
+            <select
+              value={branchFilter}
+              onChange={(e) => setPage(1) || setBranchFilter(e.target.value)}
+              className="bg-slate-950/75 border border-slate-850 text-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition cursor-pointer"
+            >
+              <option value="all">All Branches</option>
+              {finalBranches.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
+        {/* Live List Representation */}
         {loading ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-12 bg-slate-100 rounded-xl animate-pulse"
-                />
-              ))}
-            </div>
+          <div className="bg-slate-900/30 rounded-2xl border border-slate-800 p-6 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-14 bg-slate-900/80 rounded-xl animate-pulse border border-slate-850"
+              />
+            ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-dashed border-slate-300 py-16 text-center">
-            <div className="text-5xl mb-3">🧑‍💼</div>
-            <p className="text-slate-700 font-semibold">No users found</p>
-            <p className="text-slate-500 text-sm mt-1">
-              Try adjusting your filters or add a new user.
+        ) : users.length === 0 ? (
+          <div className="bg-slate-900/30 rounded-3xl border border-dashed border-slate-800 py-20 text-center shadow-xl backdrop-blur-sm">
+            <div className="text-5xl mb-4">👥</div>
+            <p className="text-slate-300 font-bold text-lg">No active users match filters</p>
+            <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
+              Change the search query or filters. Deleted users reside safely in the Recycle Bin.
             </p>
           </div>
         ) : (
           <>
-            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200/70 overflow-hidden">
+            <div className="hidden md:block bg-slate-900/30 rounded-2xl shadow-2xl border border-slate-800/80 overflow-hidden backdrop-blur-xl">
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50/70 border-b border-slate-200">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-950/60 border-b border-slate-800 text-slate-400">
                     <tr>
-                      <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
-                        User Info
+                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
+                        User Profile / Contact
                       </th>
-                      <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
-                        Employee ID
+                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
+                        ID
                       </th>
-                      <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
+                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
                         Department
                       </th>
-                      <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
+                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
                         Branch
                       </th>
-                      <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
-                        Role
+                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
+                        Designated Role
                       </th>
-                      <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
+                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
                         Status
                       </th>
-                      <th className="text-right text-xs font-semibold text-slate-600 uppercase tracking-wider py-3 px-4">
-                        Actions
+                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5 text-right">
+                        Administrative Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filtered.map((user, i) => (
-                      <tr
-                        key={user._id}
-                        style={{ animationDelay: `${i * 20}ms` }}
-                        className="hover:bg-blue-50/40 transition-colors animate-[fadeIn_.3s_ease-out_both]"
-                      >
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white grid place-items-center font-bold text-sm shadow-sm shadow-blue-200">
-                              {user.name?.charAt(0)?.toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-slate-900 truncate">
-                                {user.name}
-                              </p>
-                              <p className="text-xs text-slate-500 truncate">
-                                {user.email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-sm font-medium text-slate-700">
-                          {user.employeeId || "—"}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`text-xs px-2.5 py-1 rounded-full font-medium border ${DEPT_BADGE[user.department] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                          >
-                            {user.department || "—"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-slate-600 whitespace-nowrap">
-                          📍 {user.branch || "Gaurabagh"}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`text-xs px-2.5 py-1 rounded-full font-medium border ${ROLE_BADGE[user.role] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                          >
-                            {ROLE_LABELS[user.role] || user.role}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium border ${
-                              user.isActive !== false
-                                ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                                : "bg-red-100 text-red-700 border-red-200"
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${user.isActive !== false ? "bg-emerald-500" : "bg-red-500"}`}
-                            />
-                            {user.isActive !== false ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right whitespace-nowrap">
-                          <button
-                            onClick={() => handleEditClick(user)}
-                            className="inline-flex items-center gap-1 text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg text-sm font-medium transition mr-1"
-                          >
-                            ✏️ Edit
-                          </button>
-                          {isAdmin && (
-                            <button
-                              onClick={() => setConfirmDelete(user)}
-                              className="inline-flex items-center gap-1 text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg text-sm font-medium transition"
-                            >
-                              🗑️ Delete
-                            </button>
-                          )}
-                        </td>
-                      </tr>
+                  <tbody className="divide-y divide-slate-850/60">
+                    {users.map((item, index) => (
+                      <UserTableRow
+                        key={item._id}
+                        user={item}
+                        index={index}
+                        isAdmin={isAdmin}
+                        onEdit={handleEditClick}
+                        onDelete={setConfirmDelete}
+                      />
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Pagination Controls */}
+              {/* Advanced Pagination UI */}
               {pagination.pages > 1 && (
-                <div className="p-4 border-t bg-slate-50/50 flex items-center justify-center gap-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 hover:bg-slate-50 transition-colors"
-                  >
-                    ◀
-                  </button>
-                  {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
-                    const totalP = pagination.pages;
-                    let p = totalP <= 5 ? i + 1 : page <= 3 ? i + 1 : page >= totalP - 2 ? totalP - 4 + i : page - 2 + i;
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${page === p ? "bg-blue-600 text-white shadow-md" : "bg-white border hover:border-blue-300"}`}
-                      >
-                        {p}
-                      </button>
-                    );
-                  })}
-                  <button
-                    onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
-                    disabled={page === pagination.pages}
-                    className="px-3 py-1.5 rounded-lg border bg-white disabled:opacity-40 hover:bg-slate-50 transition-colors"
-                  >
-                    ▶
-                  </button>
+                <div className="p-4 border-t border-slate-850 bg-slate-950/40 flex items-center justify-between px-6">
+                  <p className="text-xs text-slate-500">
+                    Showing page {page} of {pagination.pages} ({pagination.total} entries total)
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="p-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-slate-300 transition-colors"
+                    >
+                      ◀
+                    </button>
+                    {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
+                      const totalP = pagination.pages;
+                      let p = totalP <= 5 ? i + 1 : page <= 3 ? i + 1 : page >= totalP - 2 ? totalP - 4 + i : page - 2 + i;
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={`w-9 h-9 rounded-lg text-xs font-bold transition-all border ${page === p ? "bg-sky-600 border-sky-500 text-white shadow-lg" : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700"}`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                      disabled={page === pagination.pages}
+                      className="p-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-slate-300 transition-colors"
+                    >
+                      ▶
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
-            <div className="md:hidden space-y-3">
-              {filtered.map((user, i) => (
+            {/* Mobile Cards Representation */}
+            <div className="md:hidden space-y-3.5">
+              {users.map((item, index) => (
                 <div
-                  key={user._id}
-                  style={{ animationDelay: `${i * 25}ms` }}
-                  className="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm animate-[fadeIn_.4s_ease-out_both]"
+                  key={item._id}
+                  className="bg-slate-900/80 rounded-2xl border border-slate-800 p-4 shadow-xl space-y-3"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white grid place-items-center font-bold shadow-sm shadow-blue-200">
-                      {user.name?.charAt(0)?.toUpperCase()}
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center font-bold text-sm uppercase">
+                      {item.name?.charAt(0)}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 truncate">
-                            {user.name}
-                          </p>
-                          <p className="text-xs text-slate-500 truncate">
-                            {user.email} {user.employeeId && `· ${user.employeeId}`}
-                          </p>
-                        </div>
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex-shrink-0 ${
-                            user.isActive !== false
-                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                              : "bg-red-100 text-red-700 border-red-200"
-                          }`}
-                        >
-                          {user.isActive !== false ? "Active" : "Inactive"}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        <span
-                          className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${ROLE_BADGE[user.role] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                        >
-                          {ROLE_LABELS[user.role] || user.role}
-                        </span>
-                        <span
-                          className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${DEPT_BADGE[user.department] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                        >
-                          {user.department || "—"}
-                        </span>
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                          📍 {user.branch || "Gaurabagh"}
-                        </span>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => handleEditClick(user)}
-                          className="flex-1 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100 transition"
-                        >
-                          ✏️ Edit
-                        </button>
-                        {isAdmin && (
-                          <button
-                            onClick={() => setConfirmDelete(user)}
-                            className="flex-1 py-1.5 rounded-lg bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition"
-                          >
-                            🗑️ Delete
-                          </button>
-                        )}
-                      </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-200 truncate">{item.name}</p>
+                      <p className="text-xs text-slate-400 truncate">{item.email}</p>
                     </div>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                        item.isActive !== false
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          : "bg-red-500/10 text-red-400 border-red-500/20"
+                      }`}
+                    >
+                      {item.isActive !== false ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1.5 border-t border-slate-800 pt-3 text-[11px]">
+                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${ROLE_BADGE[item.role] || "bg-slate-500/10 text-slate-400"}`}>
+                      {ROLE_LABELS[item.role] || item.role}
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${DEPT_BADGE[item.department] || "bg-slate-500/10 text-slate-400"}`}>
+                      {item.department || "IT"}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-lg border border-slate-800 bg-slate-950/50 text-slate-300">
+                      📍 {item.branch || "Gaurabagh"}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2 border-t border-slate-800/60 pt-3">
+                    <button
+                      onClick={() => handleEditClick(item)}
+                      className="flex-1 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 text-xs font-bold transition border border-sky-500/10"
+                    >
+                      ✏️ Edit
+                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => setConfirmDelete(item)}
+                        className="flex-1 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold transition border border-red-500/10"
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -588,292 +772,499 @@ const UserManagement = () => {
         )}
       </div>
 
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-[fadeIn_.15s_ease-out]">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-[scaleIn_.2s_ease-out]">
-            <div className="text-4xl mb-2">⚠️</div>
-            <h3 className="text-lg font-bold text-slate-900">Delete user?</h3>
-            <p className="text-sm text-slate-500 mt-1">
-              Permanently delete <strong>{confirmDelete.name}</strong>? This
-              cannot be undone.
-            </p>
-            <div className="flex gap-2 mt-5">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(confirmDelete)}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition shadow-md shadow-red-200"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showModal && (
-        <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 animate-[fadeIn_.15s_ease-out]"
-          onClick={() => setShowModal(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-hidden flex flex-col animate-[scaleIn_.2s_ease-out]"
-          >
-            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  {editingUser ? "Edit User" : "Add New User"}
-                </h2>
-              </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="h-9 w-9 grid place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-2xl transition"
-              >
-                ×
-              </button>
-            </div>
-
-            <form
-              onSubmit={handleSubmit}
-              className="overflow-y-auto px-6 py-5 space-y-4"
+      {/* Recycle Bin Modal Overlay */}
+      <AnimatePresence>
+        {showRecycleBin && (
+          <div className="fixed inset-0 bg-[#060814]/80 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Name" required>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Email" required>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-
-              <Field label="Employee ID">
-                <input
-                  type="text"
-                  placeholder="e.g. EMP123"
-                  value={formData.employeeId}
-                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-
-              {!editingUser && (
-                <Field label="Password" required>
-                  <div className="relative">
-                    <input
-                      type={showPwd ? "text" : "password"}
-                      required
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className={`${inputClass} pr-10`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPwd((s) => !s)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 px-2 py-1 text-sm"
-                      tabIndex={-1}
-                    >
-                      {showPwd ? "🙈" : "👁️"}
-                    </button>
-                  </div>
-                </Field>
-              )}
-
-              {editingUser && (
-                <Field label="Update Password">
-                  <div className="relative">
-                    <input
-                      type={showPwd ? "text" : "password"}
-                      placeholder="Leave blank to keep current"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className={`${inputClass} pr-10`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPwd((s) => !s)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 px-2 py-1 text-sm"
-                      tabIndex={-1}
-                    >
-                      {showPwd ? "🙈" : "👁️"}
-                    </button>
-                  </div>
-                </Field>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Phone Number">
-                  <input
-                    type="text"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Blood Group">
-                  <input
-                    type="text"
-                    value={formData.bloodGroup}
-                    onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-
-              <Field label="Home Address">
-                <textarea
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className={inputClass}
-                  rows="2"
-                />
-              </Field>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Role" required>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className={inputClass}
-                  >
-                    {roles.map((r) => (
-                      <option key={r} value={r}>
-                        {ROLE_LABELS[r]}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Date of Joining" required>
-                  <input
-                    type="date"
-                    value={formData.dateOfJoining}
-                    onChange={(e) => setFormData({ ...formData, dateOfJoining: e.target.value })}
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Department" required>
-                  <select
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className={inputClass}
-                  >
-                    {departmentsForSelectedBranch.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Branch" required>
-                  <select
-                    value={formData.branch}
-                    onChange={(e) => {
-                      const nextBranch = e.target.value;
-                      const branchObj = dbBranches.find((br) => br.name === nextBranch);
-                      const branchDepts = (branchObj && branchObj.departments && branchObj.departments.length > 0)
-                        ? branchObj.departments
-                        : departments;
-                      setFormData({
-                        ...formData,
-                        branch: nextBranch,
-                        department: branchDepts[0] || "IT"
-                      });
-                    }}
-                    className={inputClass}
-                  >
-                    {finalBranches.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-
-              {/* Dynamic Custom Fields */}
-              {settings?.userCustomFields?.length > 0 && (
-                <div className="pt-4 border-t border-slate-100 space-y-4">
-                  <h4 className="text-sm font-bold text-slate-800">
-                    Additional Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {settings.userCustomFields.map((field) => (
-                      <Field key={field.id} label={field.label} required={field.required}>
-                        <input
-                          type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
-                          required={field.required}
-                          value={formData?.customFields?.[field.id] || ""}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              customFields: {
-                                ...(formData.customFields || {}),
-                                [field.id]: e.target.value,
-                              },
-                            })
-                          }
-                          className={inputClass}
-                        />
-                      </Field>
-                    ))}
+              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">♻️</span>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-100">Recycle Bin</h2>
+                    <p className="text-xs text-slate-400">Soft-deleted users directory</p>
                   </div>
                 </div>
-              )}
-
-              {editingUser && (
-                <label className="flex items-center justify-between gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-sm font-bold text-slate-700">Account Active</p>
-                    <p className="text-xs text-slate-500">User can log in when active</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </label>
-              )}
-
-              <div className="flex gap-3 pt-6 sticky bottom-0 bg-white border-t border-slate-100 py-4 mt-auto">
                 <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition"
+                  onClick={() => setShowRecycleBin(false)}
+                  className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 hover:text-white text-lg transition flex items-center justify-center"
+                >
+                  <FiX size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+                {binLoading ? (
+                  <div className="text-center py-12 text-slate-500 flex flex-col items-center justify-center gap-2">
+                    <FiRefreshCw size={24} className="animate-spin text-sky-500" />
+                    <span className="text-sm font-semibold">Scanning directory...</span>
+                  </div>
+                ) : deletedUsers.length === 0 ? (
+                  <div className="text-center py-16 text-slate-500">
+                    <FiCheckCircle size={44} className="mx-auto mb-3 text-emerald-500/80 animate-bounce" />
+                    <p className="font-bold text-slate-350">Recycle Bin is empty</p>
+                    <p className="text-xs text-slate-500 mt-1">Zero soft-deleted accounts found.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-800/80">
+                    {deletedUsers.map((item) => (
+                      <div
+                        key={item._id}
+                        className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-xl bg-slate-800 text-slate-300 grid place-items-center font-bold text-xs uppercase">
+                            {item.name?.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-200 text-sm">{item.name}</p>
+                            <p className="text-xs text-slate-400">{item.email}</p>
+                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-semibold">
+                              <span>🏢 {item.department}</span>
+                              <span>•</span>
+                              <span>📍 {item.branch}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleRestore(item._id, item.name)}
+                          disabled={restoringId === item._id}
+                          className="self-start sm:self-center px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/20 hover:border-emerald-500/35 text-emerald-400 text-xs font-bold tracking-wide transition flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          {restoringId === item._id ? (
+                            <>
+                              <FiRefreshCw className="animate-spin" /> Restoring...
+                            </>
+                          ) : (
+                            <>
+                              <FiRefreshCw /> Restore Account
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Soft Delete Modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <div className="fixed inset-0 bg-[#060814]/85 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 w-full max-w-md text-center"
+            >
+              <div className="mx-auto h-12 w-12 rounded-full bg-red-500/10 text-red-400 grid place-items-center text-xl mb-4 border border-red-500/25 animate-pulse">
+                <FiAlertTriangle />
+              </div>
+              <h3 className="text-lg font-extrabold text-slate-200">Soft-Delete User?</h3>
+              <p className="text-sm text-slate-400 mt-2">
+                This will soft-delete <strong>{confirmDelete.name}</strong>. Their data, credentials, and profile remain completely archived in the Recycle Bin for restoration.
+              </p>
+              <div className="flex gap-2.5 mt-6">
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-lg shadow-blue-200 transition-all active:scale-[.98] disabled:opacity-50"
+                  onClick={() => handleDelete(confirmDelete)}
+                  className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold transition shadow-lg shadow-red-600/10"
                 >
-                  {submitting ? "Saving..." : editingUser ? "Update User" : "Create User"}
+                  Archive User
                 </button>
               </div>
-            </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
+
+      {/* Split-Pane Dual Modal (Add / Edit User View) */}
+      <AnimatePresence>
+        {showModal && (
+          <div
+            className="fixed inset-0 bg-[#060814]/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 z-[99] overflow-y-auto"
+            onClick={() => setShowModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.98 }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 w-full sm:max-w-5xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[100vh] sm:max-h-[92vh] overflow-hidden flex flex-col border border-slate-800"
+            >
+              {/* Header section with notification banner */}
+              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-800 sticky top-0 bg-slate-900 z-20">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    {editingUser ? "✏️ Edit Employee Profile" : "👤 Provision New Corporate User"}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Enterprise security classification matrix enabled</p>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition"
+                >
+                  <FiX size={16} />
+                </button>
+              </div>
+
+              {/* Dynamic Warning/Error Banner */}
+              {bannerError && (
+                <div className="bg-red-500/10 border-b border-red-500/20 text-red-400 px-6 py-3 text-xs font-semibold flex items-center gap-2 animate-[slideUp_.25s_ease-out]">
+                  <FiAlertTriangle size={14} className="flex-shrink-0 text-red-400" />
+                  <span>{bannerError}</span>
+                </div>
+              )}
+
+              {/* Split Pane Container */}
+              <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
+                <div className="flex-1 overflow-y-auto md:grid md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+                  
+                  {/* Left Column Pane (Core Information Inputs) */}
+                  <div className="p-6 space-y-4.5 md:col-span-7">
+                    <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                      <span>01.</span> Core Identity & Personal Details
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Field label="Name" required>
+                        <input
+                          type="text"
+                          required
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          className={inputClass}
+                          placeholder="Employee full name"
+                        />
+                      </Field>
+                      <Field label="Email Address" required>
+                        <input
+                          type="email"
+                          required
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className={inputClass}
+                          placeholder="corporate@domain.com"
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Field label="Employee ID">
+                        <input
+                          type="text"
+                          placeholder="e.g. EMP1049"
+                          value={formData.employeeId}
+                          onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                          className={inputClass}
+                        />
+                      </Field>
+
+                      <Field label="Blood Group">
+                        <input
+                          type="text"
+                          placeholder="e.g. O+ or AB-"
+                          value={formData.bloodGroup}
+                          onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                          className={inputClass}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Field label="Phone Contact">
+                        <input
+                          type="text"
+                          placeholder="e.g. +91 9900..."
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className={inputClass}
+                        />
+                      </Field>
+                      <Field label="Date of Joining" required>
+                        <input
+                          type="date"
+                          value={formData.dateOfJoining}
+                          onChange={(e) => setFormData({ ...formData, dateOfJoining: e.target.value })}
+                          className={inputClass}
+                        />
+                      </Field>
+                    </div>
+
+                    <Field label="Home Address (Residency)">
+                      <textarea
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className={inputClass}
+                        rows="2"
+                        placeholder="Street address, City, Pincode"
+                      />
+                    </Field>
+
+                    {/* Security Authentication Code */}
+                    <Field label={editingUser ? "Security Update Password" : "Account Password" } required={!editingUser}>
+                      <div className="relative">
+                        <input
+                          type={showPwd ? "text" : "password"}
+                          required={!editingUser}
+                          placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          className={`${inputClass} pr-10`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPwd((s) => !s)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                        </button>
+                      </div>
+                    </Field>
+
+                    {/* Dynamic Custom Fields */}
+                    {settings?.userCustomFields?.length > 0 && (
+                      <div className="pt-4 border-t border-slate-800/80 space-y-4">
+                        <h4 className="text-xs font-bold text-sky-400 tracking-wide uppercase">
+                          03. Customizable Corporate Extensions
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {settings.userCustomFields.map((field) => (
+                            <Field key={field.id} label={field.label} required={field.required}>
+                              <input
+                                type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+                                required={field.required}
+                                value={formData?.customFields?.[field.id] || ""}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    customFields: {
+                                      ...(formData.customFields || {}),
+                                      [field.id]: e.target.value,
+                                    },
+                                  })
+                                }
+                                className={inputClass}
+                              />
+                            </Field>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column Pane (Tabbed: Affiliation vs Workload Tasks) */}
+                  <div className="p-6 md:col-span-5 flex flex-col space-y-4">
+                    
+                    {/* Modern Framer Motion Tabs Header */}
+                    <div className="flex border-b border-slate-850 p-0.5 bg-slate-950/60 rounded-xl relative">
+                      {[
+                        { id: "affiliation", label: "Affiliation", icon: <FiBriefcase /> },
+                        { id: "tasks", label: `Active Workload (${editingUser ? userTasks.length : 0})`, icon: <FiGrid /> }
+                      ].map(t => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setActiveRightTab(t.id)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeRightTab === t.id ? "text-slate-100" : "text-slate-500 hover:text-slate-300"}`}
+                        >
+                          {t.icon} {t.label}
+                          {activeRightTab === t.id && (
+                            <motion.div
+                              layoutId="rightTabOutline"
+                              className="absolute inset-0 bg-slate-900 border border-slate-800 rounded-lg -z-10 shadow-lg"
+                              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                            />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex-1 overflow-hidden flex flex-col justify-start">
+                      
+                      {/* Tab Content 1: Affiliations */}
+                      {activeRightTab === "affiliation" && (
+                        <motion.div
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="space-y-4.5"
+                        >
+                          <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                            <span>02.</span> Professional Scope Matrix
+                          </h3>
+
+                          <Field label="Assigned Corporate Role" required>
+                            <select
+                              value={formData.role}
+                              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                              className="w-full bg-slate-950/70 border border-slate-800 text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 transition cursor-pointer"
+                            >
+                              {roles.map((r) => (
+                                <option key={r} value={r} className="bg-slate-900">
+                                  {ROLE_LABELS[r]}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+
+                          {/* Searchable Combobox for Branch */}
+                          <SearchableCombobox
+                            label="Branch Scope"
+                            options={branchComboboxOptions}
+                            value={formData.branch}
+                            onChange={handleBranchChange}
+                            placeholder="Select corporate branch..."
+                            isClearable={false}
+                          />
+
+                          {/* Searchable Combobox for Department (Cascaded dependent filters) */}
+                          <SearchableCombobox
+                            label="Department Allocation"
+                            options={deptComboboxOptions}
+                            value={formData.department}
+                            onChange={handleDeptChange}
+                            placeholder="Select department section..."
+                            isClearable={false}
+                          />
+
+                          <div className="pt-3">
+                            <label className="flex items-start justify-between gap-3 cursor-pointer bg-slate-950/50 border border-slate-850 hover:border-slate-800 rounded-2xl px-4 py-3.5 transition-all select-none">
+                              <div className="space-y-0.5">
+                                <p className="text-xs font-bold uppercase tracking-wider text-slate-350">Security Access Pipeline</p>
+                                <p className="text-[11px] text-slate-500 leading-tight">Enables or disables system authentication key</p>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={formData.isActive}
+                                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                                className="w-5 h-5 rounded-lg border-slate-800 bg-slate-900 text-sky-600 focus:ring-sky-500/30 focus:ring-offset-slate-900"
+                              />
+                            </label>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Tab Content 2: Active Tasks Board */}
+                      {activeRightTab === "tasks" && (
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="flex flex-col flex-1 overflow-hidden h-full space-y-3.5"
+                        >
+                          <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                            <span>📋</span> Assigned Workplace Workload
+                          </h3>
+
+                          {!editingUser ? (
+                            <div className="text-center py-16 px-4 bg-slate-950/40 rounded-2xl border border-slate-850 border-dashed">
+                              <FiBriefcase className="mx-auto mb-2 text-slate-600" size={32} />
+                              <p className="text-xs font-semibold text-slate-400">Creation Mode Active</p>
+                              <p className="text-[11px] text-slate-500 mt-1">
+                                Tasks can be queried or assigned once this employee profile is physically saved and recorded in the database.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex-1 flex flex-col overflow-hidden space-y-3">
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
+                                  <FiSearch size={14} />
+                                </span>
+                                <input
+                                  type="text"
+                                  value={tasksSearchQuery}
+                                  onChange={(e) => setTasksSearchQuery(e.target.value)}
+                                  placeholder="Search assigned tasks..."
+                                  className="w-full bg-slate-950/80 border border-slate-850 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/30 text-slate-100"
+                                />
+                              </div>
+
+                              <div className="flex-1 overflow-y-auto custom-scrollbar pr-0.5 space-y-2 max-h-[300px]">
+                                {tasksLoading ? (
+                                  <div className="text-center py-8 text-xs text-slate-500 flex items-center justify-center gap-1.5">
+                                    <FiRefreshCw className="animate-spin text-sky-500" /> Scanning backlog...
+                                  </div>
+                                ) : filteredUserTasks.length === 0 ? (
+                                  <div className="text-center py-10 bg-slate-950/20 rounded-xl border border-slate-850 text-slate-500 text-xs">
+                                    No matching tasks in database.
+                                  </div>
+                                ) : (
+                                  filteredUserTasks.map(t => {
+                                    const priorityColors = {
+                                      low: "text-green-400 bg-green-500/10 border-green-500/20",
+                                      medium: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+                                      high: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+                                      urgent: "text-red-400 bg-red-500/10 border-red-500/20",
+                                    };
+                                    
+                                    return (
+                                      <div
+                                        key={t._id}
+                                        className="p-3 bg-slate-950/75 border border-slate-850 hover:border-slate-800 rounded-xl space-y-1.5 hover:shadow-lg transition-all"
+                                      >
+                                        <div className="flex justify-between items-start gap-2">
+                                          <p className="text-xs font-bold text-slate-200 line-clamp-1">{t.title}</p>
+                                          <span className={`text-[9px] font-bold px-1.5 py-0.5 border rounded uppercase ${priorityColors[t.priority] || "bg-slate-800 text-slate-400"}`}>
+                                            {t.priority}
+                                          </span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-450 line-clamp-2 leading-snug">{t.description || "No description provided."}</p>
+                                        <div className="flex justify-between items-center text-[9px] text-slate-500 pt-1 font-semibold border-t border-slate-850/50">
+                                          <span>📅 Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "—"}</span>
+                                          <span className="capitalize px-1.5 py-0.5 rounded-full bg-slate-850 text-slate-400 border border-slate-800">{t.status || "Pending"}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Split Pane Footer controls */}
+                <div className="flex gap-3 px-6 py-4 border-t border-slate-800 bg-slate-950/50 mt-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-98 text-slate-300 font-bold transition text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold shadow-lg shadow-sky-500/10 transition-all active:scale-[.98] disabled:opacity-50 text-sm"
+                  >
+                    {submitting ? "Processing Registry..." : editingUser ? "Commit Profile Update" : "Establish Corporate Profile"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

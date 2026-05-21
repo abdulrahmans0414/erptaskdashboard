@@ -164,8 +164,9 @@ department: {
     // Time logs & Submission
     timeLogs: [timeLogSchema],
     submissionNote: String,
-    adminComments: String,
-    isArchived: { type: Boolean, default: false }
+    isArchived: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date }
 }, { timestamps: true });
 
 // ALL METHODS

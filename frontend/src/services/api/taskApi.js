@@ -23,3 +23,6 @@ export const getTimeReport = (params) => {
     const q = new URLSearchParams(params).toString();
     return api.get(`/tasks/reports/time${q ? `?${q}` : ''}`);
 };
+export const getDeletedTasks = () => api.get('/tasks/deleted/all');
+export const restoreTask = (id) => api.post(`/tasks/${id}/restore`);
+

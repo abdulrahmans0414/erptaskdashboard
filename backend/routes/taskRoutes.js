@@ -4,7 +4,8 @@ import {
     getDepartmentTasks, getTeamTasks, updateTeamProgress,
     startTask, submitTaskWithTime, reviewTask,
     getDashboardStats, getEmployeeSummary, getTimeReport,
-    updateTaskStatus, addComment, reassignTask
+    updateTaskStatus, addComment, reassignTask,
+    getDeletedTasks, restoreTask
 } from '../controllers/tasks/taskController.js';
 import { protect, authorize, filterTasksByUserAccess, canModifyTask } from '../middleware/auth.js';
 import { uploadToCloudinary } from '../middleware/uploadMiddleware.js';
@@ -25,6 +26,9 @@ router.get('/team', getTeamTasks);
 router.put('/team-progress/:taskId', updateTeamProgress);
 
 // ✅ IMPORTANT: Specific routes BEFORE /:id routes
+router.get('/deleted/all', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), getDeletedTasks);
+router.post('/:id/restore', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), restoreTask);
+
 router.get('/', filterTasksByUserAccess, getTasks);
 router.post(
     '/',

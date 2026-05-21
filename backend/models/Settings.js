@@ -46,6 +46,13 @@ const settingsSchema = new mongoose.Schema({
         type: Map,
         of: String,
         default: {}
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date
     }
 }, { timestamps: true });
 

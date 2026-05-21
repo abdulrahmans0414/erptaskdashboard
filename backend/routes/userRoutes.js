@@ -7,7 +7,9 @@ import {
     deleteUser,
     getUsersByDepartment,
     getUsersByBranch,
-    uploadAvatar
+    uploadAvatar,
+    getDeletedUsers,
+    restoreUser
 } from '../controllers/users/userController.js';
 import { protect, authorize, filterUsersByAccess, canAccessUser, canUploadAvatar } from '../middleware/auth.js';
 import { uploadSingleToCloudinary } from '../middleware/uploadMiddleware.js';
@@ -23,6 +25,9 @@ router.get('/department/:department', authorize('admin', 'it', 'department-head'
 router.get('/branch/:branch', authorize('admin', 'it', 'branch-head', 'department-head'), getUsersByBranch);
 
 // ✅ IMPORTANT: Specific routes before :id routes
+router.get('/deleted/all', authorize('admin'), getDeletedUsers);
+router.post('/:id/restore', authorize('admin'), restoreUser);
+
 // Avatar upload now goes to Cloudinary (permanent URL, not local disk)
 router.put('/avatar/:id', canUploadAvatar, uploadSingleToCloudinary('avatars', 'avatar', 2), uploadAvatar);
 

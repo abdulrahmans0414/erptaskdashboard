@@ -70,6 +70,13 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date
+    },
     lastLogin: Date,
     employeeId: { type: String, unique: true, sparse: true }
 }, {

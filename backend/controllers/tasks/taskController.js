@@ -321,7 +321,7 @@ export const getTasks = async (req, res) => {
         
         // Base query from auth middleware
         let query = { ...(req.taskFilter || {}) };
-        query.isArchived = { $ne: true };
+        query.isDeleted = { $ne: true };
 
         // Keyset Cursor Pagination
         if (nextCursor) {
@@ -451,8 +451,8 @@ export const getTasks = async (req, res) => {
 // ============ GET TASK BY ID ============
 export const getTaskById = async (req, res) => {
     try {
-        const taskId = req.task?._id || req.params.id;
-        const task = await Task.findById(taskId)
+        const taskId = String(req.task?._id || req.params.id);
+        const task = await Task.findOne({ _id: taskId, isDeleted: { $ne: true } })
             .populate('assignedTo assignedBy assignedTeam', 'name email department role')
             .populate('individualProgress.userId', 'name email')
             .lean();
@@ -470,14 +470,15 @@ export const getTaskById = async (req, res) => {
 // ============ UPDATE TASK ============
 export const updateTask = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id);
+        const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
         
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
         
         const { title, description, department, assignedTo, dueDate, 
-                priority, estimatedHours, estimatedMinutes, branch } = req.body;
+                priority, estimatedHours, estimatedMinutes, branch,
+                isTeamTask, assignedTeam, collaboratingDepartments } = req.body;
 
         const canEditAll = ['admin', 'it', 'department-head', 'branch-head', 'hr'].includes(req.user.role);
 
@@ -485,15 +486,26 @@ export const updateTask = async (req, res) => {
             if (title) task.title = title;
             if (description !== undefined) task.description = description;
             if (department) task.department = department;
-            if (assignedTo) task.assignedTo = assignedTo;
             if (dueDate) task.dueDate = dueDate;
             if (priority) task.priority = priority;
             if (branch) task.branch = branch;
             if (estimatedHours !== undefined) task.estimatedHours = estimatedHours;
             if (estimatedMinutes !== undefined) task.estimatedMinutes = estimatedMinutes;
+            
+            // Team Task parameters support
+            if (isTeamTask !== undefined) task.isTeamTask = isTeamTask;
+            
+            if (isTeamTask) {
+                if (assignedTeam) task.assignedTeam = assignedTeam;
+                if (collaboratingDepartments) task.collaboratingDepartments = collaboratingDepartments;
+                task.assignedTo = null; // Clear individual assignee if it becomes a team task
+            } else {
+                if (assignedTo !== undefined) task.assignedTo = assignedTo || null;
+                task.assignedTeam = [];
+                task.collaboratingDepartments = [];
+            }
         } else {
             // Employees are not allowed to change task metadata.
-            // (Prevents accidental/intentional workflow breakage)
             if (description !== undefined) task.description = description;
         }
         
@@ -512,7 +524,8 @@ export const updateTask = async (req, res) => {
 // ============ DELETE TASK ============
 export const deleteTask = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id);
+        const id = String(req.params.id);
+        const task = await Task.findOne({ _id: id, isDeleted: { $ne: true } });
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
@@ -522,51 +535,55 @@ export const deleteTask = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized to delete this task. Only Admins or the task creator can delete it.' });
         }
 
-        // Cleanup form attachments (both Cloudinary CDN and local fallback)
-        if (task.taskFormAttachments && task.taskFormAttachments.length > 0) {
-            for (const att of task.taskFormAttachments) {
-                try {
-                    if (att.publicId) {
-                        await deleteFromCloudinary(att.publicId);
-                    }
-                    const filePath = path.join(__dirname, '..', '..', att.fileUrl);
-                    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                } catch (e) {
-                    console.error("Error deleting form attachment:", e);
-                }
-            }
-        }
+        // SOFT DELETE instead of physical delete:
+        task.isDeleted = true;
+        task.deletedAt = new Date();
+        await task.save();
 
-        // Cleanup attempt attachments (both Cloudinary CDN and local fallback)
-        if (task.attempts && task.attempts.length > 0) {
-            for (const attempt of task.attempts) {
-                if (attempt.attachments && attempt.attachments.length > 0) {
-                    for (const att of attempt.attachments) {
-                        try {
-                            if (att.publicId) {
-                                await deleteFromCloudinary(att.publicId);
-                            }
-                            const filePath = path.join(__dirname, '..', '..', att.fileUrl);
-                            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                        } catch (e) {
-                            console.error("Error deleting attempt attachment:", e);
-                        }
-                    }
-                }
-            }
-        }
-
-        await task.deleteOne();
-        res.json({ success: true, message: 'Task and associated files deleted successfully' });
+        res.json({ success: true, message: 'Task soft-deleted successfully' });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ============ GET DELETED TASKS ============
+export const getDeletedTasks = async (req, res) => {
+    try {
+        const tasks = await Task.find({ isDeleted: true })
+            .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
+            .sort({ deletedAt: -1 })
+            .lean();
+        res.json({ success: true, data: tasks });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ============ RESTORE TASK ============
+export const restoreTask = async (req, res) => {
+    try {
+        const id = String(req.params.id);
+        const task = await Task.findById(id);
+        if (!task) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+
+        task.isDeleted = false;
+        task.deletedAt = undefined;
+        await task.save();
+
+        res.json({ success: true, message: 'Task restored successfully', data: task });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
 // ============ START TASK - FIXED ============
 export const startTask = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id);
+        const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
         
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
@@ -664,7 +681,7 @@ export const startTask = async (req, res) => {
 export const submitTaskWithTime = async (req, res) => {
     try {
         const { submissionNote, actualMinutes } = req.body;
-        const task = await Task.findById(req.params.id);
+        const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
         
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
@@ -960,7 +977,7 @@ export const submitTaskWithTime = async (req, res) => {
 export const reviewTask = async (req, res) => {
     try {
         const { status, adminComments, reviewStage } = req.body;
-        const task = await Task.findById(req.params.id);
+        const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
         
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
@@ -1146,7 +1163,7 @@ export const reviewTask = async (req, res) => {
 export const addComment = async (req, res) => {
     try {
         const { comment } = req.body;
-        const task = await Task.findById(req.params.id);
+        const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
         
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
@@ -1200,8 +1217,8 @@ export const addComment = async (req, res) => {
 // ============ GET DEPARTMENT TASKS ============
 export const getDepartmentTasks = async (req, res) => {
     try {
-        const { department } = req.params;
-        const tasks = await Task.find({ department, isArchived: { $ne: true } })
+        const department = String(req.params.department);
+        const tasks = await Task.find({ department, isDeleted: { $ne: true } })
             .populate('assignedTo assignedBy assignedTeam', 'name email')
             .sort({ createdAt: -1 })
             .lean();
@@ -1216,7 +1233,7 @@ export const getTeamTasks = async (req, res) => {
     try {
         const tasks = await Task.find({ 
             isTeamTask: true,
-            isArchived: { $ne: true },
+            isDeleted: { $ne: true },
             $or: [
                 { assignedTeam: req.user._id },
                 { assignedBy: req.user._id }
@@ -1234,10 +1251,10 @@ export const getTeamTasks = async (req, res) => {
 // ============ UPDATE TEAM PROGRESS ============
 export const updateTeamProgress = async (req, res) => {
     try {
-        const { taskId } = req.params;
+        const taskId = String(req.params.taskId);
         const { status, submissionNote } = req.body;
         
-        const task = await Task.findById(taskId);
+        const task = await Task.findOne({ _id: taskId, isDeleted: { $ne: true } });
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
@@ -1265,11 +1282,14 @@ export const updateTeamProgress = async (req, res) => {
 export const getDashboardStats = async (req, res) => {
     try {
         const { role } = req.user;
-        const { department, branch, startDate, endDate } = req.query;
+        const department = req.query.department ? String(req.query.department) : undefined;
+        const branch = req.query.branch ? String(req.query.branch) : undefined;
+        const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
+        const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
         
         // Base query from middleware
         let query = req.taskFilter ? { ...req.taskFilter } : {};
-        query.isArchived = { $ne: true };
+        query.isDeleted = { $ne: true };
 
         // Managers can refine their view
         if (department && department !== 'all') {
@@ -1397,10 +1417,10 @@ export const getDashboardStats = async (req, res) => {
 // ============ REASSIGN TASK ============
 export const reassignTask = async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = String(req.params.id);
         const { assignedTo, assignedTeam, isTeamTask, reason } = req.body;
         
-        const task = await Task.findById(id);
+        const task = await Task.findOne({ _id: id, isDeleted: { $ne: true } });
         if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const oldAssignee = task.assignedTo;
@@ -1536,7 +1556,7 @@ export const getEmployeeSummary = async (req, res) => {
             {
                 $match: {
                     ...taskMatch,
-                    isArchived: { $ne: true },
+                    isDeleted: { $ne: true },
                     $or: [
                         { assignedTo: { $in: employeeIds } },
                         { assignedTeam: { $in: employeeIds } }
@@ -1626,7 +1646,7 @@ export const getEmployeeSummary = async (req, res) => {
 export const updateTaskStatus = async (req, res) => {
     try {
         const { status, submissionNote } = req.body;
-        const task = await Task.findById(req.params.id);
+        const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
         
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
@@ -1688,8 +1708,11 @@ export const updateTaskStatus = async (req, res) => {
 // ============ GET TIME REPORT ============
 export const getTimeReport = async (req, res) => {
     try {
-        const { startDate, endDate, department } = req.query;
+        const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
+        const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
+        const department = req.query.department ? String(req.query.department) : undefined;
         let query = { ...(req.taskFilter || {}) };
+        query.isDeleted = { $ne: true };
         
         if (startDate || endDate) {
             query.createdAt = query.createdAt || {};

@@ -50,6 +50,13 @@ const employeeSchema = new mongoose.Schema({
         sickLeave: { type: Number, default: 10 },
         paidLeave: { type: Number, default: 5 }
     },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
+    deletedAt: {
+        type: Date
+    },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

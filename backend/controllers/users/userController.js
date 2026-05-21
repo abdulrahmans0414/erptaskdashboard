@@ -1,17 +1,24 @@
 import User from '../../models/User.js';
 import Task from '../../models/Task.js';
+import Employee from '../../models/Employee.js';
 import eventBus, { EVENTS } from '../../utils/eventBus.js';
 import { deleteFromCloudinary } from '../../middleware/uploadMiddleware.js';
 
 // @desc    Get all users (with pagination, search, and data isolation)
 export const getAllUsers = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search, department, branch, role: filterRole } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const page = req.query.page ? parseInt(String(req.query.page)) : 1;
+        const limit = req.query.limit ? parseInt(String(req.query.limit)) : 10;
+        const search = req.query.search ? String(req.query.search) : undefined;
+        const department = req.query.department ? String(req.query.department) : undefined;
+        const branch = req.query.branch ? String(req.query.branch) : undefined;
+        const filterRole = req.query.role ? String(req.query.role) : undefined;
+        
+        const skip = (page - 1) * limit;
 
         // Base query from middleware
         let query = req.userFilter ? { ...req.userFilter } : {};
-        query.isArchived = { $ne: true };
+        query.isDeleted = { $ne: true };
 
         // Search logic
         if (search) {
@@ -31,13 +38,13 @@ export const getAllUsers = async (req, res) => {
             .select('-password')
             .sort({ name: 1 })
             .skip(skip)
-            .limit(parseInt(limit))
+            .limit(limit)
             .lean();
 
         const [total, active, admins] = await Promise.all([
-            User.countDocuments(req.userFilter || {}),
-            User.countDocuments({ ...(req.userFilter || {}), isActive: true }),
-            User.countDocuments({ ...(req.userFilter || {}), role: 'admin' })
+            User.countDocuments({ ...(req.userFilter || {}), isDeleted: { $ne: true } }),
+            User.countDocuments({ ...(req.userFilter || {}), isActive: true, isDeleted: { $ne: true } }),
+            User.countDocuments({ ...(req.userFilter || {}), role: 'admin', isDeleted: { $ne: true } })
         ]);
 
         res.json({ 
@@ -62,7 +69,8 @@ export const getAllUsers = async (req, res) => {
 // @desc    Get user by ID
 export const getUserById = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id).select('-password');
+        const id = String(req.params.id);
+        const user = await User.findOne({ _id: id, isDeleted: { $ne: true } }).select('-password');
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -70,7 +78,7 @@ export const getUserById = async (req, res) => {
         // ✅ FIX: Verify the user is accessible under the requester's filter
         const filter = req.userFilter || {};
         if (Object.keys(filter).length > 0) {
-            const allowed = await User.findOne({ _id: req.params.id, ...filter }).select('_id');
+            const allowed = await User.findOne({ _id: id, ...filter }).select('_id');
             if (!allowed) {
                 return res.status(403).json({ success: false, message: 'Access denied to this user' });
             }
@@ -127,7 +135,8 @@ export const updateUser = async (req, res) => {
             name, email, role, department, branch, isActive, avatar, password,
             phone, address, bloodGroup, dateOfJoining, customFields, employeeId
         } = req.body;
-        const user = await User.findById(req.params.id);
+        const id = String(req.params.id);
+        const user = await User.findOne({ _id: id, isDeleted: { $ne: true } });
         
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
@@ -204,7 +213,8 @@ export const updateUser = async (req, res) => {
 // @desc    Delete user (Admin only)
 export const deleteUser = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id);
+        const id = String(req.params.id);
+        const user = await User.findOne({ _id: id, isDeleted: { $ne: true } });
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -216,21 +226,65 @@ export const deleteUser = async (req, res) => {
 
         // ✅ FIX: SOFT DELETE instead of HARD DELETE for data integrity
         user.isActive = false;
+        user.isDeleted = true;
+        user.deletedAt = new Date();
         await user.save();
+
+        // Cascade task assignments:
+        // Update all tasks where assignedTo is this user. We set assignedTo = null
+        await Task.updateMany({ assignedTo: user._id }, { assignedTo: null });
+        // Update team tasks: pull this user from the assignedTeam array
+        await Task.updateMany({ assignedTeam: user._id }, { $pull: { assignedTeam: user._id } });
+
+        // Also if they have an Employee profile, soft-delete that too:
+        await Employee.updateMany({ email: user.email }, { isActive: false, isDeleted: true, deletedAt: new Date() });
         
-        res.json({ success: true, message: 'User deactivated successfully (Soft Delete)' });
+        res.json({ success: true, message: 'User soft-deleted successfully, associated assignments cleaned' });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
+// @desc    Get all deleted users (Admin only)
+export const getDeletedUsers = async (req, res) => {
+    try {
+        const users = await User.find({ isDeleted: true }).select('-password').sort({ name: 1 });
+        res.json({ success: true, data: users });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Restore a soft-deleted user (Admin only)
+export const restoreUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.isActive = true;
+        user.isDeleted = false;
+        user.deletedAt = undefined;
+        await user.save();
+
+        // Also restore Employee profile if soft-deleted:
+        await Employee.updateMany({ email: user.email }, { isActive: true, isDeleted: false, deletedAt: undefined });
+
+        res.json({ success: true, message: 'User restored successfully', data: user });
+        eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
 // @desc    Get users by department (optional: ?branch=X for branch scoping)
 export const getUsersByDepartment = async (req, res) => {
     try {
-        const { department } = req.params;
-        const { branch } = req.query;
-        const filter = { department, isActive: true, isArchived: { $ne: true } };
+        const department = String(req.params.department);
+        const branch = req.query.branch ? String(req.query.branch) : undefined;
+        const filter = { department, isActive: true, isDeleted: { $ne: true } };
         if (branch) filter.branch = branch;
         const users = await User.find(filter).select('-password').sort({ name: 1 });
         res.json({ success: true, data: users });
@@ -242,8 +296,8 @@ export const getUsersByDepartment = async (req, res) => {
 // @desc    Get users by branch
 export const getUsersByBranch = async (req, res) => {
     try {
-        const { branch } = req.params;
-        const users = await User.find({ branch, isActive: true, isArchived: { $ne: true } }).select('-password').sort({ name: 1 });
+        const branch = String(req.params.branch);
+        const users = await User.find({ branch, isActive: true, isDeleted: { $ne: true } }).select('-password').sort({ name: 1 });
         res.json({ success: true, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

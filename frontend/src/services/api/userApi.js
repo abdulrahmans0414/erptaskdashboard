@@ -9,3 +9,5 @@ export const getUsersByDepartment = (department, branch) => api.get(`/users/depa
 export const getUsersByBranch = (branch) => api.get(`/users/branch/${branch}`);
 export const uploadAvatar = (id, formData) =>
     api.put(`/users/avatar/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const getDeletedUsers = () => api.get('/users/deleted/all');
+export const restoreUser = (id) => api.post(`/users/${id}/restore`);
