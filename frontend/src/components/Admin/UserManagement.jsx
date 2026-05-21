@@ -736,7 +736,7 @@ const UserManagement = () => {
       {/* High-Fidelity Split-Pane Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm lg:flex lg:items-center lg:justify-center lg:p-4 z-[99]">
+          <div className="fixed inset-0 bg-slate-900/60 lg:flex lg:items-center lg:justify-center lg:p-4 z-[99]">
             <div className="fixed inset-0 lg:block hidden" onClick={() => setShowModal(false)} />
             <motion.div
               initial={{ scale: 0.97, y: 15, opacity: 0 }}
@@ -746,7 +746,7 @@ const UserManagement = () => {
               className="bg-white w-full h-full fixed inset-0 z-[99] flex flex-col overflow-y-auto lg:relative lg:inset-auto lg:h-auto lg:max-h-[92vh] lg:w-full lg:max-w-5xl lg:rounded-3xl lg:shadow-2xl lg:overflow-hidden lg:border lg:border-slate-100 lg:z-50"
             >
               {/* Header section with notification banner */}
-              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
+              <div className="flex justify-between items-center px-8 py-6 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
                 <div>
                   <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     {editingUser ? "✏️ Edit Employee Profile" : "👤 Provision New Corporate User"}
@@ -780,7 +780,7 @@ const UserManagement = () => {
                 <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
                   
                   {/* Left Column Pane (Core Information Inputs) */}
-                  <div className={`w-full lg:w-7/12 overflow-y-auto p-6 space-y-6 border-r border-slate-200 custom-scrollbar lg:block ${mobileStep === 1 ? "block" : "hidden"}`}>
+                  <div className={`w-full lg:w-7/12 overflow-y-auto p-8 space-y-7 border-r border-slate-200 custom-scrollbar lg:block ${mobileStep === 1 ? "block" : "hidden"}`}>
                     <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                       <span>01.</span> Core Identity & Personal Details
                     </h3>
@@ -914,7 +914,7 @@ const UserManagement = () => {
                   </div>
 
                   {/* Right Column Pane (Tabbed: Affiliation vs Workload Tasks) */}
-                  <div className={`w-full lg:w-5/12 flex flex-col p-6 space-y-6 bg-white lg:flex ${mobileStep === 2 ? "flex flex-col flex-1" : "hidden"}`}>
+                  <div className={`w-full lg:w-5/12 flex flex-col p-8 space-y-7 bg-white lg:flex ${mobileStep === 2 ? "flex flex-col flex-1" : "hidden"}`}>
                     
                     {/* Modern Framer Motion Tabs Header */}
                     <div className="flex border border-slate-200 p-0.5 bg-slate-50 rounded-xl relative">
@@ -948,7 +948,7 @@ const UserManagement = () => {
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="space-y-6"
+                          className="space-y-7"
                         >
                           <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                             <span>02.</span> Professional Scope Matrix
@@ -1088,7 +1088,7 @@ const UserManagement = () => {
                 </div>
 
                 {/* Split Pane Footer controls */}
-                <div className="flex flex-col px-6 py-4 border-t border-slate-200 bg-slate-50 mt-auto flex-shrink-0">
+                <div className="flex flex-col px-8 py-5 border-t border-slate-200 bg-slate-50 mt-auto flex-shrink-0">
                   {/* Mobile controls */}
                   <div className="flex lg:hidden w-full gap-3">
                     {mobileStep === 1 ? (

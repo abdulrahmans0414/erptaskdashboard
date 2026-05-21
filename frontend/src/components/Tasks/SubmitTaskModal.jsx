@@ -134,7 +134,7 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       )}
       <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl z-10">
         {/* Header */}

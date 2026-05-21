@@ -450,7 +450,7 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel, loading }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fadeIn"
       onClick={(e) => e.target === e.currentTarget && !loading && onCancel()}
     >
       <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scaleIn">
@@ -1732,7 +1732,7 @@ const Dashboard = () => {
       {/* Review Modal */}
       {selectedTaskForReview && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fadeIn"
           onClick={(e) =>
             e.target === e.currentTarget &&
             !reviewLoading &&

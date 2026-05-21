@@ -1053,7 +1053,7 @@ function Modal({ title, onClose, children, wide }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
       {onClose && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       )}
       <div
         className={`bg-white rounded-2xl shadow-2xl w-full ${wide ? "max-w-lg" : "max-w-md"} max-h-[90vh] overflow-y-auto z-10`}

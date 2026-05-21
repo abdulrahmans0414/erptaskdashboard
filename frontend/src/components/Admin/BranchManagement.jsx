@@ -688,7 +688,7 @@ const BranchManagement = () => {
                           ) : (
                             <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
                               {branchUsers.map((emp) => {
-                                const initials = emp.name ? emp.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
+                                const initials = emp.name ? emp.name.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
                                 return (
                                   <div key={emp._id} className="flex items-center justify-between bg-slate-50 hover:bg-slate-100/60 p-2 rounded-xl border border-slate-200/50 transition-colors">
                                     <div className="flex items-center gap-2 min-w-0">
@@ -737,7 +737,7 @@ const BranchManagement = () => {
       {/* Confirm Soft-Delete Modal */}
       <AnimatePresence>
         {confirmDelete && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
             <div className="fixed inset-0" onClick={() => setConfirmDelete(null)} />
             <motion.div
               initial={{ scale: 0.96, opacity: 0 }}
@@ -775,7 +775,7 @@ const BranchManagement = () => {
       {/* High-Fidelity Split-Pane Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm lg:flex lg:items-center lg:justify-center lg:p-4 z-50">
+          <div className="fixed inset-0 bg-slate-900/60 lg:flex lg:items-center lg:justify-center lg:p-4 z-50">
             <div className="fixed inset-0 lg:block hidden" onClick={() => setShowModal(false)} />
             <motion.div
               initial={{ scale: 0.97, y: 15, opacity: 0 }}
@@ -785,7 +785,7 @@ const BranchManagement = () => {
               className="bg-white w-full h-full fixed inset-0 z-50 flex flex-col overflow-y-auto lg:relative lg:inset-auto lg:h-auto lg:max-h-[85vh] lg:w-full lg:max-w-5xl lg:rounded-3xl lg:shadow-2xl lg:overflow-hidden lg:border lg:border-slate-100 lg:z-50"
             >
               {/* Modal Header */}
-              <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex-shrink-0">
+              <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 sticky top-0 bg-white z-10 flex-shrink-0">
                 <div>
                   <h2 className="text-xl font-extrabold text-slate-900">
                     {editingBranch ? "Edit Branch Configuration" : "Add New Branch"}
@@ -815,7 +815,7 @@ const BranchManagement = () => {
                   {/* Left Column - Standard inputs (Scrollable) */}
                   <div 
                     id="modal-scrollable-pane"
-                    className={`w-full lg:w-5/12 overflow-y-auto px-6 py-5 border-r border-slate-100 space-y-6 custom-scrollbar bg-slate-50/30 lg:block ${mobileStep === 1 ? "block" : "hidden"}`}
+                    className={`w-full lg:w-5/12 overflow-y-auto px-8 py-7 border-r border-slate-100 space-y-7 custom-scrollbar bg-slate-50/30 lg:block ${mobileStep === 1 ? "block" : "hidden"}`}
                   >
                     {/* Elegant Absolute Banner Notification */}
                     <AnimatePresence>
@@ -1004,7 +1004,7 @@ const BranchManagement = () => {
                     </div>
 
                     {/* Tab Content Panes */}
-                    <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                       {activeTab === "depts" && (
                         <motion.div 
                           initial={{ opacity: 0, x: -10 }}
@@ -1087,7 +1087,7 @@ const BranchManagement = () => {
                               ) : (
                                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
                                   {filteredMembers.map((emp) => {
-                                    const initials = emp.name ? emp.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
+                                    const initials = emp.name ? emp.name.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
                                     return (
                                       <div 
                                         key={emp._id} 
@@ -1134,7 +1134,7 @@ const BranchManagement = () => {
                 </div>
 
                 {/* Unified actions bottom bar */}
-                <div className="flex gap-2.5 p-4 border-t border-slate-100 bg-slate-50/30 flex-shrink-0">
+                <div className="flex gap-2.5 p-6 border-t border-slate-100 bg-slate-50/30 flex-shrink-0">
                   {/* Mobile navigation controls */}
                   <div className="flex w-full gap-2.5 lg:hidden">
                     {mobileStep === 1 ? (
@@ -1215,7 +1215,7 @@ const BranchManagement = () => {
       {/* Transfer Employee Modal */}
       <AnimatePresence>
         {showTransferModal && transferEmployee && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
             <div 
               className="fixed inset-0" 
               onClick={() => {
@@ -1264,6 +1264,7 @@ const BranchManagement = () => {
                       {transferEmployee.name
                         ? transferEmployee.name
                             .split(" ")
+                            .filter(Boolean)
                             .map((n) => n[0])
                             .join("")
                             .substring(0, 2)
