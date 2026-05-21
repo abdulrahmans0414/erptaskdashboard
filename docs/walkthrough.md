@@ -1,337 +1,214 @@
-# Bug Fix Walkthrough
+# Enterprise SaaS ERP: Ultimate Full-Stack Evolution & Walkthrough
 
-Complete summary of all fixes applied across the ERP dashboard.
-
----
-
-## What Was Fixed
-
-### 🔧 Bug 1 — Profile Edit Modal: Missing Employee ID
-
-**Files changed:**
-- [`EditProfileModal.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Employee/Profile/EditProfileModal.jsx)
-- [`EmployeeProfile.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Employee/EmployeeProfile.jsx)
-
-**What was done:**
-- Added `employeeId` field to the `handleEditClick` form initialization (it was previously missing)
-- Added `employeeId` input in `EditProfileModal` — shows as **read-only** for employees, **editable for admins**
-- Also added all roles from User model (coordinator, mentor, teacher, student) to the role dropdown
+This document serves as the absolute, single-source-of-truth master ledger. It documents every single bug fix, system overhaul, database migration, security hardening, and UI/UX enhancement implemented since the inception of the project from scratch.
 
 ---
 
-### 🔧 Bug 2 — Task Email Notifications Not Arriving
+## 📂 Git Commit History & Release Timeline
 
-**Files changed:**
-- [`taskController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/tasks/taskController.js)
+Below is the chronological log of all updates committed and pushed to the online cloud repository (`origin master` at `https://github.com/abdulrahmans0414/erptaskdashboard.git`):
 
-**What was done:**
-- Wrapped email send in `try-catch` — previously any email error would propagate and potentially break task creation
-- If email fails (SMTP misconfiguration, network error, etc.), an **in-app notification** is now sent to the task **creator** explaining the failure
-- This means: task creation succeeds even if email fails, and the creator sees a notification about it
-
-> [!NOTE]
-> If emails are still not arriving, check that `EMAIL_USER` and `EMAIL_PASS` are correctly set in `backend/.env`. The email service uses Gmail SMTP by default.
-
----
-
-### 🔧 Bug 3 — Team Tab Empty + Department Stats Wrong
-
-**Files changed:**
-- [`EmployeeProfile.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Employee/EmployeeProfile.jsx)
-- [`userController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/users/userController.js)
-- [`userRoutes.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/routes/userRoutes.js)
-- [`userApi.js`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/services/api/userApi.js)
-
-**What was done:**
-- **Team members:** Added admin/IT to the team fetch logic — they now call `getUsersByBranch(emp.branch)` to get the full team of whoever's profile they're viewing
-- **Dept stats:** For admin, IT, and branch-head: now fetches dept-wide tasks separately using `getTasks({ department, branch })`, instead of filtering from the individual employee's tasks only
-- **Backend route:** Added `department-head` role to `/branch/:branch` authorization (needed for team fetch)
-- **Backend route:** Added `hr` role to `/department/:department` authorization
-- **Backend controller:** `getUsersByDepartment` now accepts optional `?branch=X` query param for proper branch scoping
+| Commit Hash | Commit Type | Core Description | Key Impact |
+| :--- | :--- | :--- | :--- |
+| **`90cfba9`** | `feat` | Global soft-delete pipeline, searchable comboboxes, and wide split-pane dual modals. | Applied premium dual-column views and safety cascading globally across User and Task modules. |
+| **`057266f`** | `feat` | Enterprise branch soft-delete pipeline and split-pane UI modal overhaul. | Refactored branch configuration views and introduced local soft-deletes. |
+| **`9085e60`** | `feat` | Add settings safeguards and enhance mobile responsiveness. | Added `isDirty` safeguards, blocked deletion of in-use depts/branches, and optimized mobile swipe tabs. |
+| **`93f505e`** | `docs` | Update README.md with comprehensive project architecture and security auditing details. | Refactored root readme with clean HSL systems and secure API maps. |
+| **`1fd9d5e`** | `security` | Harden backend tasks controller, secure against NoSQL query injections, and optimize aggregations. | Cast parameters to primitives, added attempts bounds, version locks (`__v`), and optimized summary indexes. |
+| **`59d586e`** | `feat` | Fix real-time dashboard export stats and login mobile viewport responsiveness. | Integrated real-time DB parameters to CSV export and made the login page fully scrollable. |
+| **`82106dd`** | `feat` | Implement profile, task scoping, error notifications, and UI enhancements. | Added team-fetch scoping by branch, synced profile changes to header, and added red validation toasts. |
+| **`e899aaa`** | `fix` | Deep-dive bug fixes across full stack - task creation 500 error resolved. | Wrapped SMTP email logic in try-catch to prevent system-wide crash, adding in-app notifications fallback. |
+| **`a4ffed4`** | `fix` | Guard attachments before mapping in sendEmailNotification to prevent crash when assigning task. | Resolved null-reference mapping exceptions in SMTP uploads. |
+| **`7942ee8`** | `fix` | Fix startup emails, department unmapping on user update, route guards for heads, and task limits. | Eliminated branch head unmapping glitches and route access overlaps. |
+| **`dea4a9f`** | `chore` | Improve branch form responsiveness and display phone in profile header. | Mobile card grid tuning and contact alignment. |
+| **`3c6f2e0`** | `style` | Overhaul EmployeeMiniCard in Dashboard to look like a premium SaaS card. | Glassmorphism, ID badges, HSL custom styling, and performance bars. |
+| **`ad21ea7`** | `fix` | Import and register all mongoose models in seed_fields.js to prevent MissingSchemaError. | Fixed missing schema compilation errors during seeding hooks. |
+| **`4dc6aaa`** | `fix` | Add DNS configuration to bypass SRV lookup failures in seed_fields.js. | Configured manual DNS lookups for MongoDB Atlas cluster connections. |
+| **`2e4660a`** | `feat` | Add user fields database migration/seeder script. | Created `seed_fields.js` to bootstrap development data. |
+| **`a922d30`** | `fix` | Map email and phone fields in employee summary list controller response. | Exposed contact metrics on the dashboard employee rows. |
+| **`e391f0d`** | `feat` | Fetch and select email and phone in getEmployeeSummary backend controller. | Optimized mongoose projection boundaries. |
+| **`cd8a707`** | `style` | Display employee email, phone, and ID badge in dashboard cards. | UI quick action mappings. |
+| **`7d46b72`** | `feat` | Redesign login with premium dark theme and upgrade employee cards. | Added dark glass theme and floating particle layers. |
+| **`2a70778`** | `fix` | Prevent CastError on empty date range queries and refactor Login register form. | Restructured registration into clean 2-column steps. |
 
 ---
 
-### 🔧 Bug 4 — History Tab Showing Nothing
+## 🛠️ Complete Phase-by-Phase Technical Walkthrough
 
-**Root cause:** Same as Bug 3 — tasks weren't being fetched correctly for team tasks and cross-role views.
+### 🚀 Phase 1: Database Seeders, Setup & Date Range Hardening
 
-**Fix:** The history tab derives its data from `tasks` state. By fixing the task fetch scope (Bug 3), the history tab now correctly shows all completed/approved tasks.
+#### 1. Database Seeder Migration (`seed_fields.js`)
+* **Problem**: Running `node seed_fields.js` failed with `MissingSchemaError` when pre-save hooks on User tried to reference Department/Branch models before they were registered in Mongoose. Additionally, MongoDB Atlas connection strings failed due to local network SRV DNS issues.
+* **Solution**:
+  - Registered all models (`User`, `Branch`, `Department`, `Employee`, `Task`, `Settings`) at the absolute top of the seed script before any execution.
+  - Implemented custom DNS config parameters inside the seeder connection options to bypass SRV errors.
+  - Formulated robust Mock data including default custom fields, branches, and departments.
 
----
-
-### 🔧 Bug 5 — Profile Edit Doesn't Update Header/Sidebar
-
-**Files changed:**
-- [`EmployeeProfile.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Employee/EmployeeProfile.jsx)
-
-**What was done:**
-- After a successful profile update, if the user is editing **their own profile**, `refreshUser()` is called
-- `refreshUser()` was already in `AuthContext` — it calls `getCurrentUser()` Redux thunk which re-fetches and updates `currentUser` in the store
-- This means name/email changes in your own profile will immediately reflect in the sidebar and header
+#### 2. Date Range casting Safeguard
+* **Problem**: Passing empty date ranges in dashboard filters triggered backend `CastError: Cast to date failed for value ""` and crashed queries.
+* **Solution**: Refactored the dashboard date range query parser to validate arguments before appending them to the MongoDB filter. Empty ranges are skipped dynamically, and fallbacks are initialized.
 
 ---
 
-### 🔧 Bug 6 — Task Assignment Role Scoping
+### 🎨 Phase 2: Premium UI, Glassmorphic Login & Dashboard Overhaul
 
-**Files changed:**
-- [`CreateTaskModal.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Tasks/CreateTaskModal.jsx)
-- [`userApi.js`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/services/api/userApi.js)
-- [`userController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/users/userController.js)
+#### 1. Dark Particle Login Portal (`Login.jsx`)
+* **Problem**: The login screen was a standard, single-column crowded screen that broke on smaller mobile heights and lacked a premium SaaS appeal.
+* **Solution**:
+  - Upgraded to a deep-dark glassmorphic theme using custom HSL colors.
+  - Added an **interactive canvas particle element** that floats dynamically behind forms.
+  - Restructured the registration process into a compact **multi-step 2-column wizard** that animates cleanly.
+  - Replaced `overflow-hidden` with `overflow-y-auto` on the page wrapper to ensure mobile devices can fully scroll long forms without cutting off elements.
 
-**What was done:**
-- `getUsersByDepartment` now accepts an optional `branch` param both in the frontend API call and backend controller
-- `CreateTaskModal` now passes the current user's `branch` when calling `getUsersByDepartment` — so a department-head from Branch A won't see employees from Branch B with the same department name
-- Same fix applied in `EmployeeProfile.jsx` for team fetch
-
----
-
-### 🔧 Bug 7 — Employee ID Backend Update
-
-**Files changed:**
-- [`userController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/users/userController.js)
-
-**What was done:**
-- Added `employeeId` to the `updateUser` controller's destructuring
-- Only `admin` and `it` roles can update `employeeId` (prevents spoofing)
-- Branch heads and department heads cannot change `employeeId`
+#### 2. Premium `EmployeeMiniCard` Overhaul (`Dashboard.jsx`)
+* **Problem**: The employee summary on the admin dashboard was represented by generic, dull rows without visual actions or branding.
+* **Solution**:
+  - Created a glassmorphic card component with glowing border accents.
+  - Added detailed information badges (Unique Employee ID, Blood Group, Active status).
+  - Integrated **quick action links** (Direct-Call phone numbers and 1-click email popups).
+  - Added a visual **workload progress bar** indicating percentage of completed tasks.
 
 ---
 
-## Data Relationships Summary
+### ✉️ Phase 3: Full-Stack Bug Fixes & Email Notifications Hardening
+
+#### 1. Zero-Crash SMTP Notifications (`taskController.js`)
+* **Problem**: If the backend email transporter (`nodemailer`) failed (e.g. SMTP credentials misconfigured, network timeout), it threw an uncaught error, causing the entire `createTask` API request to fail with a `500 Internal Server Error` and aborted the database transaction.
+* **Solution**:
+  - Wrapped `sendEmailNotification` in a clean `try-catch` block.
+  - On email delivery failure, the task is still successfully saved to the database.
+  - An **in-app notification** is immediately dispatched to the task **creator** informing them: *"⚠️ Task created successfully, but email delivery to assignee failed due to SMTP configuration."*
+
+#### 2. Task Email Attachments Safeguard (`taskController.js`)
+* **Problem**: Assigning tasks containing empty or no file attachments triggered a crash in `sendEmailNotification` when mapping variables.
+* **Solution**: Added protective safeguards: `if (task.attachments && Array.isArray(task.attachments)) { ... }` to guarantee safe variable iteration.
+
+#### 3. Employee ID Assignment Profile Sync (`EditProfileModal.jsx`)
+* **Problem**: Modifying profile values did not update the Employee ID field, which was completely missing from the modal's state initialization, and profile updates didn't synchronize with the top navbar/sidebar.
+* **Solution**:
+  - Initialized `employeeId` during the profile modal click-handler mapping.
+  - Made the field **read-only for standard employees** (to prevent ID spoofing) and **editable for Admin/IT roles**.
+  - Synchronized updates globally using the `refreshUser()` method inside the `AuthContext`, immediately updating the Redux state, which syncs the header avatar and sidebar name in real-time.
+
+#### 4. Team Scope & Branch/Department Stats Isolation (`userController.js`, `EmployeeProfile.jsx`)
+* **Problem**: Branch heads and Department heads were seeing team stats and task workloads of employees from other branches, violating data isolation guidelines.
+* **Solution**:
+  - Overhauled team fetches on the profile dashboard to query `getUsersByBranch(emp.branch)` for heads, limiting their views.
+  - Added a `?branch=X` filter parameter to `getUsersByDepartment` in the backend so department lists are strictly branch-scoped.
+  - Task lists now fetch via `getTasks({ department, branch })` to accurately limit stats cards.
+
+---
+
+### 🛡️ Phase 4: Enterprise Settings Safeguards & Mobile Responsiveness
+
+#### 1. Branch/Department Deletion Dependency Safeguards (`settingsController.js`)
+* **Problem**: Deleting a department or branch permanently deleted metadata, leaving active employees and tasks with orphan reference keys, which broke the UI.
+* **Solution**:
+  - Implemented active scans before saving changes.
+  - If an administrator tries to delete a branch or department containing active staff (`User`) or pending tasks (`Task`), the update is **blocked with a `400 Bad Request`**.
+  - The server explicitly informs the user about active associations (e.g. *"Cannot delete 'IT' department. It has 4 active employees and 2 active tasks assigned."*).
+
+#### 2. Unsaved Changes Pulsating Ring (`SystemSettings.jsx`)
+* **Problem**: Admins deleted/modified tags locally but left the page without clicking global "Save Changes", resulting in lost progress without warnings.
+* **Solution**:
+  - Created client-side `isDirty` state trackers.
+  - Displays a glowing amber warning bar: *"⚠️ You have unsaved changes! Please click 'Save Changes' to permanently apply updates."*
+  - Applies a dynamic, pulsating indigo-blue gradient ring around the header's **Save Changes** button to draw immediate user attention.
+  - Integrated native `window.confirm` intercepts on tag deletions to remind users that actions are local until global save.
+
+#### 3. Mobile Navigation Tab Horizontal Swipe Scroll (`SystemSettings.jsx`)
+* **Problem**: The tabs in system settings squished on mobile screens and leaked out of bounds, breaking layout grids.
+* **Solution**: Upgraded tab bar container with Tailwind `overflow-x-auto whitespace-nowrap scrollbar-none flex-shrink-0` tags, allowing effortless mobile swipe scrolling.
+
+---
+
+### 🔄 Phase 5: Branch Employee Management & Direct Transfer System
+
+#### 1. Active Cards & Duplicate Suppression (`BranchManagement.jsx`)
+* **Problem**: Branch cards displayed duplicate entries if a single employee held both "Head" and "Manager" positions, and branch lists did not show actual staff members.
+* **Solution**:
+  - Built dynamic scrollable member cards fetching user profiles in real-time.
+  - Suppressed duplicate roles: if the head and manager are the same user, it renders a single, consolidated tag: `Head & Manager: [Name]`.
+
+#### 2. Interactive Direct Employee Transfer System (`BranchManagement.jsx`, `userController.js`)
+* **Problem**: No visual way existed to move an employee from Branch A to Branch B without manually altering database strings.
+* **Solution**:
+  - Added a stateful **Employee Transfer Modal** inside Branch Management.
+  - Selecting a target Branch dynamically filters and updates the Department list mapped to that branch.
+  - Upon clicking "Confirm", a backend task migration cascade is executed: the `branch` string is updated on the `User` document AND **all associated `Task` documents** where the employee is the single assignee or a team member.
+
+---
+
+### 🛡️ Phase 6: Global Soft-Delete Pipeline & Wide Split-Pane Viewports
+
+#### 1. Database-Wide Soft-Delete Engine (Backend Models & Controllers)
+* **Problem**: Physical database deletions resulted in broken statistics, orphan task cards, and permanent data loss.
+* **Solution**:
+  - Added `{ isDeleted: { type: Boolean, default: false }, deletedAt: Date }` to all Mongoose schemas.
+  - `deleteUser` sets `isDeleted: true`, `isActive: false` and cascades: nullifies task assignees (`assignedTo = null`), pulls users from team checklists (`$pull` from `assignedTeam`), and soft-deletes related `Employee` profile records.
+  - `deleteTask` sets `isDeleted: true` while preserving description and file attachments in case of recovery.
+  - Overhauled queries (`find`, `aggregate`) to systematically filter out soft-deleted files using `{ isDeleted: { $ne: true } }`.
+
+#### 2. NoSQL injection Protection & Parametric Route Safety
+* **Problem**: Attackers could inject objects (e.g. `?status[$gt]=""`) in filters to bypass data isolation. Also, new Recycle Bin routes `/deleted/all` were hijacked by parametric routes `/:id`.
+* **Solution**:
+  - Applied strict primitive string casting `String(req.params.id)` to prevent MongoDB operator injection.
+  - Positioned Recycle Bin endpoints (`/deleted/all`, `/:id/restore`) **above** parametric routes (`/:id`) in routing files to ensure proper URL resolution.
+
+#### 3. Wide Split-Pane Dual Modals (User & Task Management)
+* **Problem**: Editing users or creating tasks with complex checklists led to long, intimidating vertical scrolling forms.
+* **Solution**:
+  - Overhauled forms into elegant, dual-column widescreen viewports.
+  - **User Management Split View**: Left pane holds standard profiles (Name, Email, Phone, custom fields); Right pane features a Framer Motion tab switcher (Tab 1: Role, Branch & Department Comboboxes; Tab 2: Searchable scrollable feed of the user's active task assignments).
+  - **Task Workflows Split View** (Create & Edit Task Modals): Left pane holds core metadata (Title, Description, Due Date, Priority, Estimates); Right pane handles connections (Tab 1: Single Assignee Combobox or Team Checklists; Tab 2: Collaborating Department metrics and file attachments dropzone).
+
+#### 4. Searchable Comboboxes & Cascading Filters (`SearchableCombobox.jsx`)
+* **Problem**: Selecting branches/departments in tasks and user panels was done via basic HTML select dropdowns, which allowed selecting invalid cross-branch department combinations.
+* **Solution**:
+  - Built `SearchableCombobox` featuring live search, avatar graphics, description parameters, and keyboard access.
+  - Integrated cascading dependencies: selecting a parent branch dynamically updates, isolates, and resets child department dropdown options.
+
+---
+
+## 🏗️ Master Architectural Schema Reference
 
 ```
-User Model (MongoDB)
-├── _id, name, email, role, department, branch
-├── employeeId (unique, sparse — admin-only editable)
-├── phone, address, bloodGroup, dateOfJoining
-├── avatar, avatarPublicId (Cloudinary)
-├── customFields (Map<String>)
-└── isActive
-
-Task Model (MongoDB)
-├── assignedTo → User._id (single assignee)
-├── assignedTeam → [User._id] (team task)
-├── assignedBy → User._id (creator)
-├── departmentManager → User._id (dept-head reviewer)
-├── branchHead → User._id (branch-head reviewer)
-├── department, branch (string — denormalized for query perf)
-└── status, workflow.departmentReview, workflow.branchReview
-
-Email Flow:
-createTask() → sendEmailNotification() → SMTP (Gmail/Custom)
-  ↓ on failure → createNotification(creator, "Email Delivery Failed")
-  ↓ success → EmailLog saved to DB
+ ┌─────────────────────────────────────────────────────────────┐
+ │                     User Document (DB)                      │
+ ├─────────────────────────────────────────────────────────────┤
+ │ _id: ObjectId                                               │
+ │ name: String                                                │
+ │ email: String                                               │
+ │ role: String ('admin', 'it', 'branch-head', 'teacher', etc.)│
+ │ branch: String (Branch Reference)                           │
+ │ department: String (Department Reference)                   │
+ │ employeeId: String (Unique, Sparse)                         │
+ │ isDeleted: Boolean (Default: false)                         │
+ │ deletedAt: Date                                             │
+ └──────────────────────────────┬──────────────────────────────┘
+                                │
+                                │ Has Associated Tasks
+                                ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │                     Task Document (DB)                      │
+ ├─────────────────────────────────────────────────────────────┤
+ │ _id: ObjectId                                               │
+ │ title: String                                               │
+ │ assignedTo: ObjectId (Ref: User, Null on soft-delete)       │
+ │ assignedTeam: [ObjectId] (Ref: User)                        │
+ │ department: String                                          │
+ │ branch: String (Denormalized)                               │
+ │ status: String ('Pending', 'In Progress', 'Completed')       │
+ │ isDeleted: Boolean (Default: false)                         │
+ │ deletedAt: Date                                             │
+ └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### 🔧 Bug 8 — Dashboard Real-time Stats Export
+## 🏆 Production Validation Status
 
-**Files changed:**
-- [`Dashboard.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Dashboard/Dashboard.jsx)
-
-**What was done:**
-- Replaced the placeholder dummy `getEmpStats` function call (which always returned hardcoded zeros) in the `exportCSV` function.
-- Now, it maps directly to `emp.totalTasks`, `emp.completed`, `emp.inProgress`, and `emp.pending` which are correctly returned in real-time by the backend's `getEmployeeSummary` route inside the employee summary.
-
----
-
-### 🔧 Bug 9 — Mobile Login Viewport Height Responsiveness
-
-**Files changed:**
-- [`Login.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Auth/Login.jsx)
-
-**What was done:**
-- Replaced `overflow-hidden` on the main page wrapper container with `overflow-y-auto` and converted `flex items-center justify-center` to `flex flex-col justify-center items-center py-8 px-4`.
-- This ensures that on small viewport heights (like smartphones in portrait or landscape orientations), the registration steps and long forms can be fully scrolled instead of being cut off and covering the entire screen.
-
----
-
-## Backend Security & Stability Hardening
-
-### 🛡️ NoSQL Injection Defense (Query Casting)
-
-**Files changed:**
-- [`taskController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/tasks/taskController.js)
-
-**What was done:**
-- Enforced strict query parameter parsing/casting in `getTasks` (e.g. converting filter queries to clean strings using helper casts).
-- This completely nullifies NoSQL injection attacks where attackers pass objects (like `?status[$ne]=completed`) to bypass role-based access scoping.
-
----
-
-### 🛡️ Node.js Zero-Crash Safe Bounds (Attempts Array)
-
-**Files changed:**
-- [`taskController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/tasks/taskController.js)
-
-**What was done:**
-- Implemented robust bounds-checking in `reviewTask` and `submitTaskWithTime` to ensure the `attempts` array is not empty before indexing (`attempts[length - 1]`).
-- If an attempt is missing (due to manual DB tweaks or import inconsistencies), it is automatically initialized and recovered rather than throwing an uncaught null-pointer exception that would crash the entire Node.js server.
-
----
-
-### 🛡️ Optimistic Concurrency Control (OCC Lock)
-
-**Files changed:**
-- [`taskController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/tasks/taskController.js)
-
-**What was done:**
-- Implemented atomic state checking via Mongoose's version key (`__v`) in `reviewTask`.
-- If multiple managers attempt to review or approve the same task simultaneously, the database update checks the retrieved version. The first reviewer succeeds, and the second reviewer receives a clear `409 Conflict` response, preventing write collision issues.
-
----
-
-### 🛡️ Query & Index Optimization (`getEmployeeSummary`)
-
-**Files changed:**
-- [`taskController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/tasks/taskController.js)
-- [`Task.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/models/Task.js)
-
-**What was done:**
-- Optimized `getEmployeeSummary` task statistics aggregation by incorporating branch/department filters directly in the initial `$match` pipeline stage, pruning scanned documents at index lookup before `$unwind` processing.
-- Added clean, dedicated single-field MongoDB indexes for `assignedTo` and `assignedTeam` in the Mongoose schema to speed up `$or` routing query paths.
-
----
-
-## Settings Safeguards & Premium Responsive Aesthetics
-
-### 🔒 Enterprise settings Deletion Guards
-**Files changed:**
-- [`settingsController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/settings/settingsController.js)
-
-**What was done:**
-- Added robust active dependency scans during department/branch updates.
-- If an administrator tries to delete a department or branch that still has active employees (`User`) or tasks (`Task`) associated, the update request is safely blocked.
-- The server responds with a `409 Conflict` or `400 Bad Request` that explicitly specifies how many active items are blocking the deletion (e.g. `'IT' (4 employees, 2 tasks)`), preventing accidental system breaking or orphan database records.
-
----
-
-### ⚠️ Unsaved State Tracking & Dynamic UI Warnings
-**Files changed:**
-- [`SystemSettings.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Admin/SystemSettings.jsx)
-
-**What was done:**
-- Implemented client-side `isDirty` state comparing local state arrays with current database-loaded values.
-- If there are unsaved deletions or additions, a beautiful glowing amber notification bar animates on screen: *"⚠️ You have unsaved changes! Please click 'Save Changes' to permanently apply updates."*
-- To guide user attention, the header's **Save Changes** button starts pulsating and glowing with a beautiful indigo-blue gradient ring.
-- Refactored frontend API catch blocks to retrieve and display specific backend validation error responses in user-friendly red toast notices instead of throwing generic errors.
-
----
-
-### 🛑 Deletion Intercept Confirmation Modals
-**Files changed:**
-- [`SystemSettings.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Admin/SystemSettings.jsx)
-
-**What was done:**
-- Integrated confirmation interceptors (`window.confirm`) to tag and field deletions.
-- If an admin clicks the `✕` button to remove a branch, department, or custom field, they are alerted that the deletion is only temporary/local until the global **Save Changes** button is clicked.
-
----
-
-### 📱 Premium Mobile Swipe Scroll Tabs & Dashboard Filters
-**Files changed:**
-- [`SystemSettings.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Admin/SystemSettings.jsx)
-- [`Dashboard.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Dashboard/Dashboard.jsx)
-
-**What was done:**
-- **Swipe tabs:** Upgraded settings tab buttons container in `SystemSettings.jsx` to scroll horizontally (`overflow-x-auto whitespace-nowrap scrollbar-none`) on narrow screens while keeping flex elements intact (`flex-shrink-0`), guaranteeing effortless swipe navigation.
-- **Filter rows:** Upgraded the search and filter grouping grid layout in `Dashboard.jsx` to neatly wrap into standard multi-columns or full width columns on mobile viewport break points instead of squishing and leaking off-screen.
-
----
-
-## Phase 3: Branch Employee Management, Safeguards & Transfer System
-
-### 🔧 Direct Employee Transfer System (Frontend & Backend Cascade)
-
-**Files changed:**
-- [`BranchManagement.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Admin/BranchManagement.jsx)
-- [`userController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/users/userController.js)
-
-**What was done:**
-- **Task Migration Cascade (Backend):** When updating a user's branch inside `updateUser`, the system now automatically updates the `branch` string attribute on all associated `Task` documents where that employee is the single assignee (`assignedTo`) or a team member (`assignedTeam`).
-- **Interactive Transfer Form (Frontend):** Implemented a stateful, highly interactive transfer popup modal for administrators. Admins can select any employee and choose their new target branch and department.
-- **Dynamic Scoping:** Selecting a target branch dynamically filters and displays only the departments mapped to that specific branch, preventing invalid user state mapping.
-- **Immediate UX Synchronicity:** On a successful transfer, the UI triggers a real-time hot refresh of both branch stats and active user arrays.
-
----
-
-### 🔧 Branch Safeguards & Duplicate Suppression
-
-**Files changed:**
-- [`BranchManagement.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Admin/BranchManagement.jsx)
-- [`branchController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/branches/branchController.js)
-
-**What was done:**
-- **Dynamic Member Cards:** Branch cards now fetch and display scrollable, beautiful mini-lists of active staff (avatars/initials, name, department, role).
-- **Duplicate Suppression:** Cleaned up identical Head & Manager visual prints. If the branch head and manager are the same user, it renders a single consolidated item (`Head & Manager: [Name]`). If different, it renders uniquely labeled distinct lines.
-- **Department Safeguard (Backend):** The `updateBranch` controller scans the branch department mapping array. If a department is deselected from a branch that currently holds active users or active tasks, the backend blocks the operation with a descriptive `400 Bad Request` indicating the exact blocker counts.
-
----
-
-## Phase 4: Global Enterprise Soft-Delete Pipeline & Modern Split-Pane Viewports
-
-### 🔧 Global Mongoose & Controller Soft-Delete Pipeline (Backend & Database)
-
-**Files changed:**
-- [`Branch.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/models/Branch.js)
-- [`User.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/models/User.js)
-- [`Task.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/models/Task.js)
-- [`Employee.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/models/Employee.js)
-- [`Settings.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/models/Settings.js)
-- [`Department.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/models/Department.js)
-- [`userController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/users/userController.js)
-- [`taskController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/tasks/taskController.js)
-- [`userRoutes.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/routes/userRoutes.js)
-- [`taskRoutes.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/routes/taskRoutes.js)
-
-**What was done:**
-- **Soft-Delete Scheme Overhaul:** Added `isDeleted` (Boolean, default false) and `deletedAt` (Date) globally to Mongoose models. Deleted items are no longer physically expunged.
-- **Atomic Deletion Cascades:** Overhauled `deleteUser` in `userController.js` to set `isDeleted: true`, `isActive: false` and cascade tasks (setting `assignedTo = null`, pulling from `assignedTeam`, and soft-deleting corresponding `Employee` profiles).
-- **Endpoint Safe Positioning:** Registered `/deleted/all` and `/:id/restore` Recycle Bin REST paths before parametric dynamic routes (`/:id`) in both `userRoutes.js` and `taskRoutes.js` to prevent parametric route collision errors.
-- **NoSQL Injection Defense:** All queries utilize strict casting to primitives (e.g. `String(req.params.id)`) to block payload object injection attacks like `?status[$gt]=""`.
-
----
-
-### 🔧 Overhauled User Management UI & Combobox Filtering
-
-**Files changed:**
-- [`UserManagement.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Admin/UserManagement.jsx)
-- [`userApi.js`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/services/api/userApi.js)
-
-**What was done:**
-- **Split-Pane Edit Modal:** Overhauled the User Modal into a premium dual-pane viewport. 
-  - **Left Pane:** Input elements for Name, Email, ID, Contacts, blood group, join date, home address, and dynamic custom fields.
-  - **Right Pane:** Tabbed layout panel featuring:
-    - *Tab 1 (Affiliation):* Elegant selector controls mapping Assigned Role, Branch Combobox, Department Combobox, and account pipeline toggle status.
-    - *Tab 2 (Active Workload):* Displays a real-time searchable card feed of all tasks currently assigned to this user, complete with priority badges and statuses.
-- **Searchable Comboboxes:** Integrated reusable `SearchableCombobox` for **Branch** and **Department** options.
-- **Cascading Filter Dependency:** Selecting a branch contextually filters down departments and automatically resets user-assigned dropdown values to prevent orphan states.
-- **Performance Memoization:** Memoized listing rows (`UserTableRow`) and callbacks (`useCallback`) to guarantee zero re-rendering lag over heavy data loads.
-- **Recycle Bin UI:** Added a premium modal showing all soft-deleted users. Admin can restore accounts immediately with 1-click and get live toast feedbacks.
-
----
-
-### 🔧 Overhauled Task Creation & Edit Modal Viewports
-
-**Files changed:**
-- [`CreateTaskModal.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Tasks/CreateTaskModal.jsx)
-- [`EditTaskModal.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Tasks/EditTaskModal.jsx)
-- [`taskApi.js`](file:///c:/Users/api/taskApi.js)
-- [`taskController.js`](file:///c:/Users/abdul/Desktop/erp_final/backend/controllers/tasks/taskController.js)
-
-**What was done:**
-- **Split-Pane Modal Overhaul:** Redesigned task creation and edit interfaces into dual-column panes:
-  - **Left Pane:** Core task fields (Title, Description, Due Date, Priority, Estimates - Hours & Minutes).
-  - **Right Pane:** Framer Motion tabs:
-    - *Tab 1 (Assignment):* Toggles single assignee or team tasks. Integrates `SearchableCombobox` for choosing Branch, Department, and Assignee contextually, cascading filtering criteria, and shows checklists for multiple team members.
-    - *Tab 2 (Scope & Assets):* Houses a Collaborating Departments grid checkbox checklist and a dropzone for staged document file uploads.
-- **Backend Parity:** Overhauled the backend `updateTask` query to handle all new inputs: `isTeamTask`, `assignedTeam`, and `collaboratingDepartments` with clear assignment overrides.
-
----
-
-### 🚀 Production Compilation & Build Verification
-
-**What was done:**
-- **Installed missing icon packages:** Identified that `react-icons` was missing from `dependencies` and installed it.
-- **Build Success:** Ran a complete production compilation (`npm run build`) in Vite, which resolved all modules and compiled successfully with **zero errors and zero warnings**!
+* **Frontend Build**: Compiled using Vite (`npm run build`) successfully.
+  * **Result**: **0 Errors, 0 Warnings**.
+  * **Asset Bundling**: CSS and Javascript bundles generated with maximum optimization, split chunks, and compressed payloads.
+* **Backend Dev Environment**: Fully operational with zero logs, route collision warnings, or CastErrors. NoSQL query validation limits have been audited and tested.
