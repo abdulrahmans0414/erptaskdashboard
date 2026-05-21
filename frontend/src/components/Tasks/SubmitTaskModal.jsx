@@ -132,8 +132,11 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      )}
+      <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl z-10">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-5 py-4 rounded-t-xl flex justify-between items-center z-10">
           <div>
@@ -217,19 +220,24 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
           )}
 
           {/* Previous Attempts */}
-          {task.attempts && task.attempts.length > 0 && (
-            <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-              <p className="text-xs font-medium text-yellow-800 mb-1">
-                📝 Previous Attempts: {task.attempts.length}
-              </p>
-              {task.attempts[task.attempts.length - 1]?.adminFeedback && (
-                <p className="text-xs text-yellow-700 mt-1">
-                  <span className="font-medium">Last Feedback:</span>{" "}
-                  {task.attempts[task.attempts.length - 1].adminFeedback}
+          {(() => {
+            const attempts = task?.attempts || [];
+            if (attempts.length === 0) return null;
+            const lastAttempt = attempts[attempts.length - 1];
+            return (
+              <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                <p className="text-xs font-medium text-yellow-800 mb-1">
+                  📝 Previous Attempts: {attempts.length}
                 </p>
-              )}
-            </div>
-          )}
+                {lastAttempt?.adminFeedback && (
+                  <p className="text-xs text-yellow-700 mt-1">
+                    <span className="font-medium">Last Feedback:</span>{" "}
+                    {lastAttempt.adminFeedback}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Error Message */}
           {error && (
@@ -243,8 +251,8 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Submission Notes <span className="text-red-500">*</span>
+              <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
+                Submission Notes <span className="text-red-500 font-bold">*</span>
               </label>
               <textarea
                 value={note}
@@ -252,10 +260,10 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
                   setNote(e.target.value);
                   setError("");
                 }}
-                className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition ${
+                className={`w-full px-2.5 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition ${
                   error && !note.trim()
                     ? "border-red-300 bg-red-50"
-                    : "border-gray-300"
+                    : "border-slate-200/80 bg-white"
                 }`}
                 rows="4"
                 placeholder="Describe what you completed, challenges faced, solutions implemented, and any pending items..."
@@ -272,12 +280,12 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
 
             {/* File Attachments */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
                 📎 Attachments{" "}
                 <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <div
-                className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition cursor-pointer"
+                className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl p-4 text-center transition cursor-pointer bg-white"
                 onClick={() => document.getElementById("fileUpload").click()}
               >
                 <input

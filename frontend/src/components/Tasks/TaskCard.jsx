@@ -470,17 +470,20 @@ function ReviewModal({ task, stage, onClose, onDone }) {
             <p className="text-gray-700 whitespace-pre-wrap">
               {task.submissionNote}
             </p>
-            {task.attempts &&
-              task.attempts.length > 0 &&
-              task.attempts[task.attempts.length - 1].submissionAttachments
-                ?.length > 0 && (
+            {(() => {
+              const attempts = task?.attempts || [];
+              const lastAttempt = attempts[attempts.length - 1];
+              const subAtts = lastAttempt?.submissionAttachments || [];
+              if (subAtts.length === 0) return null;
+              return (
                 <div className="mt-2 pt-2 border-t border-blue-200">
                   <AttachmentGrid
-                    attachments={task.attempts[task.attempts.length - 1].submissionAttachments}
+                    attachments={subAtts}
                     title="Submission Attachments"
                   />
                 </div>
-              )}
+              );
+            })()}
           </div>
         )}
       </div>
@@ -1048,9 +1051,12 @@ function ActivityDrawer({ task, onClose }) {
 // ── MODAL WRAPPER ─────────────────────────────────────────────────
 function Modal({ title, onClose, children, wide }) {
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+      {onClose && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      )}
       <div
-        className={`bg-white rounded-2xl shadow-2xl w-full ${wide ? "max-w-lg" : "max-w-md"} max-h-[90vh] overflow-y-auto`}
+        className={`bg-white rounded-2xl shadow-2xl w-full ${wide ? "max-w-lg" : "max-w-md"} max-h-[90vh] overflow-y-auto z-10`}
       >
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h3 className="font-bold text-gray-900">{title}</h3>
@@ -1236,7 +1242,8 @@ export default function TaskCard({ task, onUpdate }) {
 
             {/* Submission attachments (visible to assignee) */}
             {(() => {
-              const lastAttempt = task.attempts?.[task.attempts.length - 1];
+              const attempts = task?.attempts || [];
+              const lastAttempt = attempts[attempts.length - 1];
               const subAtts = lastAttempt?.submissionAttachments || [];
               if (subAtts.length === 0) return null;
               return (

@@ -574,14 +574,14 @@ const Dashboard = () => {
     if (selectedBranch === "all") {
       return visibleDepartments;
     }
-    const branchObj = dbBranches.find(b => b.name === selectedBranch);
+    const branchObj = (dbBranches || []).find(b => b?.name === selectedBranch);
     if (branchObj && branchObj.departments && branchObj.departments.length > 0) {
-      return branchObj.departments.filter(dept => visibleDepartments.includes(dept));
+      return (branchObj.departments || []).filter(dept => (visibleDepartments || []).includes(dept));
     }
     if (selectedBranch === "Central Gaurabagh" || selectedBranch === "Gaurabagh") {
       return visibleDepartments;
     }
-    return visibleDepartments.filter((dept) => dept === "Admin" || dept === "Academic");
+    return (visibleDepartments || []).filter((dept) => dept === "Admin" || dept === "Academic");
   }, [selectedBranch, visibleDepartments, dbBranches]);
 
   const branchColors = [

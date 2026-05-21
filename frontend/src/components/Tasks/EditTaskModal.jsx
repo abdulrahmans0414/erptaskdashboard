@@ -261,17 +261,25 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased subpixel-antialiased">
-      <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: 20 }}
-          className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden text-slate-800"
-        >
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 overflow-y-auto antialiased subpixel-antialiased">
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-md"
+              onClick={onClose}
+            />
+          )}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: 20 }}
+            className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden text-slate-800 z-10"
+          >
           {/* Header Bar */}
           <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-150 sticky top-0 bg-white z-20">
             <div>
@@ -625,8 +633,8 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
             </div>
           </form>
         </motion.div>
-      </AnimatePresence>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };
 

@@ -105,20 +105,20 @@ export default function PendingRegistrations() {
     }
   };
 
-  const pending = requests.filter((r) =>
-    ["pending", "otp_sent"].includes(r.status),
+  const pending = (requests || []).filter((r) =>
+    ["pending", "otp_sent"].includes(r?.status),
   );
 
-  const visible = requests.filter((r) => {
+  const visible = (requests || []).filter((r) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      r.name?.toLowerCase().includes(q) ||
-      r.email?.toLowerCase().includes(q) ||
-      r.phone?.toLowerCase().includes(q) ||
-      r.department?.toLowerCase().includes(q) ||
-      r.branch?.toLowerCase().includes(q) ||
-      r.role?.toLowerCase().includes(q)
+      r?.name?.toLowerCase().includes(q) ||
+      r?.email?.toLowerCase().includes(q) ||
+      r?.phone?.toLowerCase().includes(q) ||
+      r?.department?.toLowerCase().includes(q) ||
+      r?.branch?.toLowerCase().includes(q) ||
+      r?.role?.toLowerCase().includes(q)
     );
   });
 
@@ -197,7 +197,7 @@ export default function PendingRegistrations() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
+              className="text-sm border border-slate-200/80 rounded-xl px-2.5 h-10 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
             >
               <option value="pending,otp_sent">Needs Action</option>
               <option value="approved">Approved</option>
@@ -222,7 +222,7 @@ export default function PendingRegistrations() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, email, role, branch..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
+            className="w-full bg-white border border-slate-200/80 rounded-xl pl-10 pr-4 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
           />
         </div>
 
@@ -384,7 +384,7 @@ export default function PendingRegistrations() {
                           <textarea
                             value={adminNote}
                             onChange={(e) => setAdminNote(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400/30 focus:border-red-400 mb-2 transition"
+                            className="w-full px-2.5 py-2 border border-slate-200/80 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-400 mb-2 transition h-auto"
                             rows={2}
                             placeholder="Reason for rejection (optional)..."
                           />

@@ -41,7 +41,7 @@ const EditProfileModal = ({
                             { label: "Blood Group", key: "bloodGroup", type: "text" },
                         ].map((f) => (
                             <div key={f.key}>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
                                     {f.label} {f.required && <span className="text-rose-500">*</span>}
                                 </label>
                                 <input
@@ -49,7 +49,7 @@ const EditProfileModal = ({
                                     required={f.required}
                                     value={editForm[f.key] || ""}
                                     onChange={(e) => setEditForm({ ...editForm, [f.key]: e.target.value })}
-                                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition"
+                                    className="w-full px-2.5 h-10 border border-slate-200/80 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm text-slate-800"
                                 />
                             </div>
                         ))}
@@ -57,9 +57,9 @@ const EditProfileModal = ({
 
                     {/* Employee ID Field */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
                             Employee ID
-                            {!isAdmin && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded ml-1">Read-only</span>}
+                            {!isAdmin && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded ml-1 font-normal">Read-only</span>}
                         </label>
                         <input
                             type="text"
@@ -67,18 +67,18 @@ const EditProfileModal = ({
                             value={editForm.employeeId || ""}
                             onChange={(e) => setEditForm({ ...editForm, employeeId: e.target.value })}
                             placeholder={isAdmin ? "e.g. EMP123" : "Not set"}
-                            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition font-mono disabled:bg-slate-50 disabled:text-slate-500"
+                            className="w-full px-2.5 h-10 border border-slate-200/80 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm text-slate-800 font-mono disabled:bg-slate-50 disabled:text-slate-500"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
                             Home Address
                         </label>
                         <textarea
                             value={editForm.address || ""}
                             onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition"
+                            className="w-full px-2.5 py-2 border border-slate-200/80 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm text-slate-800 h-auto"
                             rows="2"
                         />
                     </div>
@@ -91,18 +91,18 @@ const EditProfileModal = ({
                             { label: "Date of Joining", key: "dateOfJoining", type: "date", protected: true },
                         ].map((f) => (
                             <div key={f.key}>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                    {f.label} {f.protected && !isAdmin && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded ml-1">Read-only</span>}
+                                <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
+                                    {f.label} {f.protected && !isAdmin && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded ml-1 font-normal">Read-only</span>}
                                 </label>
                                 {f.options ? (
                                     <select
                                         disabled={f.protected && !isAdmin}
                                         value={editForm[f.key] || ""}
                                         onChange={(e) => setEditForm({ ...editForm, [f.key]: e.target.value })}
-                                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition capitalize disabled:bg-slate-50 disabled:text-slate-500"
+                                        className="w-full px-2.5 h-10 border border-slate-200/80 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm text-slate-800 capitalize disabled:bg-slate-50 disabled:text-slate-500"
                                     >
                                         <option value="" disabled>Select {f.label}</option>
-                                        {f.options.map((o) => (
+                                        {(f.options || []).map((o) => (
                                             <option key={o} value={o}>{o}</option>
                                         ))}
                                     </select>
@@ -112,7 +112,7 @@ const EditProfileModal = ({
                                         disabled={f.protected && !isAdmin}
                                         value={editForm[f.key] ? editForm[f.key].split('T')[0] : ""}
                                         onChange={(e) => setEditForm({ ...editForm, [f.key]: e.target.value })}
-                                        className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition disabled:bg-slate-50 disabled:text-slate-500"
+                                        className="w-full px-2.5 h-10 border border-slate-200/80 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
                                     />
                                 )}
                             </div>
@@ -120,7 +120,7 @@ const EditProfileModal = ({
                     </div>
 
                     <div className="pt-4 border-t border-slate-100">
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
                             Update Password <span className="text-[10px] text-slate-400 font-normal">(Leave blank to keep current)</span>
                         </label>
                         <input
@@ -128,18 +128,18 @@ const EditProfileModal = ({
                             placeholder="••••••••"
                             value={editForm.password || ""}
                             onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition"
+                            className="w-full px-2.5 h-10 border border-slate-200/80 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm text-slate-800"
                         />
                     </div>
 
                     {/* Dynamic Custom Fields */}
-                    {settings?.userCustomFields?.length > 0 && (
+                    {(settings?.userCustomFields || []).length > 0 && (
                         <div className="pt-4 border-t border-slate-100 space-y-4">
                             <h4 className="text-sm font-bold text-slate-800">Additional Information</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {settings.userCustomFields.map(field => (
+                                {(settings.userCustomFields || []).map(field => (
                                     <div key={field.id}>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                        <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
                                             {field.label} {field.required && <span className="text-rose-500">*</span>}
                                         </label>
                                         <input
@@ -153,7 +153,7 @@ const EditProfileModal = ({
                                                     [field.id]: e.target.value
                                                 }
                                             })}
-                                            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition"
+                                            className="w-full px-2.5 h-10 border border-slate-200/80 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm text-slate-800"
                                         />
                                     </div>
                                 ))}
@@ -161,18 +161,18 @@ const EditProfileModal = ({
                         </div>
                     )}
 
-                    <div className="flex gap-3 pt-4 border-t border-slate-100">
+                    <div className="-mx-5 -mb-5 mt-6 p-5 bg-slate-50 border-t border-slate-100 rounded-b-2xl flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={() => setShowEditModal(false)}
-                            className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-200 transition"
+                            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 transition"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={editLoading}
-                            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:shadow-lg disabled:opacity-50 transition"
+                            className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-blue-500/20 disabled:opacity-50 transition"
                         >
                             {editLoading ? "Saving..." : "💾 Save Changes"}
                         </button>

@@ -386,11 +386,13 @@ export default function Tasks() {
       )}
 
       {/* ── Create Task Modal ─────────────────────────── */}
-      <CreateTaskModal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        onTaskCreated={load}
-      />
+      {showCreate && (
+        <CreateTaskModal
+          isOpen={showCreate}
+          onClose={() => setShowCreate(false)}
+          onTaskCreated={load}
+        />
+      )}
 
 
     </div>

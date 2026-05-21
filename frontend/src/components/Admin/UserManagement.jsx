@@ -95,8 +95,8 @@ const EMPTY_FORM = {
 
 const Field = React.memo(({ label, children, required }) => (
   <div className="flex flex-col gap-1.5 w-full">
-    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-      {label} {required && <span className="text-red-500">*</span>}
+    <label className="text-slate-500 font-semibold text-xs ml-1 block">
+      {label} {required && <span className="text-red-500 font-bold">*</span>}
     </label>
     {children}
   </div>
@@ -219,7 +219,7 @@ const UserManagement = () => {
   const [dbBranches, setDbBranches] = useState([]);
   
   const finalBranches = useMemo(() => {
-    return dbBranches.length > 0 ? dbBranches.map(b => b.name) : branches;
+    return (dbBranches || []).length > 0 ? (dbBranches || []).map(b => b?.name).filter(Boolean) : (branches || []);
   }, [dbBranches, branches]);
 
   const [showModal, setShowModal] = useState(false);
@@ -332,10 +332,10 @@ const UserManagement = () => {
 
   const handleBranchChange = useCallback((nextBranch) => {
     if (!nextBranch) return;
-    const branchObj = dbBranches.find((br) => br.name === nextBranch);
+    const branchObj = (dbBranches || []).find((br) => br?.name === nextBranch);
     const branchDepts = (branchObj && branchObj.departments && branchObj.departments.length > 0)
       ? branchObj.departments
-      : departments;
+      : (departments || []);
     setFormData((prev) => ({
       ...prev,
       branch: nextBranch,
@@ -447,24 +447,24 @@ const UserManagement = () => {
 
   const departmentsForSelectedBranch = useMemo(() => {
     const b = formData.branch;
-    if (!b) return departments;
+    if (!b) return (departments || []);
 
-    const branchObj = dbBranches.find((br) => br.name === b);
+    const branchObj = (dbBranches || []).find((br) => br?.name === b);
     if (branchObj && branchObj.departments && branchObj.departments.length > 0) {
       return branchObj.departments;
     }
-    return departments;
+    return (departments || []);
   }, [formData.branch, dbBranches, departments]);
 
-  const inputClass = "w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition-all placeholder-slate-400";
+  const inputClass = "w-full px-3.5 h-11 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm placeholder-slate-400 text-slate-800 shadow-sm";
 
   // Combobox Formats
   const branchComboboxOptions = useMemo(() => {
-    return finalBranches.map(b => ({ value: b, label: b, subLabel: "Active Branch" }));
+    return (finalBranches || []).map(b => ({ value: b, label: b, subLabel: "Active Branch" }));
   }, [finalBranches]);
 
   const deptComboboxOptions = useMemo(() => {
-    return departmentsForSelectedBranch.map(d => ({ value: d, label: d, subLabel: "Department Section" }));
+    return (departmentsForSelectedBranch || []).map(d => ({ value: d, label: d, subLabel: "Department Section" }));
   }, [departmentsForSelectedBranch]);
 
   return (
@@ -549,7 +549,7 @@ const UserManagement = () => {
               className="bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
             >
               <option value="all">All Roles</option>
-              {roles.map((r) => (
+              {(roles || []).map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABELS[r]}
                 </option>
@@ -562,7 +562,7 @@ const UserManagement = () => {
               className="bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
             >
               <option value="all">All Branches</option>
-              {finalBranches.map((b) => (
+              {(finalBranches || []).map((b) => (
                 <option key={b} value={b}>
                   {b}
                 </option>
@@ -620,7 +620,7 @@ const UserManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {users.map((item, index) => (
+                    {(users || []).map((item, index) => (
                       <UserTableRow
                         key={item._id}
                         user={item}
@@ -673,9 +673,8 @@ const UserManagement = () => {
               )}
             </div>
 
-            {/* Mobile Cards Representation */}
             <div className="md:hidden space-y-3.5">
-              {users.map((item, index) => (
+              {(users || []).map((item, index) => (
                 <div
                   key={item._id}
                   className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover:shadow-md transition-all duration-300 space-y-3"
@@ -781,12 +780,12 @@ const UserManagement = () => {
                 <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
                   
                   {/* Left Column Pane (Core Information Inputs) */}
-                  <div className={`w-full lg:w-7/12 overflow-y-auto p-6 space-y-4.5 border-r border-slate-200 custom-scrollbar lg:block \${mobileStep === 1 ? "block" : "hidden"}`}>
+                  <div className={`w-full lg:w-7/12 overflow-y-auto p-6 space-y-6 border-r border-slate-200 custom-scrollbar lg:block ${mobileStep === 1 ? "block" : "hidden"}`}>
                     <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                       <span>01.</span> Core Identity & Personal Details
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
                       <Field label="Name" required>
                         <input
                           type="text"
@@ -809,7 +808,7 @@ const UserManagement = () => {
                       </Field>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
                       <Field label="Employee ID">
                         <input
                           type="text"
@@ -831,7 +830,7 @@ const UserManagement = () => {
                       </Field>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
                       <Field label="Phone Contact">
                         <input
                           type="text"
@@ -855,7 +854,7 @@ const UserManagement = () => {
                       <textarea
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className={inputClass}
+                        className={`${inputClass} h-auto py-2`}
                         rows="2"
                         placeholder="Street address, City, Pincode"
                       />
@@ -885,12 +884,12 @@ const UserManagement = () => {
 
                     {/* Dynamic Custom Fields */}
                     {settings?.userCustomFields?.length > 0 && (
-                      <div className="pt-4 border-t border-slate-200 space-y-4">
+                      <div className="pt-4 border-t border-slate-200 space-y-5.5">
                         <h4 className="text-xs font-bold text-blue-600 tracking-wide uppercase">
                           03. Customizable Corporate Extensions
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {settings.userCustomFields.map((field) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
+                          {(settings?.userCustomFields || []).map((field) => (
                             <Field key={field.id} label={field.label} required={field.required}>
                               <input
                                 type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
@@ -915,7 +914,7 @@ const UserManagement = () => {
                   </div>
 
                   {/* Right Column Pane (Tabbed: Affiliation vs Workload Tasks) */}
-                  <div className={`w-full lg:w-5/12 flex flex-col p-6 space-y-4 bg-white lg:flex \${mobileStep === 2 ? "flex flex-col flex-1" : "hidden"}`}>
+                  <div className={`w-full lg:w-5/12 flex flex-col p-6 space-y-6 bg-white lg:flex ${mobileStep === 2 ? "flex flex-col flex-1" : "hidden"}`}>
                     
                     {/* Modern Framer Motion Tabs Header */}
                     <div className="flex border border-slate-200 p-0.5 bg-slate-50 rounded-xl relative">
@@ -949,7 +948,7 @@ const UserManagement = () => {
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="space-y-4.5"
+                          className="space-y-6"
                         >
                           <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                             <span>02.</span> Professional Scope Matrix
@@ -959,9 +958,9 @@ const UserManagement = () => {
                             <select
                               value={formData.role}
                               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                              className="w-full bg-white border border-slate-200 text-slate-850 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer hover:border-slate-350"
+                              className={inputClass}
                             >
-                              {roles.map((r) => (
+                              {(roles || []).map((r) => (
                                 <option key={r} value={r} className="bg-white text-slate-850">
                                   {ROLE_LABELS[r]}
                                 </option>
@@ -1046,12 +1045,12 @@ const UserManagement = () => {
                                   <div className="text-center py-8 text-xs text-slate-500 flex items-center justify-center gap-1.5">
                                     <FiRefreshCw className="animate-spin text-blue-600" /> Scanning backlog...
                                   </div>
-                                ) : filteredUserTasks.length === 0 ? (
+                                ) : (filteredUserTasks || []).length === 0 ? (
                                   <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs">
                                     No matching tasks in database.
                                   </div>
                                 ) : (
-                                  filteredUserTasks.map(t => {
+                                  (filteredUserTasks || []).map(t => {
                                     const priorityColors = {
                                       low: "text-emerald-700 bg-emerald-50 border-emerald-100",
                                       medium: "text-amber-700 bg-amber-50 border-amber-100",

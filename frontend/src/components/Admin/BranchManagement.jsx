@@ -48,16 +48,16 @@ const Combobox = ({ label, value, onChange, options, placeholder, icon }) => {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   
-  const selectedOption = options.find((opt) => opt._id === value);
-  const filteredOptions = options.filter(
+  const selectedOption = (options || []).find((opt) => opt?._id === value);
+  const filteredOptions = (options || []).filter(
     (opt) =>
-      opt.name?.toLowerCase().includes(search.toLowerCase()) ||
-      opt.email?.toLowerCase().includes(search.toLowerCase())
+      opt?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      opt?.email?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="relative flex-1">
-      <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">
+      <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
         {label}
       </label>
       <div 
@@ -293,7 +293,7 @@ const BranchManagement = () => {
       // Sync head name/email based on loaded combobox selection
       const payload = { ...formData };
       if (payload.head) {
-        const headUser = allUsers.find(u => u._id === payload.head);
+        const headUser = (allUsers || []).find(u => u?._id === payload.head);
         if (headUser) {
           payload.headName = headUser.name;
           payload.headEmail = headUser.email;
@@ -348,7 +348,7 @@ const BranchManagement = () => {
         loadDeletedBranches();
         loadUsersList();
         // Auto refresh bin count
-        const nextBin = deletedBranches.filter((b) => b._id !== id);
+        const nextBin = (deletedBranches || []).filter((b) => b?._id !== id);
         setDeletedBranches(nextBin);
       }
     } catch (error) {
@@ -393,32 +393,32 @@ const BranchManagement = () => {
     setShowModal(true);
   };
 
-  const filtered = branches.filter((b) => {
+  const filtered = (branches || []).filter((b) => {
     const q = search.toLowerCase();
     return (
       !q ||
-      b.name?.toLowerCase().includes(q) ||
-      b.code?.toLowerCase().includes(q) ||
-      b.city?.toLowerCase().includes(q) ||
-      b.location?.toLowerCase().includes(q)
+      b?.name?.toLowerCase().includes(q) ||
+      b?.code?.toLowerCase().includes(q) ||
+      b?.city?.toLowerCase().includes(q) ||
+      b?.location?.toLowerCase().includes(q)
     );
   });
 
   // Get active members assigned to the editing branch
-  const activeMembers = allUsers.filter(u => 
-    u.branch && 
+  const activeMembers = (allUsers || []).filter(u => 
+    u?.branch && 
     editingBranch?.name && 
     u.branch.trim().toLowerCase() === editingBranch.name.trim().toLowerCase() &&
-    u.role !== 'admin' &&
-    u.isActive !== false &&
-    u.isArchived !== true
+    u?.role !== 'admin' &&
+    u?.isActive !== false &&
+    u?.isArchived !== true
   );
 
-  const filteredMembers = activeMembers.filter(emp => 
+  const filteredMembers = (activeMembers || []).filter(emp => 
     !staffSearch ||
-    emp.name?.toLowerCase().includes(staffSearch.toLowerCase()) ||
-    emp.email?.toLowerCase().includes(staffSearch.toLowerCase()) ||
-    emp.department?.toLowerCase().includes(staffSearch.toLowerCase())
+    emp?.name?.toLowerCase().includes(staffSearch.toLowerCase()) ||
+    emp?.email?.toLowerCase().includes(staffSearch.toLowerCase()) ||
+    emp?.department?.toLowerCase().includes(staffSearch.toLowerCase())
   );
 
   return (
@@ -480,21 +480,21 @@ const BranchManagement = () => {
             },
             {
               label: "Configured Cities",
-              value: new Set(branches.map((b) => b.city).filter(Boolean)).size,
+              value: new Set((branches || []).map((b) => b?.city).filter(Boolean)).size,
               color: "text-indigo-600",
               bgColor: "bg-indigo-50/50",
               icon: "📍",
             },
             {
               label: "Branches with Head",
-              value: branches.filter((b) => b.headName || b.head).length,
+              value: (branches || []).filter((b) => b?.headName || b?.head).length,
               color: "text-emerald-600",
               bgColor: "bg-emerald-50/50",
               icon: "👤",
             },
             {
               label: "Complete Settings",
-              value: branches.filter((b) => b.phone && b.email).length,
+              value: (branches || []).filter((b) => b?.phone && b?.email).length,
               color: "text-amber-600",
               bgColor: "bg-amber-50/50",
               icon: "⚙️",
@@ -624,10 +624,11 @@ const BranchManagement = () => {
 
                     {/* Populated Heads / Managers display */}
                     {(() => {
-                      const headObj = branch.head;
-                      const headName = headObj?.name || branch.headName;
-                      const headEmail = headObj?.email || branch.headEmail;
-                      const managerName = branch.manager?.name;
+                      const headObj = typeof branch?.head === 'object' ? branch.head : null;
+                      const headName = (typeof (headObj?.name || branch?.headName) === 'string') ? (headObj?.name || branch.headName) : '';
+                      const headEmail = (typeof (headObj?.email || branch?.headEmail) === 'string') ? (headObj?.email || branch.headEmail) : '';
+                      const managerObj = typeof branch?.manager === 'object' ? branch.manager : null;
+                      const managerName = (typeof managerObj?.name === 'string') ? managerObj?.name : '';
                       
                       const isSame = headName && managerName && headName.trim().toLowerCase() === managerName.trim().toLowerCase();
                       
@@ -667,13 +668,13 @@ const BranchManagement = () => {
 
                     {/* Real-time Employee Listing */}
                     {(() => {
-                      const branchUsers = allUsers.filter(u => 
-                        u.branch && 
-                        branch.name &&
+                      const branchUsers = (allUsers || []).filter(u => 
+                        typeof u?.branch === 'string' && 
+                        typeof branch?.name === 'string' &&
                         u.branch.trim().toLowerCase() === branch.name.trim().toLowerCase() &&
-                        u.role !== 'admin' &&
-                        u.isActive !== false &&
-                        u.isArchived !== true
+                        u?.role !== 'admin' &&
+                        u?.isActive !== false &&
+                        u?.isArchived !== true
                       );
                       return (
                         <div className="mt-4 pt-3 border-t border-slate-100">
@@ -702,7 +703,7 @@ const BranchManagement = () => {
                                         <p className="text-xs font-semibold text-slate-800 truncate" title={emp.name}>{emp.name}</p>
                                         <p className="text-[9px] text-slate-500 flex items-center gap-1 mt-0.5">
                                           <span className="px-1 py-0.2 rounded bg-slate-200/80 text-slate-600 text-[8px] uppercase tracking-wide font-bold">{emp.department}</span>
-                                          <span className="truncate capitalize">• {emp.role.replace('-', ' ')}</span>
+                                          <span className="truncate capitalize">• {emp?.role?.replace('-', ' ') || ""}</span>
                                         </p>
                                       </div>
                                     </div>
@@ -731,83 +732,7 @@ const BranchManagement = () => {
         )}
       </div>
 
-      {/* Recycle Bin Modal */}
-      <AnimatePresence>
-        {showBinModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="fixed inset-0" onClick={() => setShowBinModal(false)} />
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh] z-50 border border-slate-100"
-            >
-              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                <div>
-                  <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                    <span>🗑️</span> Recycle Bin: Archived Branches
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    View and fully restore previously soft-deleted branches, their users, and task catalogs.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowBinModal(false)}
-                  className="h-8 w-8 grid place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-                >
-                  ×
-                </button>
-              </div>
 
-              <div className="overflow-y-auto py-4 flex-1 custom-scrollbar space-y-3">
-                {deletedBranches.length === 0 ? (
-                  <div className="text-center py-12">
-                    <span className="text-5xl block mb-3">♻️</span>
-                    <p className="text-slate-700 font-bold">Recycle Bin Empty</p>
-                    <p className="text-xs text-slate-400 mt-1">There are no soft-deleted branches in the database archives.</p>
-                  </div>
-                ) : (
-                  deletedBranches.map((b) => (
-                    <div
-                      key={b._id}
-                      className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100/50 rounded-2xl border border-slate-200/60 transition"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-slate-800">{b.name}</h4>
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-mono">{b.code}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
-                          <span>📍 Landmark: {b.location || "None"}</span>
-                          <span>•</span>
-                          <span>🏙️ City: {b.city}</span>
-                        </p>
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => handleRestore(b._id)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-sm hover:shadow transition"
-                      >
-                        Restore
-                      </motion.button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="border-t border-slate-100 pt-4 flex justify-end">
-                <button
-                  onClick={() => setShowBinModal(false)}
-                  className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Confirm Soft-Delete Modal */}
       <AnimatePresence>
@@ -890,7 +815,7 @@ const BranchManagement = () => {
                   {/* Left Column - Standard inputs (Scrollable) */}
                   <div 
                     id="modal-scrollable-pane"
-                    className={`w-full lg:w-5/12 overflow-y-auto px-6 py-5 border-r border-slate-100 space-y-4 custom-scrollbar bg-slate-50/30 lg:block ${mobileStep === 1 ? "block" : "hidden"}`}
+                    className={`w-full lg:w-5/12 overflow-y-auto px-6 py-5 border-r border-slate-100 space-y-6 custom-scrollbar bg-slate-50/30 lg:block ${mobileStep === 1 ? "block" : "hidden"}`}
                   >
                     {/* Elegant Absolute Banner Notification */}
                     <AnimatePresence>
@@ -917,7 +842,7 @@ const BranchManagement = () => {
                       )}
                     </AnimatePresence>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5.5">
                       <Field label="Branch Name" required>
                         <input
                           type="text"
@@ -972,7 +897,7 @@ const BranchManagement = () => {
                       />
                     </Field>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5.5">
                       <Field label="City">
                         <input
                           type="text"
@@ -1029,7 +954,7 @@ const BranchManagement = () => {
                     </Field>
 
                     {/* Advanced Combobox Dropdown selectors displaying avatars */}
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <div className="flex flex-col sm:flex-row gap-5.5 pt-2">
                       <Combobox
                         label="Branch Head / Representative"
                         value={formData.head}
@@ -1093,8 +1018,8 @@ const BranchManagement = () => {
                           </div>
 
                           <div className="grid grid-cols-2 gap-2.5">
-                            {allDepts.map((dept) => {
-                              const checked = formData.departments?.includes(dept);
+                            {(allDepts || []).map((dept) => {
+                              const checked = (formData.departments || [])?.includes(dept);
                               return (
                                 <label
                                   key={dept}
@@ -1180,7 +1105,7 @@ const BranchManagement = () => {
                                             <p className="text-xs font-bold text-slate-800 truncate leading-tight">{emp.name}</p>
                                             <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
                                               <span className="px-1.5 py-0.2 rounded bg-slate-200/70 text-slate-700 text-[8px] uppercase tracking-wide font-bold">{emp.department}</span>
-                                              <span className="truncate capitalize font-medium">{emp.role.replace('-', ' ')}</span>
+                                              <span className="truncate capitalize font-medium">{emp?.role?.replace('-', ' ') || ""}</span>
                                             </p>
                                           </div>
                                         </div>
@@ -1325,7 +1250,7 @@ const BranchManagement = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleTransferSubmit} className="px-6 py-5 space-y-4">
+              <form onSubmit={handleTransferSubmit} className="px-6 py-5 space-y-6">
                 {/* Employee card */}
                 <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/50 flex items-center gap-3">
                   {transferEmployee.avatar ? (
@@ -1351,7 +1276,7 @@ const BranchManagement = () => {
                       {transferEmployee.name}
                     </h4>
                     <p className="text-[10px] text-slate-500 capitalize mt-0.5 font-medium">
-                      {transferEmployee.role.replace("-", " ")}
+                      {transferEmployee?.role?.replace("-", " ") || ""}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100/60 text-blue-700 border border-blue-200/30">
@@ -1374,9 +1299,9 @@ const BranchManagement = () => {
                       value={transferForm.targetBranch}
                       onChange={(e) => {
                         const nextBranch = e.target.value;
-                        const selectedBranchObj = branches.find(
-                          (b) => b.name === nextBranch
-                        );
+                         const selectedBranchObj = (branches || []).find(
+                           (b) => b.name === nextBranch
+                         );
                         const allowedDepts = selectedBranchObj?.departments || [];
                         setTransferForm({
                           targetBranch: nextBranch,
@@ -1391,7 +1316,7 @@ const BranchManagement = () => {
                       <option value="" disabled>
                         Select target branch...
                       </option>
-                      {branches.map((b) => (
+                      {(branches || []).map((b) => (
                         <option key={b._id} value={b.name}>
                           {b.name}
                         </option>
@@ -1422,7 +1347,7 @@ const BranchManagement = () => {
                         Select target department...
                       </option>
                       {(
-                        branches.find((b) => b.name === transferForm.targetBranch)
+                        (branches || []).find((b) => b?.name === transferForm.targetBranch)
                           ?.departments || []
                       ).map((d) => (
                         <option key={d} value={d}>
@@ -1470,11 +1395,11 @@ const BranchManagement = () => {
 };
 
 const inputClass =
-  "w-full px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition shadow-sm placeholder-slate-400";
+  "w-full px-3.5 h-11 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-sm placeholder-slate-400 text-sm";
 
 const Field = ({ label, required, children }) => (
-  <div className="flex-1">
-    <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+  <div className="flex flex-col gap-1.5 w-full flex-1">
+    <label className="text-slate-550 font-semibold text-xs ml-1 block">
       {label} {required && <span className="text-red-500 font-bold">*</span>}
     </label>
     {children}
