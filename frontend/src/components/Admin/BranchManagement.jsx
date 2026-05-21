@@ -237,6 +237,10 @@ const BranchManagement = () => {
 
   // Debounced server-side search — fires 400ms after user stops typing
   useEffect(() => {
+    if (search === "") {
+      loadBranches("");
+      return;
+    }
     const timer = setTimeout(() => {
       loadBranches(search);
     }, 400);

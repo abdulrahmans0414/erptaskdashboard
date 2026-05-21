@@ -289,6 +289,11 @@ const UserManagement = () => {
 
   // Debounced search for users
   useEffect(() => {
+    if (search === "") {
+      if (page !== 1) setPage(1);
+      else loadUsers();
+      return;
+    }
     const timer = setTimeout(() => {
       if (page !== 1) setPage(1);
       else loadUsers();
@@ -725,29 +730,26 @@ const UserManagement = () => {
         )}
       </div>
 
-      {/* High-Fidelity Split-Pane Modal */}
+      {/* Clean Single-Column Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 bg-slate-900/60 lg:flex lg:items-center lg:justify-center lg:p-4 z-[99]">
-            <div className="fixed inset-0 lg:block hidden" onClick={() => setShowModal(false)} />
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased">
+            <div className="fixed inset-0" onClick={() => setShowModal(false)} />
             <motion.div
               initial={{ scale: 0.97, y: 15, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.97, y: 15, opacity: 0 }}
               transition={{ type: "spring", duration: 0.45 }}
-              className="bg-white w-full h-full fixed inset-0 z-[99] flex flex-col overflow-y-auto lg:relative lg:inset-auto lg:h-auto lg:max-h-[92vh] lg:w-full lg:max-w-5xl lg:rounded-3xl lg:shadow-2xl lg:overflow-hidden lg:border lg:border-slate-100 lg:z-50"
+              className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-100 z-50 flex flex-col max-h-[92vh]"
             >
-              {/* Header section with notification banner */}
-              <div className="flex justify-between items-center px-8 py-6 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
+              {/* Header section with clean title */}
+              <div className="flex justify-between items-center px-8 py-5 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    {editingUser ? "✏️ Edit Employee Profile" : "👤 Provision New Corporate User"}
+                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    {editingUser ? "✏️ Edit Employee" : "👤 Add New Employee"}
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    <span className="lg:hidden font-bold text-blue-600 block mb-1">
-                      Step {mobileStep} of 2: {mobileStep === 1 ? "Core Details" : "Affiliation / Workload"}
-                    </span>
-                    Enterprise security classification matrix enabled
+                    {editingUser ? "Update employee account details" : "Create a new employee profile"}
                   </p>
                 </div>
                 <button
@@ -761,357 +763,138 @@ const UserManagement = () => {
 
               {/* Dynamic Warning/Error Banner */}
               {bannerError && (
-                <div className="bg-red-50 border-b border-red-100 text-red-650 px-6 py-3 text-xs font-semibold flex items-center gap-2 animate-[slideUp_.25s_ease-out]">
-                  <FiAlertTriangle size={14} className="flex-shrink-0 text-red-400" />
+                <div className="bg-red-50 border-b border-red-100 text-red-650 px-6 py-2.5 text-xs font-semibold flex items-center gap-2 flex-shrink-0 animate-[slideUp_.25s_ease-out]">
+                  <FiAlertTriangle size={13} className="flex-shrink-0 text-red-400" />
                   <span>{bannerError}</span>
                 </div>
               )}
 
-              {/* Split Pane Container */}
-              <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
-                <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                  
-                  {/* Left Column Pane (Core Information Inputs) */}
-                  <div className={`w-full lg:w-7/12 overflow-y-auto p-8 space-y-7 border-r border-slate-200 custom-scrollbar lg:block ${mobileStep === 1 ? "block" : "hidden"}`}>
-                    <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
-                      <span>01.</span> Core Identity & Personal Details
-                    </h3>
+              {/* Simple Single-Column Form */}
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="overflow-y-auto flex-1 px-8 py-6 space-y-5">
+                  {/* Name */}
+                  <Field label="Name" required>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className={inputClass}
+                      placeholder="Employee full name"
+                    />
+                  </Field>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
-                      <Field label="Name" required>
-                        <input
-                          type="text"
-                          required
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className={inputClass}
-                          placeholder="Employee full name"
-                        />
-                      </Field>
-                      <Field label="Email Address" required>
-                        <input
-                          type="email"
-                          required
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className={inputClass}
-                          placeholder="corporate@domain.com"
-                        />
-                      </Field>
+                  {/* Email Address */}
+                  <Field label="Email Address" required>
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className={inputClass}
+                      placeholder="corporate@domain.com"
+                    />
+                  </Field>
+
+                  {/* Employee ID */}
+                  <Field label="Employee ID">
+                    <input
+                      type="text"
+                      placeholder="e.g. EMP1049"
+                      value={formData.employeeId}
+                      onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  {/* Account Password */}
+                  <Field label={editingUser ? "Password" : "Password"} required={!editingUser}>
+                    <div className="relative">
+                      <input
+                        type={showPwd ? "text" : "password"}
+                        required={!editingUser}
+                        placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className={`${inputClass} pr-10`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPwd((s) => !s)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                      </button>
                     </div>
+                  </Field>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
-                      <Field label="Employee ID">
-                        <input
-                          type="text"
-                          placeholder="e.g. EMP1049"
-                          value={formData.employeeId}
-                          onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                          className={inputClass}
-                        />
-                      </Field>
-
-                      {/* Account Password */}
-                      <Field label={editingUser ? "Security Update Password" : "Account Password"} required={!editingUser}>
-                        <div className="relative">
-                          <input
-                            type={showPwd ? "text" : "password"}
-                            required={!editingUser}
-                            placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className={`${inputClass} pr-10`}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPwd((s) => !s)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
-                            tabIndex={-1}
-                          >
-                            {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                          </button>
-                        </div>
-                      </Field>
-                    </div>
-
-                    {/* Dynamic Custom Fields */}
-                    {settings?.userCustomFields?.length > 0 && (
-                      <div className="pt-4 border-t border-slate-200 space-y-5.5">
-                        <h4 className="text-xs font-bold text-blue-600 tracking-wide uppercase">
-                          03. Customizable Corporate Extensions
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
-                          {(settings?.userCustomFields || []).map((field) => (
-                            <Field key={field.id} label={field.label} required={field.required}>
-                              <input
-                                type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
-                                required={field.required}
-                                value={formData?.customFields?.[field.id] || ""}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    customFields: {
-                                      ...(formData.customFields || {}),
-                                      [field.id]: e.target.value,
-                                    },
-                                  })
-                                }
-                                className={inputClass}
-                              />
-                            </Field>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right Column Pane (Tabbed: Affiliation vs Workload Tasks) */}
-                  <div className={`w-full lg:w-5/12 flex flex-col p-8 space-y-7 bg-white lg:flex ${mobileStep === 2 ? "flex flex-col flex-1" : "hidden"}`}>
-                    
-                    {/* Modern Framer Motion Tabs Header */}
-                    <div className="flex border border-slate-200 p-0.5 bg-slate-50 rounded-xl relative">
-                      {[
-                        { id: "affiliation", label: "Affiliation", icon: <FiBriefcase /> },
-                        { id: "tasks", label: `Active Workload (${editingUser ? userTasks.length : 0})`, icon: <FiGrid /> }
-                      ].map(t => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setActiveRightTab(t.id)}
-                          className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeRightTab === t.id ? "text-slate-800" : "text-slate-500 hover:text-slate-700"}`}
-                        >
-                          {t.icon} {t.label}
-                          {activeRightTab === t.id && (
-                            <motion.div
-                              layoutId="rightTabOutline"
-                              className="absolute inset-0 bg-white border border-slate-200 rounded-lg -z-10 shadow-sm"
-                              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                            />
-                          )}
-                        </button>
+                  {/* Role */}
+                  <Field label="Role" required>
+                    <select
+                      value={formData.role}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      className={inputClass}
+                    >
+                      {(roles || []).map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_LABELS[r] || r}
+                        </option>
                       ))}
+                    </select>
+                  </Field>
+
+                  {/* Branch */}
+                  <SearchableCombobox
+                    label="Branch"
+                    options={branchComboboxOptions}
+                    value={formData.branch}
+                    onChange={handleBranchChange}
+                    placeholder="Select branch..."
+                    isClearable={false}
+                  />
+
+                  {/* Department */}
+                  <SearchableCombobox
+                    label="Department"
+                    options={deptComboboxOptions}
+                    value={formData.department}
+                    onChange={handleDeptChange}
+                    placeholder="Select department..."
+                    isClearable={false}
+                  />
+
+                  {/* Status Toggle */}
+                  <label className="flex items-center justify-between gap-3 cursor-pointer bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-2xl px-4 py-3.5 transition select-none">
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">Account Status</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Enable or disable employee system access</p>
                     </div>
-
-                    <div className="flex-1 overflow-hidden flex flex-col justify-start">
-                      
-                      {/* Tab Content 1: Affiliations */}
-                      {activeRightTab === "affiliation" && (
-                        <motion.div
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="space-y-7"
-                        >
-                          <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
-                            <span>02.</span> Professional Scope Matrix
-                          </h3>
-
-                          <Field label="Assigned Corporate Role" required>
-                            <select
-                              value={formData.role}
-                              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                              className={inputClass}
-                            >
-                              {(roles || []).map((r) => (
-                                <option key={r} value={r} className="bg-white text-slate-850">
-                                  {ROLE_LABELS[r]}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-
-                          {/* Searchable Combobox for Branch */}
-                          <SearchableCombobox
-                            label="Branch Scope"
-                            options={branchComboboxOptions}
-                            value={formData.branch}
-                            onChange={handleBranchChange}
-                            placeholder="Select corporate branch..."
-                            isClearable={false}
-                          />
-
-                          {/* Searchable Combobox for Department (Cascaded dependent filters) */}
-                          <SearchableCombobox
-                            label="Department Allocation"
-                            options={deptComboboxOptions}
-                            value={formData.department}
-                            onChange={handleDeptChange}
-                            placeholder="Select department section..."
-                            isClearable={false}
-                          />
-
-                          <div className="pt-3">
-                            <label className="flex items-start justify-between gap-3 cursor-pointer bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl px-4 py-3.5 transition-all select-none">
-                              <div className="space-y-0.5">
-                                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Security Access Pipeline</p>
-                                <p className="text-[11px] text-slate-500 leading-tight">Enables or disables system authentication key</p>
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={formData.isActive}
-                                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                                className="w-5 h-5 rounded-lg border-slate-300 bg-white text-blue-650 focus:ring-blue-500/20 focus:ring-offset-white"
-                              />
-                            </label>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Tab Content 2: Active Tasks Board */}
-                      {activeRightTab === "tasks" && (
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="flex flex-col flex-1 overflow-hidden h-full space-y-3.5"
-                        >
-                          <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
-                            <span>📋</span> Assigned Workplace Workload
-                          </h3>
-
-                          {!editingUser ? (
-                            <div className="text-center py-16 px-4 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-                              <FiBriefcase className="mx-auto mb-2 text-slate-400" size={32} />
-                              <p className="text-xs font-semibold text-slate-600">Creation Mode Active</p>
-                              <p className="text-[11px] text-slate-500 mt-1">
-                                Tasks can be queried or assigned once this employee profile is physically saved and recorded in the database.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="flex-1 flex flex-col overflow-hidden space-y-3">
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
-                                  <FiSearch size={14} />
-                                </span>
-                                <input
-                                  type="text"
-                                  value={tasksSearchQuery}
-                                  onChange={(e) => setTasksSearchQuery(e.target.value)}
-                                  placeholder="Search assigned tasks..."
-                                  className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 placeholder-slate-400"
-                                />
-                              </div>
-
-                              <div className="flex-1 overflow-y-auto custom-scrollbar pr-0.5 space-y-2 max-h-[300px]">
-                                {tasksLoading ? (
-                                  <div className="text-center py-8 text-xs text-slate-500 flex items-center justify-center gap-1.5">
-                                    <FiRefreshCw className="animate-spin text-blue-600" /> Scanning backlog...
-                                  </div>
-                                ) : (filteredUserTasks || []).length === 0 ? (
-                                  <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs">
-                                    No matching tasks in database.
-                                  </div>
-                                ) : (
-                                  (filteredUserTasks || []).map(t => {
-                                    const priorityColors = {
-                                      low: "text-emerald-700 bg-emerald-50 border-emerald-100",
-                                      medium: "text-amber-700 bg-amber-50 border-amber-100",
-                                      high: "text-rose-700 bg-rose-50 border-rose-100",
-                                      urgent: "text-red-700 bg-red-50 border-red-100",
-                                    };
-                                    
-                                    return (
-                                      <div
-                                        key={t._id}
-                                        className="p-3 bg-white border border-slate-200 hover:border-slate-350 rounded-xl space-y-1.5 hover:shadow-md transition-all"
-                                      >
-                                        <div className="flex justify-between items-start gap-2">
-                                          <p className="text-xs font-bold text-slate-800 line-clamp-1">{t.title}</p>
-                                          <span className={`text-[9px] font-bold px-1.5 py-0.5 border rounded uppercase ${priorityColors[t.priority] || "bg-slate-100 text-slate-600 border-slate-200"}`}>
-                                            {t.priority}
-                                          </span>
-                                        </div>
-                                        <p className="text-[10px] text-slate-550 line-clamp-2 leading-snug">{t.description || "No description provided."}</p>
-                                        <div className="flex justify-between items-center text-[9px] text-slate-500 pt-1 font-semibold border-t border-slate-100">
-                                          <span>📅 Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "—"}</span>
-                                          <span className="capitalize px-1.5 py-0.5 rounded-full bg-slate-50 text-slate-650 border border-slate-200">{t.status || "Pending"}</span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500/20"
+                    />
+                  </label>
                 </div>
 
-                {/* Split Pane Footer controls */}
-                <div className="flex flex-col px-8 py-5 border-t border-slate-200 bg-slate-50 mt-auto flex-shrink-0">
-                  {/* Mobile controls */}
-                  <div className="flex lg:hidden w-full gap-3">
-                    {mobileStep === 1 ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setShowModal(false)}
-                          className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 active:scale-98 text-slate-700 font-bold transition text-sm"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!formData.name.trim()) {
-                              setBannerError("Name field is required.");
-                              return;
-                            }
-                            if (!formData.email.trim()) {
-                              setBannerError("Email address is required.");
-                              return;
-                            }
-                            if (!editingUser && !formData.password) {
-                              setBannerError("Password is required for new accounts.");
-                              return;
-                            }
-                            setBannerError("");
-                            setMobileStep(2);
-                          }}
-                          className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition text-sm shadow-md"
-                        >
-                          Next ➔
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setMobileStep(1)}
-                          className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 active:scale-98 text-slate-700 font-bold transition text-sm"
-                        >
-                          ➔ Back
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={submitting}
-                          className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 transition-all active:scale-[.98] disabled:opacity-50 text-sm"
-                        >
-                          {submitting ? "Processing Registry..." : editingUser ? "Commit Profile Update" : "Establish Corporate Profile"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Desktop controls */}
-                  <div className="hidden lg:flex w-full gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowModal(false)}
-                      className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 active:scale-98 text-slate-700 font-bold transition text-sm"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 transition-all active:scale-[.98] disabled:opacity-50 text-sm"
-                    >
-                      {submitting ? "Processing Registry..." : editingUser ? "Commit Profile Update" : "Establish Corporate Profile"}
-                    </button>
-                  </div>
+                {/* Footer Controls */}
+                <div className="flex gap-3 px-8 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm transition-all disabled:opacity-50 text-sm"
+                  >
+                    {submitting ? "Saving..." : editingUser ? "Save Changes" : "Create Employee"}
+                  </button>
                 </div>
               </form>
             </motion.div>

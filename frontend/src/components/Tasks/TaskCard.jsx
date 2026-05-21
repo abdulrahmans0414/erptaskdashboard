@@ -1320,7 +1320,7 @@ export default function TaskCard({ task, onUpdate }) {
                 }}
                 className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
               >
-                📋 Review Task
+                🔍 Review / Approve
               </button>
             )}
             {canReviewDepartment && (
@@ -1331,7 +1331,7 @@ export default function TaskCard({ task, onUpdate }) {
                 }}
                 className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
               >
-                📋 Dept Review
+                🔍 Review / Approve
               </button>
             )}
             {canReviewBranch && (
@@ -1342,19 +1342,19 @@ export default function TaskCard({ task, onUpdate }) {
                 }}
                 className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
               >
-                📋 Branch Review
+                🔍 Review / Approve
               </button>
             )}
 
             {/* Start */}
-            {["pending", "rejected", "reassigned"].includes(task.status) &&
+            {["pending", "rejected", "reassigned", "assigned"].includes(task.status) &&
               isMine && (
                 <button
                   onClick={handleStart}
                   disabled={starting}
                   className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm disabled:opacity-50"
                 >
-                  {starting ? "Starting..." : "▶ Start Task"}
+                  {starting ? "Starting..." : "▶️ Start Task"}
                 </button>
               )}
 
@@ -1364,7 +1364,7 @@ export default function TaskCard({ task, onUpdate }) {
                 onClick={() => setModal("submit")}
                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
               >
-                📤 Submit
+                📤 Submit Task
               </button>
             )}
 

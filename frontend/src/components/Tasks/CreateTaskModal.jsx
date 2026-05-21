@@ -12,16 +12,8 @@ import { useSettings } from "../../context/SettingsContext";
 import {
   FiX,
   FiAlertTriangle,
-  FiCalendar,
   FiClock,
-  FiPaperclip,
-  FiUsers,
-  FiBriefcase,
-  FiMapPin,
   FiCheckCircle,
-  FiTrendingUp,
-  FiFileText,
-  FiList
 } from "react-icons/fi";
 import SearchableCombobox from "../Common/SearchableCombobox";
 import toast from "react-hot-toast";
@@ -42,7 +34,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     priority: "medium",
   });
 
-  const [userSearch, setUserSearch] = useState("");
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -54,9 +45,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [taskFormFiles, setTaskFormFiles] = useState([]);
   const [fileInputKey, setFileInputKey] = useState(Date.now());
   const [dbBranches, setDbBranches] = useState([]);
-  const [activeTab, setActiveTab] = useState("assignment");
 
-  // Load initial backend dependencies
   useEffect(() => {
     if (isOpen) {
       resetForm();
@@ -68,9 +57,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const loadDbBranches = async () => {
     try {
       const response = await getBranches();
-      if (response.data.success) {
-        setDbBranches(response.data.data);
-      }
+      if (response.data.success) setDbBranches(response.data.data);
     } catch (e) {
       console.error("Failed to load branches:", e);
     }
@@ -82,33 +69,27 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       const role = user?.role;
       const branch = user?.branch;
       const department = user?.department;
-
       let r;
       if (role === "branch-head" && branch) r = await getUsersByBranch(branch);
-      else if (role === "department-head" && department)
-        r = await getUsersByDepartment(department, branch);
+      else if (role === "department-head" && department) r = await getUsersByDepartment(department, branch);
       else r = await getUsers({ limit: 1000 });
-
       if (r?.data?.success) {
         let list = r.data.data || [];
-        if (role === "department-head" && branch) {
-          list = list.filter((u) => u.branch === branch);
-        }
+        if (role === "department-head" && branch) list = list.filter((u) => u.branch === branch);
         setUsers(list.filter((u) => u.role !== "admin"));
       }
     } catch (e) {
-      console.error("Failed to load users for task assignment:", e);
+      console.error("Failed to load users:", e);
     } finally {
       setUsersLoading(false);
     }
   };
 
-  // Sync users list with selected branch and department parameters
+  // Strictly filter employees by exact branch AND department match
   useEffect(() => {
     setFilteredUsers(
       users.filter(
-        (u) =>
-          u.department === formData.department && u.branch === formData.branch
+        (u) => u.department === formData.department && u.branch === formData.branch
       )
     );
   }, [formData.branch, formData.department, users]);
@@ -117,33 +98,15 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     const role = user?.role;
     const branch = user?.branch || branches[0] || "Gaurabagh";
     const department = user?.department || departments[0] || "IT";
-
-    const lockedBranch =
-      role === "branch-head" || role === "department-head" ? branch : (branches[0] || "Gaurabagh");
-    const lockedDept =
-      role === "department-head"
-        ? department
-        : role === "hr"
-          ? "HR"
-          : (departments[0] || "IT");
-
-    setFormData({
-      title: "",
-      description: "",
-      department: lockedDept,
-      branch: lockedBranch,
-      assignedTo: "",
-      dueDate: "",
-      priority: "medium",
-    });
-    setUserSearch("");
+    const lockedBranch = role === "branch-head" || role === "department-head" ? branch : (branches[0] || "Gaurabagh");
+    const lockedDept = role === "department-head" ? department : role === "hr" ? "HR" : (departments[0] || "IT");
+    setFormData({ title: "", description: "", department: lockedDept, branch: lockedBranch, assignedTo: "", dueDate: "", priority: "medium" });
     setIsTeamTask(false);
     setSelectedTeam([]);
     setCollaboratingDepts([]);
     setTaskFormFiles([]);
     setFileInputKey(Date.now());
     setError("");
-    setActiveTab("assignment");
   };
 
   const role = user?.role;
@@ -153,18 +116,9 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const departmentsForSelectedBranch = useMemo(() => {
     const b = formData.branch;
     if (!b) return departments;
-
     const branchObj = dbBranches.find((br) => br.name === b);
-    if (branchObj && branchObj.departments && branchObj.departments.length > 0) {
-      return branchObj.departments;
-    }
-
-    const set = new Set(
-      users
-        .filter((u) => u.branch === b)
-        .map((u) => u.department)
-        .filter(Boolean)
-    );
+    if (branchObj?.departments?.length > 0) return branchObj.departments;
+    const set = new Set(users.filter((u) => u.branch === b).map((u) => u.department).filter(Boolean));
     const allowed = departments.filter((d) => set.has(d));
     return allowed.length > 0 ? allowed : departments;
   }, [formData.branch, dbBranches, departments, users]);
@@ -172,91 +126,40 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const handleBranchChange = useCallback((nextBranch) => {
     if (!nextBranch) return;
     const branchObj = dbBranches.find((br) => br.name === nextBranch);
-    const branchDepts = (branchObj && branchObj.departments && branchObj.departments.length > 0)
-      ? branchObj.departments
-      : departments;
-    
-    setFormData((prev) => ({
-      ...prev,
-      branch: nextBranch,
-      department: branchDepts[0] || "IT",
-      assignedTo: "",
-    }));
+    const branchDepts = branchObj?.departments?.length > 0 ? branchObj.departments : departments;
+    setFormData((prev) => ({ ...prev, branch: nextBranch, department: branchDepts[0] || "IT", assignedTo: "" }));
     setSelectedTeam([]);
   }, [dbBranches, departments]);
 
   const handleDeptChange = useCallback((nextDept) => {
-    setFormData((prev) => ({
-      ...prev,
-      department: nextDept,
-      assignedTo: "",
-    }));
+    setFormData((prev) => ({ ...prev, department: nextDept, assignedTo: "" }));
     setSelectedTeam([]);
   }, []);
 
-  const handleAssigneeChange = useCallback((nextAssigneeId) => {
-    setFormData((prev) => ({
-      ...prev,
-      assignedTo: nextAssigneeId,
-    }));
+  const handleAssigneeChange = useCallback((nextId) => {
+    setFormData((prev) => ({ ...prev, assignedTo: nextId }));
   }, []);
 
-  // Format options for the Searchable Comboboxes
-  const branchOptions = useMemo(() => {
-    return branches.map((b) => ({ value: b, label: b, subLabel: "Corporate Branch Office" }));
-  }, [branches]);
-
-  const deptOptions = useMemo(() => {
-    return departmentsForSelectedBranch.map((d) => ({ value: d, label: d, subLabel: "Company Division" }));
-  }, [departmentsForSelectedBranch]);
-
-  const assigneeOptions = useMemo(() => {
-    return filteredUsers.map((u) => ({
-      value: u._id,
-      label: u.name,
-      subLabel: `ID: ${u.employeeId || "—"} | ${u.role}`,
-    }));
-  }, [filteredUsers]);
-
-  const handleCollaboratingDeptToggle = useCallback((dept) => {
-    setCollaboratingDepts((prev) =>
-      prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept]
-    );
-  }, []);
+  const branchOptions = useMemo(() => branches.map((b) => ({ value: b, label: b })), [branches]);
+  const deptOptions = useMemo(() => departmentsForSelectedBranch.map((d) => ({ value: d, label: d })), [departmentsForSelectedBranch]);
+  // Assignee options: Name (EmployeeID)
+  const assigneeOptions = useMemo(() => filteredUsers.map((u) => ({
+    value: u._id,
+    label: `${u.name} (${u.employeeId || u._id})`,
+    subLabel: u.role,
+  })), [filteredUsers]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title.trim()) return setError("Task Title is required");
-    if (!isTeamTask && !formData.assignedTo) return setError("Assignee selection is required");
-    if (isTeamTask && selectedTeam.length === 0)
-      return setError("At least one Team Member must be selected");
-    if (!formData.dueDate) return setError("Due date specification is required");
-
+    if (!formData.title.trim()) return setError("Task title is required.");
+    if (!isTeamTask && !formData.assignedTo) return setError("Please select an employee to assign this task to.");
+    if (isTeamTask && selectedTeam.length === 0) return setError("Please select at least one team member.");
+    if (!formData.dueDate) return setError("Due date is required.");
     setLoading(true);
     setError("");
     const taskData = isTeamTask
-      ? {
-          title: formData.title,
-          description: formData.description,
-          department: formData.department,
-          branch: formData.branch,
-          dueDate: formData.dueDate,
-          priority: formData.priority,
-          isTeamTask: true,
-          assignedTeam: selectedTeam,
-          collaboratingDepartments: collaboratingDepts,
-        }
-      : {
-          title: formData.title,
-          description: formData.description,
-          department: formData.department,
-          branch: formData.branch,
-          assignedTo: formData.assignedTo,
-          dueDate: formData.dueDate,
-          priority: formData.priority,
-          isTeamTask: false,
-        };
-
+      ? { title: formData.title, description: formData.description, department: formData.department, branch: formData.branch, dueDate: formData.dueDate, priority: formData.priority, isTeamTask: true, assignedTeam: selectedTeam, collaboratingDepartments: collaboratingDepts }
+      : { title: formData.title, description: formData.description, department: formData.department, branch: formData.branch, assignedTo: formData.assignedTo, dueDate: formData.dueDate, priority: formData.priority, isTeamTask: false };
     try {
       if (taskFormFiles.length > 0) {
         const fd = new FormData();
@@ -270,14 +173,12 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       } else {
         await createTask(taskData);
       }
-      
-      setLoading(false);
-      toast.success("✅ Task dispatched successfully!");
+      toast.success("Task assigned successfully!");
       if (onTaskCreated) onTaskCreated();
       resetForm();
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.message || "Failed to dispatch task";
+      const msg = err.response?.data?.message || "Failed to assign task";
       toast.error(msg);
       setError(msg);
     } finally {
@@ -285,396 +186,158 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     }
   };
 
-  const handleFileChange = (e) => {
-    setTaskFormFiles(Array.from(e.target.files || []));
-  };
+  const handleFileChange = (e) => setTaskFormFiles(Array.from(e.target.files || []));
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 overflow-y-auto antialiased subpixel-antialiased">
-          {isOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/60"
-              onClick={onClose}
-            />
-          )}
+        <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 overflow-y-auto antialiased">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60" onClick={onClose} />
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 20 }}
-            className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden text-slate-800 z-10"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 flex flex-col max-h-[92vh]"
           >
-          {/* Header Bar */}
-          <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-150 sticky top-0 bg-white z-20">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                📋 Dispatch & Assign Workplace Task
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Enforce standard workflow constraints across units</p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition"
-            >
-              <FiX size={16} />
-            </button>
-          </div>
-
-          {/* Alert Notification Banner */}
-          {error && (
-            <div className="bg-red-50 border-b border-red-100 text-red-650 px-6 py-3 text-xs font-semibold flex items-center gap-2">
-              <FiAlertTriangle size={14} className="flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Form Split Pane body */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-y-auto md:grid md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200">
-              
-              {/* Left Pane: Core Task Parameters */}
-              <div className="p-6 space-y-4 md:col-span-7">
-                <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
-                  <span>01.</span> Task Specifications & Parameters
-                </h3>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                    Task Title <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition-all placeholder-slate-400"
-                    placeholder="Provide a concise title for the deliverable..."
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                    Detailed Scope Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition-all placeholder-slate-400"
-                    rows="3.5"
-                    placeholder="Explain expectations, metrics for success, and contextual guidelines..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                      Due Date Specification <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        required
-                        min={new Date().toISOString().split("T")[0]}
-                        value={formData.dueDate}
-                        onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition-all cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                      Workflow Priority Level
-                    </label>
-                    <select
-                      value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      className="w-full bg-white border border-slate-200 text-slate-850 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition cursor-pointer"
-                    >
-                      <option value="low" className="bg-white text-slate-850">🟢 Low Priority</option>
-                      <option value="medium" className="bg-white text-slate-850">🟡 Medium Priority</option>
-                      <option value="high" className="bg-white text-slate-850">🟠 High Priority</option>
-                      <option value="urgent" className="bg-white text-slate-850">🔴 Urgent Backlog</option>
-                    </select>
-                  </div>
-                </div>
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 flex-shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">📋 Assign Task</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Fill in the details below to assign a task</p>
               </div>
-
-              {/* Right Pane: Tabs for Scope & Assignment */}
-              <div className="p-6 md:col-span-5 flex flex-col space-y-4">
-                
-                {/* Framer Motion Tab Headers */}
-                <div className="flex border border-slate-200 p-0.5 bg-slate-50 rounded-xl relative">
-                  {[
-                    { id: "assignment", label: "Assignment", icon: <FiUsers /> },
-                    { id: "scope", label: "Scope & Assets", icon: <FiList /> }
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setActiveTab(t.id)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === t.id ? "text-slate-800" : "text-slate-500 hover:text-slate-700"}`}
-                    >
-                      {t.icon} {t.label}
-                      {activeTab === t.id && (
-                        <motion.div
-                          layoutId="taskTabOutline"
-                          className="absolute inset-0 bg-white border border-slate-200 rounded-lg -z-10 shadow-sm"
-                          transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex-1 overflow-hidden flex flex-col justify-start">
-                  
-                  {/* TAB 1: Assignment Panel */}
-                  {activeTab === "assignment" && (
-                    <motion.div
-                      initial={{ opacity: 0, x: 15 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="space-y-4"
-                    >
-                      <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
-                        <span>02.</span> Corporate Routing Matrix
-                      </h3>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <SearchableCombobox
-                          label="Office Branch Scope"
-                          options={branchOptions}
-                          value={formData.branch}
-                          onChange={handleBranchChange}
-                          disabled={branchLocked}
-                          placeholder="Select office branch..."
-                          isClearable={false}
-                        />
-
-                        <SearchableCombobox
-                          label="Target Department"
-                          options={deptOptions}
-                          value={formData.department}
-                          onChange={handleDeptChange}
-                          disabled={deptLocked}
-                          placeholder="Select department..."
-                          isClearable={false}
-                        />
-                      </div>
-
-                      {/* Team Assignment Toggle */}
-                      <label className="flex items-start justify-between gap-3 cursor-pointer bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-2xl px-4 py-3 transition-all select-none">
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
-                            <FiUsers /> Establish Team Task
-                          </p>
-                          <p className="text-[11px] text-slate-500 leading-tight">Distribute workload to multiple team members concurrently</p>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={isTeamTask}
-                          onChange={(e) => {
-                            setIsTeamTask(e.target.checked);
-                            if (e.target.checked) setFormData(prev => ({ ...prev, assignedTo: "" }));
-                            else setSelectedTeam([]);
-                          }}
-                          className="w-5 h-5 rounded-lg border-slate-300 bg-white text-blue-650 focus:ring-blue-500/20"
-                        />
-                      </label>
-
-                      {/* Dynamic Target Operator selection */}
-                      {!isTeamTask ? (
-                        <div className="space-y-2 border-t border-slate-200 pt-3">
-                          <SearchableCombobox
-                            label="Target Individual Operator"
-                            options={assigneeOptions}
-                            value={formData.assignedTo}
-                            onChange={handleAssigneeChange}
-                            placeholder={usersLoading ? "Querying database..." : "Search corporate personnel..."}
-                            isClearable={true}
-                          />
-                          <p className="text-[10px] text-slate-500 font-semibold px-1">
-                            📍 {formData.branch} | 🏢 {formData.department} | {usersLoading ? "Loading..." : `${filteredUsers.length} active employees match scope`}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2.5 border-t border-slate-200 pt-3">
-                          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                            Select Team Operators <span className="text-red-500">*</span>
-                          </label>
-                          <p className="text-[10px] text-slate-500 font-semibold mb-1.5">
-                            Check multiple targets within branch/department:
-                          </p>
-
-                          {usersLoading ? (
-                            <div className="py-8 text-center text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center gap-1.5">
-                              <FiRefreshCw className="animate-spin text-blue-600" /> Loading employees...
-                            </div>
-                          ) : filteredUsers.length === 0 ? (
-                            <div className="py-6 text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl">
-                              ⚠️ No active personnel allocated in this scope division.
-                            </div>
-                          ) : (
-                            <div className="max-h-[160px] overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl bg-slate-50 p-2 space-y-1.5">
-                              {filteredUsers.map((u) => {
-                                const isChecked = selectedTeam.includes(u._id);
-                                return (
-                                  <label
-                                    key={u._id}
-                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition select-none text-xs ${isChecked ? "bg-blue-50 border border-blue-100 text-blue-700" : "bg-transparent border border-transparent text-slate-600 hover:bg-slate-100"}`}
-                                  >
-                                    <div className="flex flex-col">
-                                      <span className="font-bold text-slate-800">{u.name}</span>
-                                      <span className="text-[10px] text-slate-500 font-semibold mt-0.5">ID: {u.employeeId || "—"} • {u.role}</span>
-                                    </div>
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() =>
-                                        setSelectedTeam((prev) =>
-                                          prev.includes(u._id)
-                                            ? prev.filter((id) => id !== u._id)
-                                            : [...prev, u._id]
-                                        )
-                                      }
-                                      className="w-4.5 h-4.5 rounded border-slate-300 bg-white text-blue-650 focus:ring-blue-500/20"
-                                    />
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          )}
-                          
-                          {selectedTeam.length > 0 && (
-                            <p className="text-[10px] text-emerald-600 font-bold px-1">
-                              ✓ {selectedTeam.length} operators assigned to team execution
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {/* TAB 2: Scope & Assets Panel */}
-                  {activeTab === "scope" && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -15 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="space-y-4"
-                    >
-                      <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
-                        <span>03.</span> Cross-Department Collaboration
-                      </h3>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                          Collaborating Departments
-                        </label>
-                        <p className="text-[10px] text-slate-500 font-semibold">
-                          Grant other division divisions visibility or joint execution parameters:
-                        </p>
-                        
-                        <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl bg-slate-50 p-2.5">
-                          {departments.map((dept) => {
-                            if (dept === formData.department) return null; // Avoid self-collaborating
-                            const isChecked = collaboratingDepts.includes(dept);
-                            return (
-                              <label
-                                key={dept}
-                                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition select-none text-xs border ${isChecked ? "bg-blue-50 border border-blue-100 text-blue-700" : "bg-transparent border-transparent text-slate-600 hover:bg-slate-100"}`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => handleCollaboratingDeptToggle(dept)}
-                                  className="w-4 h-4 rounded border-slate-300 bg-white text-blue-650 focus:ring-blue-500/20"
-                                />
-                                <span>{dept}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Attachments Area */}
-                      <div className="space-y-2.5 pt-3 border-t border-slate-200">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1 flex items-center gap-1.5">
-                          <FiPaperclip /> Form Assets / Documents
-                        </label>
-                        
-                        <div className="relative group border border-dashed border-slate-300 hover:border-blue-500 rounded-2xl bg-slate-50 p-4 text-center transition-all duration-300">
-                          <input
-                            key={fileInputKey}
-                            type="file"
-                            multiple
-                            accept="image/*,.pdf,.doc,.docx,.xlsx,.zip"
-                            onChange={handleFileChange}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                          />
-                          <FiFileText className="mx-auto mb-1.5 text-slate-500 group-hover:text-blue-600 transition-colors" size={24} />
-                          <p className="text-xs font-bold text-slate-600 group-hover:text-slate-800">
-                            Upload files or drag & drop
-                          </p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            PDF, Word, Excel, Images, ZIP (max 10MB each)
-                          </p>
-                        </div>
-
-                        {taskFormFiles.length > 0 && (
-                          <div className="border border-slate-200 rounded-xl bg-slate-50 p-2 space-y-1">
-                            <p className="text-[10px] text-emerald-700 font-bold px-1.5 py-0.5">
-                              ✓ {taskFormFiles.length} file(s) staged for upload:
-                            </p>
-                            <div className="max-h-[80px] overflow-y-auto custom-scrollbar space-y-0.5 text-[9px] text-slate-600 px-1.5">
-                              {taskFormFiles.map((file, index) => (
-                                <p key={index} className="truncate select-none">
-                                  📎 {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                                </p>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Controls footer */}
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 mt-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  resetForm();
-                }}
-                className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
-              >
-                Cancel
+              <button type="button" onClick={onClose} className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">
+                <FiX size={16} />
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 transition active:scale-98 disabled:opacity-50 text-sm flex items-center justify-center gap-1.5"
-              >
-                {loading ? (
-                  <>
-                    <FiClock className="animate-spin" /> Dispatching Task...
-                  </>
+            </div>
+
+            {/* Error Banner */}
+            {error && (
+              <div className="bg-red-50 border-b border-red-100 text-red-700 px-6 py-2.5 text-xs font-semibold flex items-center gap-2 flex-shrink-0">
+                <FiAlertTriangle size={13} className="flex-shrink-0" /><span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+
+                {/* Task Title */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Task Title <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400"
+                    placeholder="What needs to be done?" />
+                </div>
+
+                {/* Description */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Description</label>
+                  <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400 resize-none"
+                    rows="3" placeholder="Describe the task and any important details..." />
+                </div>
+
+                {/* Due Date */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Due Date <span className="text-red-500">*</span></label>
+                  <input type="date" required min={new Date().toISOString().split("T")[0]} value={formData.dueDate}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer" />
+                </div>
+
+                {/* Priority */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Priority</label>
+                  <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer">
+                    <option value="low">🟢 Low</option>
+                    <option value="medium">🟡 Medium</option>
+                    <option value="high">🟠 High</option>
+                    <option value="urgent">🔴 Urgent</option>
+                  </select>
+                </div>
+
+                {/* Branch */}
+                <SearchableCombobox label="Branch" options={branchOptions} value={formData.branch} onChange={handleBranchChange} disabled={branchLocked} placeholder="Select branch..." isClearable={false} />
+
+                {/* Department */}
+                <SearchableCombobox label="Department" options={deptOptions} value={formData.department} onChange={handleDeptChange} disabled={deptLocked} placeholder="Select department..." isClearable={false} />
+
+                {/* Team Task Toggle */}
+                <label className="flex items-center justify-between gap-3 cursor-pointer bg-slate-50 border border-slate-200 hover:border-blue-300 rounded-xl px-4 py-3 transition select-none">
+                  <div>
+                    <p className="text-xs font-bold text-slate-700">Team Task</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Assign to multiple people at once</p>
+                  </div>
+                  <input type="checkbox" checked={isTeamTask} onChange={(e) => { setIsTeamTask(e.target.checked); if (e.target.checked) setFormData(prev => ({ ...prev, assignedTo: "" })); else setSelectedTeam([]); }}
+                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20" />
+                </label>
+
+                {/* Assignee — shows only employees in selected branch + department */}
+                {!isTeamTask ? (
+                  <div className="flex flex-col gap-1.5">
+                    <SearchableCombobox
+                      label="Assign To *"
+                      options={assigneeOptions}
+                      value={formData.assignedTo}
+                      onChange={handleAssigneeChange}
+                      placeholder={usersLoading ? "Loading employees..." : filteredUsers.length === 0 ? "No employees in this branch/department" : "Select employee..."}
+                      isClearable={true}
+                    />
+                    <p className="text-[10px] text-slate-400 px-1">
+                      {usersLoading ? "Loading..." : `${filteredUsers.length} employee${filteredUsers.length !== 1 ? "s" : ""} in ${formData.branch} — ${formData.department}`}
+                    </p>
+                  </div>
                 ) : (
-                  <>
-                    <FiCheckCircle /> Dispatch Standard Task
-                  </>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-600">Select Team Members <span className="text-red-500">*</span></label>
+                    {usersLoading ? (
+                      <div className="py-6 text-center text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl">Loading employees...</div>
+                    ) : filteredUsers.length === 0 ? (
+                      <div className="py-5 text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl">
+                        No employees found in {formData.branch} — {formData.department}
+                      </div>
+                    ) : (
+                      <div className="border border-slate-200 rounded-xl bg-slate-50 p-2 space-y-1 max-h-[160px] overflow-y-auto">
+                        {filteredUsers.map((u) => {
+                          const isChecked = selectedTeam.includes(u._id);
+                          return (
+                            <label key={u._id} className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition select-none text-xs ${isChecked ? "bg-blue-50 border border-blue-200 text-blue-700" : "hover:bg-slate-100 text-slate-700"}`}>
+                              <span className="font-medium">{u.name} ({u.employeeId || u._id})</span>
+                              <input type="checkbox" checked={isChecked}
+                                onChange={() => setSelectedTeam((prev) => prev.includes(u._id) ? prev.filter((id) => id !== u._id) : [...prev, u._id])}
+                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20" />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {selectedTeam.length > 0 && <p className="text-[10px] text-emerald-600 font-semibold px-1">✓ {selectedTeam.length} member{selectedTeam.length !== 1 ? "s" : ""} selected</p>}
+                  </div>
                 )}
-              </button>
-            </div>
-          </form>
+
+                {/* Attachments */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Attachments <span className="text-slate-400 font-normal">(optional)</span></label>
+                  <div className="relative border border-dashed border-slate-300 hover:border-blue-400 rounded-xl bg-slate-50 p-4 text-center transition cursor-pointer">
+                    <input key={fileInputKey} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xlsx,.zip" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <p className="text-xs text-slate-500">📎 Click to upload files (PDF, Word, Excel, Images, ZIP)</p>
+                  </div>
+                  {taskFormFiles.length > 0 && <p className="text-[10px] text-emerald-600 font-semibold px-1">✓ {taskFormFiles.length} file(s) ready to upload</p>}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+                <button type="button" onClick={() => { onClose(); resetForm(); }}
+                  className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold transition text-sm">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm transition disabled:opacity-50 text-sm flex items-center justify-center gap-1.5">
+                  {loading ? <><FiClock className="animate-spin" /> Assigning...</> : <><FiCheckCircle /> Assign Task</>}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}
