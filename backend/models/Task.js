@@ -340,6 +340,8 @@ taskSchema.methods.reassignTask = function(newAssigneeId, reason, attachments = 
 
 
 // Indexes for optimized query performance
+taskSchema.index({ assignedTo: 1 });
+taskSchema.index({ assignedTeam: 1 });
 taskSchema.index({ assignedTo: 1, status: 1 });
 taskSchema.index({ assignedTeam: 1, status: 1 });
 taskSchema.index({ department: 1, branch: 1, status: 1 });

@@ -300,8 +300,24 @@ export const createTask = async (req, res) => {
 export const getTasks = async (req, res) => {
     try {
         const { role, _id } = req.user;
-        const { page = 1, limit = 50, search, status, priority, startDate, endDate, department, branch, nextCursor } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        
+        // Sanitize string query parameters to prevent NoSQL query parameter object injection
+        const cleanQueryParam = (val) => (typeof val === 'string' ? val : undefined);
+        
+        const search = cleanQueryParam(req.query.search);
+        const status = cleanQueryParam(req.query.status);
+        const priority = cleanQueryParam(req.query.priority);
+        const startDate = cleanQueryParam(req.query.startDate);
+        const endDate = cleanQueryParam(req.query.endDate);
+        const department = cleanQueryParam(req.query.department);
+        const branch = cleanQueryParam(req.query.branch);
+        const nextCursor = cleanQueryParam(req.query.nextCursor);
+        const assignedTo = cleanQueryParam(req.query.assignedTo);
+        const timeFilter = cleanQueryParam(req.query.timeFilter);
+        
+        const pageVal = Math.max(1, parseInt(req.query.page) || 1);
+        const limitVal = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
+        const skip = (pageVal - 1) * limitVal;
         
         // Base query from auth middleware
         let query = { ...(req.taskFilter || {}) };
@@ -330,10 +346,10 @@ export const getTasks = async (req, res) => {
             query.branch = branch;
         }
 
-        if (req.query.assignedTo) {
+        if (assignedTo) {
             const assignedFilter = [
-                { assignedTo: req.query.assignedTo },
-                { assignedTeam: req.query.assignedTo }
+                { assignedTo: assignedTo },
+                { assignedTeam: assignedTo }
             ];
             query.$or = query.$or ? [...query.$or, ...assignedFilter] : assignedFilter;
         }
@@ -357,7 +373,6 @@ export const getTasks = async (req, res) => {
         }
 
         // Robust Date Filtering (Supports named filters or custom ranges)
-        const timeFilter = req.query.timeFilter;
         if (timeFilter && timeFilter !== 'all') {
             query.createdAt = query.createdAt || {};
             const now = new Date();
@@ -397,7 +412,6 @@ export const getTasks = async (req, res) => {
             tasksQuery = tasksQuery.skip(skip);
         }
 
-        const limitVal = parseInt(limit);
         const tasks = await tasksQuery
             .limit(limitVal + 1)
             .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
@@ -423,7 +437,7 @@ export const getTasks = async (req, res) => {
             nextCursor: nextCursorEncoded,
             pagination: {
                 total,
-                page: nextCursor ? null : parseInt(page),
+                page: nextCursor ? null : pageVal,
                 pages: Math.ceil(total / limitVal)
             }
         });
@@ -725,21 +739,28 @@ export const submitTaskWithTime = async (req, res) => {
             timeSpent = Math.floor((now - task.startedAt) / (1000 * 60));
         }
         
-        if (task.attempts.length > 0) {
-            const currentAttempt = task.attempts[task.attempts.length - 1];
-            currentAttempt.submittedAt = now;
-            currentAttempt.timeSpent = timeSpent;
-            currentAttempt.submissionNote = submissionNote;
-            const uploaded = (req.uploadedFiles || []).map(f => ({
-                filename: f.filename,
-                fileUrl: f.fileUrl,
-                publicId: f.publicId,
-                fileType: f.mimeType,
-                fileSize: f.fileSize
-            }));
-            if (uploaded.length > 0) currentAttempt.submissionAttachments = uploaded;
-            currentAttempt.status = 'submitted';
+        if (!task.attempts) task.attempts = [];
+        if (task.attempts.length === 0) {
+            task.attempts.push({
+                attemptNumber: task.currentAttempt || 1,
+                startedAt: task.startedAt || now,
+                status: 'in-progress'
+            });
         }
+        
+        const currentAttempt = task.attempts[task.attempts.length - 1];
+        currentAttempt.submittedAt = now;
+        currentAttempt.timeSpent = timeSpent;
+        currentAttempt.submissionNote = submissionNote;
+        const uploaded = (req.uploadedFiles || []).map(f => ({
+            filename: f.filename,
+            fileUrl: f.fileUrl,
+            publicId: f.publicId,
+            fileType: f.mimeType,
+            fileSize: f.fileSize
+        }));
+        if (uploaded.length > 0) currentAttempt.submissionAttachments = uploaded;
+        currentAttempt.status = 'submitted';
         
         task.submittedAt = now;
         task.submissionNote = submissionNote;
@@ -783,7 +804,9 @@ export const submitTaskWithTime = async (req, res) => {
             reviewerId = task.assignedBy;
         }
 
-        const uploadedFiles = task.attempts[task.attempts.length - 1]?.submissionAttachments || [];
+        const uploadedFiles = (task.attempts && task.attempts.length > 0)
+            ? (task.attempts[task.attempts.length - 1]?.submissionAttachments || [])
+            : [];
         
         if (reviewerId) {
             const reviewer = await User.findById(reviewerId).select('email name');
@@ -1023,13 +1046,27 @@ export const reviewTask = async (req, res) => {
         }
 
         task.adminComments = adminComments || (status === 'approved' ? 'Task approved.' : 'Task needs revision.');
-        if (task.attempts.length > 0) {
+        if (task.attempts && task.attempts.length > 0) {
             const lastAttempt = task.attempts[task.attempts.length - 1];
-            lastAttempt.status = status;
-            lastAttempt.adminFeedback = adminComments;
+            if (lastAttempt) {
+                lastAttempt.status = status;
+                lastAttempt.adminFeedback = adminComments;
+            }
         }
 
-        await task.save();
+        try {
+            task.$where = { __v: task.__v };
+            await task.save();
+        } catch (error) {
+            if (error.name === 'VersionError' || error.name === 'DocumentNotFoundError' || error.message.includes('No document found')) {
+                console.error('OCC write collision detected for task:', task._id);
+                return res.status(409).json({ 
+                    success: false, 
+                    message: 'Conflict: This task has been modified or reviewed by another user. Please refresh and try again.' 
+                });
+            }
+            throw error;
+        }
 
         // ── Email routing based on review stage ──────────────────────────────
         const assignee = await User.findById(task.assignedTo).select('email name');
@@ -1483,9 +1520,19 @@ export const getEmployeeSummary = async (req, res) => {
         const employeeIds = employees.map(e => e._id);
         const now = new Date();
 
+        // Build optimization match filters to leverage indexes on Task collection first
+        let taskMatch = {};
+        if (role === 'department-head') {
+            taskMatch.department = department;
+            taskMatch.branch = branch;
+        } else if (role === 'branch-head') {
+            taskMatch.branch = branch;
+        }
+
         const taskStats = await Task.aggregate([
             {
                 $match: {
+                    ...taskMatch,
                     $or: [
                         { assignedTo: { $in: employeeIds } },
                         { assignedTeam: { $in: employeeIds } }
