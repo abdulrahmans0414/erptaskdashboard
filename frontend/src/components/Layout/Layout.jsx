@@ -67,7 +67,7 @@ const Layout = ({ children }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 selection:bg-blue-500/10 selection:text-blue-600 antialiased">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 selection:bg-blue-500/10 selection:text-blue-600 subpixel-antialiased">
       {/* Left Navigation Shell */}
       <Sidebar
         collapsed={sidebarCollapsed}

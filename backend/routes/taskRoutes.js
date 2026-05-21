@@ -13,22 +13,24 @@ import { validate, createTaskSchema } from '../middleware/validate.js';
 
 const router = express.Router();
 
+// All routes require token authentication
 router.use(protect);
 
-// Dashboard & Reports
+// Dashboard, Analytical Stats & Management Reports
 router.get('/dashboard/stats', filterTasksByUserAccess, getDashboardStats);
 router.get('/employees/summary', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), getEmployeeSummary);
 router.get('/reports/time', authorize('admin', 'it', 'department-head', 'hr'), getTimeReport);
 
-// Department & Team
+// Scoped Departmental Tasks & Collaborative Team Workflows
 router.get('/department/:department', authorize('admin', 'department-head'), getDepartmentTasks);
 router.get('/team', getTeamTasks);
 router.put('/team-progress/:taskId', updateTeamProgress);
 
-// ✅ IMPORTANT: Specific routes BEFORE /:id routes
+// Recycle Bin & Restore workflows (Precedence over parametric routes)
 router.get('/deleted/all', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), getDeletedTasks);
 router.post('/:id/restore', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), restoreTask);
 
+// Primary Task Listing & Task Creation
 router.get('/', filterTasksByUserAccess, getTasks);
 router.post(
     '/',
@@ -38,7 +40,7 @@ router.post(
     createTask
 );
 
-// ✅ These MUST come before /:id
+// Task Status Transitions & Rework Pipelines (Precedence over basic parameters)
 router.put('/:id/start', startTask);
 router.put(
     '/:id/submit',
@@ -50,7 +52,7 @@ router.put('/:id/status', updateTaskStatus);
 router.put('/:id/comment', addComment);
 router.put('/:id/reassign', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), reassignTask);
 
-// Then these
+// Parametric detail retrieval, structural updates & soft-deletions
 router.get('/:id', canModifyTask, getTaskById);
 router.put('/:id', canModifyTask, updateTask);
 router.delete('/:id', deleteTask);

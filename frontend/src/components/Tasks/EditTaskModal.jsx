@@ -264,26 +264,26 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#060814]/80 backdrop-blur-md flex items-center justify-center p-4 z-[99] overflow-y-auto">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased subpixel-antialiased">
       <AnimatePresence>
         <motion.div
           initial={{ opacity: 0, scale: 0.98, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 20 }}
-          className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden"
+          className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden text-slate-800"
         >
           {/* Header Bar */}
-          <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-800 sticky top-0 bg-slate-900 z-20">
+          <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-150 sticky top-0 bg-white z-20">
             <div>
-              <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 ✏️ Update Task Specifications
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">Modify parameters or reassign active workload</p>
+              <p className="text-xs text-slate-500 mt-0.5">Modify parameters or reassign active workload</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 hover:text-white flex items-center justify-center transition"
+              className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition"
             >
               <FiX size={16} />
             </button>
@@ -291,7 +291,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
 
           {/* Alert Notification Banner */}
           {error && (
-            <div className="bg-red-500/10 border-b border-red-500/20 text-red-400 px-6 py-3 text-xs font-semibold flex items-center gap-2">
+            <div className="bg-red-50 border-b border-red-100 text-red-650 px-6 py-3 text-xs font-semibold flex items-center gap-2">
               <FiAlertTriangle size={14} className="flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -299,11 +299,11 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
 
           {/* Form Split Pane body */}
           <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-y-auto md:grid md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-850">
+            <div className="flex-1 overflow-y-auto md:grid md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200">
               
               {/* Left Pane: Core Task Parameters */}
               <div className="p-6 space-y-4 md:col-span-7">
-                <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                   <span>01.</span> Task Specifications & Parameters
                 </h3>
 
@@ -316,7 +316,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                     required
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-150 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 hover:border-slate-700 transition placeholder-slate-650"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition-all placeholder-slate-400"
                     placeholder="Provide a concise title for the deliverable..."
                   />
                 </div>
@@ -328,7 +328,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-150 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 hover:border-slate-700 transition placeholder-slate-650"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition-all placeholder-slate-400"
                     rows="3.5"
                     placeholder="Explain expectations, metrics for success, and contextual guidelines..."
                   />
@@ -345,7 +345,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                       min={new Date().toISOString().split("T")[0]}
                       value={formData.dueDate}
                       onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                      className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-150 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 hover:border-slate-700 transition"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition-all cursor-pointer"
                     />
                   </div>
 
@@ -356,12 +356,12 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                     <select
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      className="w-full bg-slate-950/70 border border-slate-800 text-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 hover:border-slate-700 transition cursor-pointer"
+                      className="w-full bg-white border border-slate-200 text-slate-850 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition cursor-pointer"
                     >
-                      <option value="low" className="bg-slate-900">🟢 Low Priority</option>
-                      <option value="medium" className="bg-slate-900">🟡 Medium Priority</option>
-                      <option value="high" className="bg-slate-900">🟠 High Priority</option>
-                      <option value="urgent" className="bg-slate-900">🔴 Urgent Backlog</option>
+                      <option value="low" className="bg-white text-slate-850">🟢 Low Priority</option>
+                      <option value="medium" className="bg-white text-slate-850">🟡 Medium Priority</option>
+                      <option value="high" className="bg-white text-slate-850">🟠 High Priority</option>
+                      <option value="urgent" className="bg-white text-slate-850">🔴 Urgent Backlog</option>
                     </select>
                   </div>
                 </div>
@@ -379,7 +379,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                         step="0.5"
                         value={formData.estimatedHours}
                         onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
-                        className="w-full bg-slate-950/70 border border-slate-800 rounded-xl pl-4 pr-12 py-2.5 text-sm text-slate-150 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 hover:border-slate-700 transition placeholder-slate-650"
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-12 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition placeholder-slate-400"
                         placeholder="e.g. 12"
                       />
                     </div>
@@ -397,7 +397,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                         max="59"
                         value={formData.estimatedMinutes}
                         onChange={(e) => setFormData({ ...formData, estimatedMinutes: e.target.value })}
-                        className="w-full bg-slate-950/70 border border-slate-800 rounded-xl pl-4 pr-12 py-2.5 text-sm text-slate-150 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 hover:border-slate-700 transition placeholder-slate-650"
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-12 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition placeholder-slate-400"
                         placeholder="e.g. 30"
                       />
                     </div>
@@ -409,7 +409,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
               <div className="p-6 md:col-span-5 flex flex-col space-y-4">
                 
                 {/* Framer Motion Tab Headers */}
-                <div className="flex border-b border-slate-850 p-0.5 bg-slate-950/60 rounded-xl relative">
+                <div className="flex border border-slate-200 p-0.5 bg-slate-50 rounded-xl relative">
                   {[
                     { id: "assignment", label: "Assignment", icon: <FiUsers /> },
                     { id: "scope", label: "Scope & Assets", icon: <FiList /> }
@@ -418,13 +418,13 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                       key={t.id}
                       type="button"
                       onClick={() => setActiveTab(t.id)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === t.id ? "text-slate-100" : "text-slate-500 hover:text-slate-300"}`}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === t.id ? "text-slate-800" : "text-slate-500 hover:text-slate-700"}`}
                     >
                       {t.icon} {t.label}
                       {activeTab === t.id && (
                         <motion.div
                           layoutId="editTaskTabOutline"
-                          className="absolute inset-0 bg-slate-900 border border-slate-800 rounded-lg -z-10 shadow-lg"
+                          className="absolute inset-0 bg-white border border-slate-200 rounded-lg -z-10 shadow-sm"
                           transition={{ type: "spring", stiffness: 350, damping: 25 }}
                         />
                       )}
@@ -441,7 +441,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                       animate={{ opacity: 1, x: 0 }}
                       className="space-y-4"
                     >
-                      <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                      <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                         <span>02.</span> Corporate Routing Matrix
                       </h3>
 
@@ -468,9 +468,9 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                       </div>
 
                       {/* Team Assignment Toggle */}
-                      <label className="flex items-start justify-between gap-3 cursor-pointer bg-slate-950/50 border border-slate-850 hover:border-slate-800 rounded-2xl px-4 py-3 transition-all select-none">
+                      <label className="flex items-start justify-between gap-3 cursor-pointer bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-2xl px-4 py-3 transition-all select-none">
                         <div className="space-y-0.5">
-                          <p className="text-xs font-bold uppercase tracking-wider text-slate-350 flex items-center gap-1">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
                             <FiUsers /> Establish Team Task
                           </p>
                           <p className="text-[11px] text-slate-500 leading-tight">Distribute workload to multiple team members concurrently</p>
@@ -483,13 +483,13 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                             if (e.target.checked) setFormData(prev => ({ ...prev, assignedTo: "" }));
                             else setSelectedTeam([]);
                           }}
-                          className="w-5 h-5 rounded-lg border-slate-850 bg-slate-900 text-sky-600 focus:ring-sky-500/30"
+                          className="w-5 h-5 rounded-lg border-slate-300 bg-white text-blue-650 focus:ring-blue-500/20"
                         />
                       </label>
 
                       {/* Dynamic Target Operator selection */}
                       {!isTeamTask ? (
-                        <div className="space-y-2 border-t border-slate-850/60 pt-3">
+                        <div className="space-y-2 border-t border-slate-200 pt-3">
                           <SearchableCombobox
                             label="Target Individual Operator"
                             options={assigneeOptions}
@@ -503,7 +503,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                           </p>
                         </div>
                       ) : (
-                        <div className="space-y-2.5 border-t border-slate-850/60 pt-3">
+                        <div className="space-y-2.5 border-t border-slate-200 pt-3">
                           <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
                             Select Team Operators <span className="text-red-500">*</span>
                           </label>
@@ -512,24 +512,24 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                           </p>
 
                           {usersLoading ? (
-                            <div className="py-8 text-center text-xs text-slate-500 bg-slate-950/30 border border-slate-850 rounded-xl flex items-center justify-center gap-1.5">
-                              <FiRefreshCw className="animate-spin text-sky-500" /> Loading employees...
+                            <div className="py-8 text-center text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center gap-1.5">
+                              <FiRefreshCw className="animate-spin text-blue-600" /> Loading employees...
                             </div>
                           ) : filteredUsers.length === 0 ? (
-                            <div className="py-6 text-center text-xs text-amber-500 bg-amber-500/5 border border-amber-500/10 rounded-xl">
+                            <div className="py-6 text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl">
                               ⚠️ No active personnel allocated in this scope division.
                             </div>
                           ) : (
-                            <div className="max-h-[160px] overflow-y-auto custom-scrollbar border border-slate-850 rounded-xl bg-slate-950/60 p-2 space-y-1.5">
+                            <div className="max-h-[160px] overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl bg-slate-50 p-2 space-y-1.5">
                               {filteredUsers.map((u) => {
                                 const isChecked = selectedTeam.includes(u._id);
                                 return (
                                   <label
                                     key={u._id}
-                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition select-none text-xs ${isChecked ? "bg-sky-500/10 border border-sky-500/20 text-slate-100" : "bg-transparent border border-transparent text-slate-400 hover:bg-slate-900"}`}
+                                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition select-none text-xs ${isChecked ? "bg-blue-50 border border-blue-100 text-blue-700" : "bg-transparent border border-transparent text-slate-600 hover:bg-slate-100"}`}
                                   >
                                     <div className="flex flex-col">
-                                      <span className="font-bold text-slate-200">{u.name}</span>
+                                      <span className="font-bold text-slate-800">{u.name}</span>
                                       <span className="text-[10px] text-slate-500 font-semibold mt-0.5">ID: {u.employeeId || "—"} • {u.role}</span>
                                     </div>
                                     <input
@@ -542,7 +542,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                                             : [...prev, u._id]
                                         )
                                       }
-                                      className="w-4.5 h-4.5 rounded border-slate-800 bg-slate-900 text-sky-600 focus:ring-sky-500/30"
+                                      className="w-4.5 h-4.5 rounded border-slate-300 bg-white text-blue-650 focus:ring-blue-500/20"
                                     />
                                   </label>
                                 );
@@ -551,7 +551,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                           )}
                           
                           {selectedTeam.length > 0 && (
-                            <p className="text-[10px] text-emerald-400 font-bold px-1">
+                            <p className="text-[10px] text-emerald-600 font-bold px-1">
                               ✓ {selectedTeam.length} operators assigned to team execution
                             </p>
                           )}
@@ -567,7 +567,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                       animate={{ opacity: 1, x: 0 }}
                       className="space-y-4"
                     >
-                      <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                      <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                         <span>03.</span> Cross-Department Collaboration
                       </h3>
 
@@ -579,20 +579,20 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                           Grant other division divisions visibility or joint execution parameters:
                         </p>
                         
-                        <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto custom-scrollbar border border-slate-850 rounded-xl bg-slate-950/60 p-2.5">
+                        <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl bg-slate-50 p-2.5">
                           {departments.map((dept) => {
                             if (dept === formData.department) return null; // Avoid self-collaborating
                             const isChecked = collaboratingDepts.includes(dept);
                             return (
                               <label
                                 key={dept}
-                                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition select-none text-xs border ${isChecked ? "bg-sky-500/5 border-sky-500/20 text-slate-200" : "bg-transparent border-transparent text-slate-500 hover:bg-slate-900 hover:text-slate-400"}`}
+                                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition select-none text-xs border ${isChecked ? "bg-blue-50 border border-blue-100 text-blue-700" : "bg-transparent border border-transparent text-slate-600 hover:bg-slate-100"}`}
                               >
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
                                   onChange={() => handleCollaboratingDeptToggle(dept)}
-                                  className="w-4 h-4 rounded border-slate-800 bg-slate-900 text-sky-600 focus:ring-sky-500/30"
+                                  className="w-4 h-4 rounded border-slate-300 bg-white text-blue-650 focus:ring-blue-500/20"
                                 />
                                 <span>{dept}</span>
                               </label>
@@ -607,18 +607,18 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
             </div>
 
             {/* Modal Controls footer */}
-            <div className="flex gap-3 px-6 py-4 border-t border-slate-800 bg-slate-950/50 mt-auto">
+            <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 mt-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition text-sm"
+                className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold shadow-lg shadow-sky-500/10 transition active:scale-98 disabled:opacity-50 text-sm flex items-center justify-center gap-1.5"
+                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 transition active:scale-98 disabled:opacity-50 text-sm flex items-center justify-center gap-1.5"
               >
                 {loading ? "Updating..." : "Update Task Specifications"}
               </button>

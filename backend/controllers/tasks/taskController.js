@@ -3,15 +3,8 @@ import User from '../../models/User.js';
 import Notification from '../../models/Notification.js';
 import Settings from '../../models/Settings.js';
 import { sendEmailNotification } from '../../utils/emailService.js';
-import eventBus, { emitDataChange, EVENTS } from '../../utils/eventBus.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import eventBus, { EVENTS } from '../../utils/eventBus.js';
 import { deleteFromCloudinary } from '../../middleware/uploadMiddleware.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 
 // ============ HELPER FUNCTIONS ============
 const createNotification = async (userId, title, message, type, taskId) => {
@@ -33,25 +26,34 @@ const createBulkNotifications = async (userIds, title, message, type, taskId) =>
     }
 };
 
+// Safe JSON array parsing helper
+const parseMaybeJsonArray = (val) => {
+    if (!val) return undefined;
+    if (Array.isArray(val)) return val;
+    if (typeof val !== 'string') return undefined;
+    const trimmed = val.trim();
+    if (!trimmed) return undefined;
+    try {
+        const parsed = JSON.parse(trimmed);
+        return Array.isArray(parsed) ? parsed : undefined;
+    } catch {
+        if (trimmed.includes(',')) return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        return undefined;
+    }
+};
+
+// Reusable standard deep population query
+const deepPopulateTask = (query) => {
+    return query
+        .populate('assignedTo assignedBy assignedTeam departmentManager branchHead approvedBy workflow.departmentReview.reviewedBy workflow.branchReview.reviewedBy', 'name email department role branch avatar')
+        .populate('individualProgress.userId', 'name email avatar')
+        .populate('comments.userId', 'name email avatar role')
+        .populate('attempts.comments.userId', 'name email avatar role');
+};
+
 // ============ CREATE TASK ============
 export const createTask = async (req, res) => {
     try {
-        const parseMaybeJsonArray = (val) => {
-            if (!val) return undefined;
-            if (Array.isArray(val)) return val;
-            if (typeof val !== 'string') return undefined;
-            const trimmed = val.trim();
-            if (!trimmed) return undefined;
-            try {
-                const parsed = JSON.parse(trimmed);
-                return Array.isArray(parsed) ? parsed : undefined;
-            } catch {
-                // fallback: comma separated
-                if (trimmed.includes(',')) return trimmed.split(',').map(s => s.trim()).filter(Boolean);
-                return undefined;
-            }
-        };
-
         const { 
             title, description, department, assignedTo, assignedTeam,
             dueDate, priority, estimatedHours, estimatedMinutes, 
@@ -67,30 +69,27 @@ export const createTask = async (req, res) => {
         }
         
         let taskData = {
-            title,
-            description: description || '',
-            department,
+            title: String(title).trim(),
+            description: description ? String(description).trim() : '',
+            department: String(department).trim(),
             assignedBy: req.user._id,
-            dueDate,
-            priority: priority || 'medium',
-            estimatedHours: estimatedHours || 0,
-            estimatedMinutes: estimatedMinutes || 0,
+            dueDate: new Date(dueDate),
+            priority: priority ? String(priority).trim() : 'medium',
+            estimatedHours: estimatedHours ? parseInt(estimatedHours) || 0 : 0,
+            estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) || 0 : 0,
             status: 'pending',
-            branch: branch || req.user.branch || 'Gaurabagh',
-
-            // Optional “form” metadata for overall tracking
-            taskFormName: taskFormName || '',
-            taskFormType: taskFormType || 'other',
+            branch: branch ? String(branch).trim() : (req.user.branch || 'Gaurabagh'),
+            taskFormName: taskFormName ? String(taskFormName).trim() : '',
+            taskFormType: taskFormType ? String(taskFormType).trim() : 'other',
             taskFormAttachments: []
         };
 
-        // Optional form uploads via Cloudinary middleware
         const uploadedFormFiles = req.uploadedFiles || [];
         if (uploadedFormFiles.length > 0) {
             taskData.taskFormAttachments = uploadedFormFiles.map(f => ({
                 filename: f.filename,
-                fileUrl: f.fileUrl,        // Cloudinary CDN URL - permanent
-                publicId: f.publicId,      // For future deletion
+                fileUrl: f.fileUrl,
+                publicId: f.publicId,
                 fileType: f.mimeType,
                 fileSize: f.fileSize
             }));
@@ -98,18 +97,7 @@ export const createTask = async (req, res) => {
         
         let isTeamTaskBool = false;
         if (typeof isTeamTask === 'string') {
-            const trimmed = isTeamTask.trim().toLowerCase();
-            if (trimmed === 'true') {
-                isTeamTaskBool = true;
-            } else if (trimmed === 'false') {
-                isTeamTaskBool = false;
-            } else {
-                try {
-                    isTeamTaskBool = Boolean(JSON.parse(trimmed));
-                } catch {
-                    isTeamTaskBool = false;
-                }
-            }
+            isTeamTaskBool = isTeamTask.trim().toLowerCase() === 'true';
         } else {
             isTeamTaskBool = Boolean(isTeamTask);
         }
@@ -121,25 +109,14 @@ export const createTask = async (req, res) => {
         } else if (assignedTeam) {
             if (Array.isArray(assignedTeam)) {
                 assignedTeamArr = assignedTeam;
-            } else if (typeof assignedTeam === 'string') {
-                try {
-                    const parsed = JSON.parse(assignedTeam);
-                    if (Array.isArray(parsed)) {
-                        assignedTeamArr = parsed;
-                    } else {
-                        assignedTeamArr = [assignedTeam];
-                    }
-                } catch {
-                    assignedTeamArr = assignedTeam.split(',').map(x => x.trim()).filter(Boolean);
-                }
             } else {
-                assignedTeamArr = [assignedTeam];
+                assignedTeamArr = String(assignedTeam).split(',').map(x => x.trim()).filter(Boolean);
             }
         }
 
         const collaboratingDeptsArr = parseMaybeJsonArray(collaboratingDepartments) || collaboratingDepartments;
 
-        if (isTeamTaskBool && assignedTeamArr && assignedTeamArr.length > 0) {
+        if (isTeamTaskBool && assignedTeamArr.length > 0) {
             taskData.isTeamTask = true;
             taskData.assignedTeam = assignedTeamArr;
             taskData.individualProgress = assignedTeamArr.map(userId => ({
@@ -147,7 +124,7 @@ export const createTask = async (req, res) => {
                 status: 'pending'
             }));
         } else {
-            taskData.assignedTo = assignedTo;
+            taskData.assignedTo = assignedTo ? String(assignedTo) : undefined;
         }
         
         if (collaboratingDeptsArr && collaboratingDeptsArr.length > 0) {
@@ -156,9 +133,7 @@ export const createTask = async (req, res) => {
         
         const task = await Task.create(taskData);
 
-        // Assign reviewers (for notification + access control)
-        // - If creator is department-head/branch-head, they are the reviewer for their stage.
-        // - Otherwise auto-pick by branch/department.
+        // Auto-assign reviewers
         try {
             const creatorRole = req.user.role;
             const reviewerUpdates = {};
@@ -169,7 +144,8 @@ export const createTask = async (req, res) => {
                 const deptHead = await User.findOne({
                     role: 'department-head',
                     department: task.department,
-                    branch: task.branch
+                    branch: task.branch,
+                    isDeleted: { $ne: true }
                 }).select('_id');
                 if (deptHead) reviewerUpdates.departmentManager = deptHead._id;
             }
@@ -179,7 +155,8 @@ export const createTask = async (req, res) => {
             } else {
                 const branchHead = await User.findOne({
                     role: 'branch-head',
-                    branch: task.branch
+                    branch: task.branch,
+                    isDeleted: { $ne: true }
                 }).select('_id');
                 if (branchHead) reviewerUpdates.branchHead = branchHead._id;
             }
@@ -188,20 +165,18 @@ export const createTask = async (req, res) => {
                 await Task.findByIdAndUpdate(task._id, reviewerUpdates);
             }
         } catch (e) {
-            // reviewer assignment is best-effort; task creation should not fail
             console.warn('Reviewer auto-assign failed:', e?.message || e);
         }
         
-        // Send notifications
-        if (taskData.isTeamTask && assignedTeamArr && assignedTeamArr.length > 0) {
+        // Notifications & Emails
+        if (taskData.isTeamTask && assignedTeamArr.length > 0) {
             await createBulkNotifications(
                 assignedTeamArr,
                 'New Team Task Assigned',
-                `You are assigned to team task: "${title}"`,
+                `You are assigned to team task: "${task.title}"`,
                 'task_assigned',
                 task._id
             );
-            // Send email notification to each team member
             for (const memberId of assignedTeamArr) {
                 try {
                     const member = await User.findById(memberId).select('email name');
@@ -223,22 +198,21 @@ export const createTask = async (req, res) => {
                         );
                     }
                 } catch (emailErr) {
-                    console.error(`Failed to send task assignment email to team member ${memberId}:`, emailErr.message);
+                    console.error(`Failed to send email to team member ${memberId}:`, emailErr.message);
                 }
             }
-        } else {
+        } else if (taskData.assignedTo) {
             await createNotification(
-                assignedTo,
+                taskData.assignedTo,
                 'New Task Assigned',
-                `You have been assigned: "${title}"`,
+                `You have been assigned: "${task.title}"`,
                 'task_assigned',
                 task._id
             );
-            // Send Email to the assignee
             try {
-                const assignee = await User.findById(assignedTo).select('email name');
+                const assignee = await User.findById(taskData.assignedTo).select('email name');
                 if (assignee && assignee.email) {
-                    const emailSent = await sendEmailNotification(
+                    await sendEmailNotification(
                         assignee.email,
                         'TASK_ASSIGNED',
                         {
@@ -253,43 +227,15 @@ export const createTask = async (req, res) => {
                         },
                         task.taskFormAttachments
                     );
-                    if (!emailSent) {
-                        console.warn(`Email not sent for task ${task._id} to ${assignee.email}`);
-                        // Notify the creator that email delivery failed
-                        await createNotification(
-                            req.user._id,
-                            'Email Delivery Failed',
-                            `Task "${title}" created. However, email notification could not be sent to ${assignee.email}. Please check SMTP settings.`,
-                            'task_updated',
-                            task._id
-                        );
-                    }
-                } else {
-                    console.warn(`No email address found for assignee ${assignedTo}`);
                 }
             } catch (emailErr) {
                 console.error('Failed to send task assignment email:', emailErr.message);
-                // Notify creator about email failure without blocking task creation
-                try {
-                    await createNotification(
-                        req.user._id,
-                        'Email Delivery Failed',
-                        `Task "${title}" was created successfully, but email notification failed: ${emailErr.message}`,
-                        'task_updated',
-                        task._id
-                    );
-                } catch (notifErr) {
-                    console.error('Failed to create email failure notification:', notifErr.message);
-                }
             }
         }
         
-        const populatedTask = await Task.findById(task._id)
-            .populate('assignedTo assignedBy assignedTeam', 'name email department role')
-            .populate('individualProgress.userId', 'name email');
-        
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
         res.status(201).json({ success: true, data: populatedTask });
-        try { eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED }); } catch(e) { console.warn('eventBus emit error:', e.message); }
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         console.error('Create task error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -299,10 +245,8 @@ export const createTask = async (req, res) => {
 // ============ GET TASKS ============
 export const getTasks = async (req, res) => {
     try {
-        const { role, _id } = req.user;
-        
-        // Sanitize string query parameters to prevent NoSQL query parameter object injection
-        const cleanQueryParam = (val) => (typeof val === 'string' ? val : undefined);
+        const { role } = req.user;
+        const cleanQueryParam = (val) => (typeof val === 'string' ? val.trim() : undefined);
         
         const search = cleanQueryParam(req.query.search);
         const status = cleanQueryParam(req.query.status);
@@ -319,7 +263,6 @@ export const getTasks = async (req, res) => {
         const limitVal = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
         const skip = (pageVal - 1) * limitVal;
         
-        // Base query from auth middleware
         let query = { ...(req.taskFilter || {}) };
         query.isDeleted = { $ne: true };
 
@@ -339,7 +282,6 @@ export const getTasks = async (req, res) => {
             }
         }
 
-        // Additional filter drills for management
         if (department && department !== 'all' && ['admin', 'branch-head', 'hr', 'it'].includes(role)) {
             query.department = department;
         }
@@ -359,11 +301,9 @@ export const getTasks = async (req, res) => {
         
         if (search) {
             query.$and = query.$and || [];
-            if (search.trim().length >= 3) {
-                // Highly optimized MongoDB text search index lookup
+            if (search.length >= 3) {
                 query.$and.push({ $text: { $search: search } });
             } else {
-                // Fallback for short terms to preserve partial matching
                 query.$and.push({
                     $or: [
                         { title: { $regex: search, $options: 'i' } },
@@ -373,7 +313,6 @@ export const getTasks = async (req, res) => {
             }
         }
 
-        // Robust Date Filtering (Supports named filters or custom ranges)
         if (timeFilter && timeFilter !== 'all') {
             query.createdAt = query.createdAt || {};
             const now = new Date();
@@ -413,10 +352,7 @@ export const getTasks = async (req, res) => {
             tasksQuery = tasksQuery.skip(skip);
         }
 
-        const tasks = await tasksQuery
-            .limit(limitVal + 1)
-            .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
-            .lean();
+        const tasks = await deepPopulateTask(tasksQuery.limit(limitVal + 1)).lean();
 
         const hasNextPage = tasks.length > limitVal;
         if (hasNextPage) {
@@ -452,10 +388,7 @@ export const getTasks = async (req, res) => {
 export const getTaskById = async (req, res) => {
     try {
         const taskId = String(req.task?._id || req.params.id);
-        const task = await Task.findOne({ _id: taskId, isDeleted: { $ne: true } })
-            .populate('assignedTo assignedBy assignedTeam', 'name email department role')
-            .populate('individualProgress.userId', 'name email')
-            .lean();
+        const task = await deepPopulateTask(Task.findOne({ _id: taskId, isDeleted: { $ne: true } })).lean();
         
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
@@ -483,37 +416,33 @@ export const updateTask = async (req, res) => {
         const canEditAll = ['admin', 'it', 'department-head', 'branch-head', 'hr'].includes(req.user.role);
 
         if (canEditAll) {
-            if (title) task.title = title;
-            if (description !== undefined) task.description = description;
-            if (department) task.department = department;
-            if (dueDate) task.dueDate = dueDate;
-            if (priority) task.priority = priority;
-            if (branch) task.branch = branch;
-            if (estimatedHours !== undefined) task.estimatedHours = estimatedHours;
-            if (estimatedMinutes !== undefined) task.estimatedMinutes = estimatedMinutes;
+            if (title) task.title = String(title).trim();
+            if (description !== undefined) task.description = String(description).trim();
+            if (department) task.department = String(department).trim();
+            if (dueDate) task.dueDate = new Date(dueDate);
+            if (priority) task.priority = String(priority).trim();
+            if (branch) task.branch = String(branch).trim();
+            if (estimatedHours !== undefined) task.estimatedHours = parseInt(estimatedHours) || 0;
+            if (estimatedMinutes !== undefined) task.estimatedMinutes = parseInt(estimatedMinutes) || 0;
             
-            // Team Task parameters support
-            if (isTeamTask !== undefined) task.isTeamTask = isTeamTask;
+            if (isTeamTask !== undefined) task.isTeamTask = Boolean(isTeamTask);
             
-            if (isTeamTask) {
+            if (task.isTeamTask) {
                 if (assignedTeam) task.assignedTeam = assignedTeam;
                 if (collaboratingDepartments) task.collaboratingDepartments = collaboratingDepartments;
-                task.assignedTo = null; // Clear individual assignee if it becomes a team task
+                task.assignedTo = null;
             } else {
                 if (assignedTo !== undefined) task.assignedTo = assignedTo || null;
                 task.assignedTeam = [];
                 task.collaboratingDepartments = [];
             }
         } else {
-            // Employees are not allowed to change task metadata.
-            if (description !== undefined) task.description = description;
+            if (description !== undefined) task.description = String(description).trim();
         }
         
         await task.save();
         
-        const updatedTask = await Task.findById(task._id)
-            .populate('assignedTo assignedBy assignedTeam', 'name email department');
-        
+        const updatedTask = await deepPopulateTask(Task.findById(task._id));
         res.json({ success: true, data: updatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
@@ -530,12 +459,10 @@ export const deleteTask = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
 
-        // Only Admin or the user who created the task can delete it
         if (req.user.role !== 'admin' && task.assignedBy.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ success: false, message: 'Not authorized to delete this task. Only Admins or the task creator can delete it.' });
+            return res.status(403).json({ success: false, message: 'Not authorized to delete this task' });
         }
 
-        // SOFT DELETE instead of physical delete:
         task.isDeleted = true;
         task.deletedAt = new Date();
         await task.save();
@@ -550,10 +477,7 @@ export const deleteTask = async (req, res) => {
 // ============ GET DELETED TASKS ============
 export const getDeletedTasks = async (req, res) => {
     try {
-        const tasks = await Task.find({ isDeleted: true })
-            .populate('assignedTo assignedBy assignedTeam', 'name email department role branch avatar')
-            .sort({ deletedAt: -1 })
-            .lean();
+        const tasks = await deepPopulateTask(Task.find({ isDeleted: true }).sort({ deletedAt: -1 })).lean();
         res.json({ success: true, data: tasks });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -573,14 +497,15 @@ export const restoreTask = async (req, res) => {
         task.deletedAt = undefined;
         await task.save();
 
-        res.json({ success: true, message: 'Task restored successfully', data: task });
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        res.json({ success: true, message: 'Task restored successfully', data: populatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
 };
 
-// ============ START TASK - FIXED ============
+// ============ START TASK ============
 export const startTask = async (req, res) => {
     try {
         const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
@@ -592,12 +517,6 @@ export const startTask = async (req, res) => {
         const userId = req.user._id.toString();
         const isAssigned = task.assignedTo?.toString() === userId;
         const isTeamMember = task.assignedTeam?.some(m => m.toString() === userId);
-        const isAdmin = req.user.role === 'admin';
-        const isDeptHead = req.user.role === 'department-head' && task.department === req.user.department && task.branch === req.user.branch;
-        const isBranchHead = req.user.role === 'branch-head' && task.branch === req.user.branch;
-
-        const isDeptReviewer = isDeptHead && (!task.departmentManager || task.departmentManager.toString() === req.user._id.toString());
-        const isBranchReviewer = isBranchHead && (!task.branchHead || task.branchHead.toString() === req.user._id.toString());
         
         if (!isAssigned && !isTeamMember) {
             return res.status(403).json({ 
@@ -617,18 +536,9 @@ export const startTask = async (req, res) => {
         task.startedAt = new Date();
         task.currentAttempt = (task.currentAttempt || 0) + 1;
 
-        // Reset review flow on new start (employee rework after rejection)
         if (!task.workflow) task.workflow = {};
-        if (!task.workflow.departmentReview) task.workflow.departmentReview = {};
-        if (!task.workflow.branchReview) task.workflow.branchReview = {};
-        task.workflow.departmentReview.status = 'pending';
-        task.workflow.departmentReview.reviewedAt = null;
-        task.workflow.departmentReview.reviewedBy = null;
-        task.workflow.departmentReview.comments = '';
-        task.workflow.branchReview.status = 'not-started';
-        task.workflow.branchReview.reviewedAt = null;
-        task.workflow.branchReview.reviewedBy = null;
-        task.workflow.branchReview.comments = '';
+        task.workflow.departmentReview = { status: 'pending', reviewedAt: null, reviewedBy: null, comments: '' };
+        task.workflow.branchReview = { status: 'not-started', reviewedAt: null, reviewedBy: null, comments: '' };
         
         if (!task.attempts) task.attempts = [];
         task.attempts.push({
@@ -638,9 +548,7 @@ export const startTask = async (req, res) => {
         });
         
         await task.save();
-        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
 
-        // Notify the Assigner that the task has started
         if (task.assignedBy) {
             const assigner = await User.findById(task.assignedBy).select('email name');
             if (assigner) {
@@ -651,7 +559,6 @@ export const startTask = async (req, res) => {
                     'task_updated',
                     task._id
                 );
-                
                 if (assigner.email) {
                     await sendEmailNotification(
                         assigner.email,
@@ -668,16 +575,15 @@ export const startTask = async (req, res) => {
             }
         }
         
-        const populatedTask = await Task.findById(task._id)
-            .populate('assignedTo assignedBy assignedTeam', 'name email department');
-        
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
         res.json({ success: true, data: populatedTask });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// ============ SUBMIT TASK - FIXED ============
+// ============ SUBMIT TASK ============
 export const submitTaskWithTime = async (req, res) => {
     try {
         const { submissionNote, actualMinutes } = req.body;
@@ -698,17 +604,14 @@ export const submitTaskWithTime = async (req, res) => {
             });
         }
         
-        // Handle team task submission
+        // Team Task Submission
         if (task.isTeamTask && isTeamMember) {
-            const progress = task.individualProgress.find(
-                p => p.userId.toString() === userId
-            );
+            const progress = task.individualProgress.find(p => p.userId.toString() === userId);
             if (progress) {
                 progress.status = 'submitted';
                 progress.submittedAt = new Date();
                 progress.submissionNote = submissionNote;
 
-                // Store attachments from Cloudinary middleware
                 const uploaded = (req.uploadedFiles || []).map(f => ({
                     filename: f.filename,
                     fileUrl: f.fileUrl,
@@ -731,18 +634,15 @@ export const submitTaskWithTime = async (req, res) => {
             await task.save();
             eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
             
-            const populatedTask = await Task.findById(task._id)
-                .populate('assignedTo assignedBy assignedTeam', 'name email')
-                .populate('individualProgress.userId', 'name email');
-            
+            const populatedTask = await deepPopulateTask(Task.findById(task._id));
             return res.json({ 
                 success: true, 
                 data: populatedTask,
-                message: 'Your part submitted! Waiting for team members.' 
+                message: 'Your component has been submitted. Waiting for team members to complete.' 
             });
         }
         
-        // Individual task submission
+        // Individual Task Submission
         if (task.status !== 'in-progress') {
             return res.status(400).json({ 
                 success: false, 
@@ -751,7 +651,7 @@ export const submitTaskWithTime = async (req, res) => {
         }
         
         const now = new Date();
-        let timeSpent = actualMinutes;
+        let timeSpent = actualMinutes ? parseInt(actualMinutes) : undefined;
         
         if (!timeSpent && task.startedAt) {
             timeSpent = Math.floor((now - task.startedAt) / (1000 * 60));
@@ -768,8 +668,8 @@ export const submitTaskWithTime = async (req, res) => {
         
         const currentAttempt = task.attempts[task.attempts.length - 1];
         currentAttempt.submittedAt = now;
-        currentAttempt.timeSpent = timeSpent;
-        currentAttempt.submissionNote = submissionNote;
+        currentAttempt.timeSpent = timeSpent || 0;
+        currentAttempt.submissionNote = submissionNote ? String(submissionNote).trim() : '';
         const uploaded = (req.uploadedFiles || []).map(f => ({
             filename: f.filename,
             fileUrl: f.fileUrl,
@@ -781,51 +681,38 @@ export const submitTaskWithTime = async (req, res) => {
         currentAttempt.status = 'submitted';
         
         task.submittedAt = now;
-        task.submissionNote = submissionNote;
+        task.submissionNote = submissionNote ? String(submissionNote).trim() : '';
         task.totalTimeSpent = (task.totalTimeSpent || 0) + (timeSpent || 0);
         task.status = 'submitted';
 
-        // Reset the review pipeline whenever employee submits for review
-        if (!task.workflow) task.workflow = {};
-        if (!task.workflow.departmentReview) task.workflow.departmentReview = {};
-        if (!task.workflow.branchReview) task.workflow.branchReview = {};
-        task.workflow.departmentReview.status = 'pending';
-        task.workflow.departmentReview.reviewedAt = null;
-        task.workflow.departmentReview.reviewedBy = null;
-        task.workflow.departmentReview.comments = '';
-        task.workflow.branchReview.status = 'not-started';
-        task.workflow.branchReview.reviewedAt = null;
-        task.workflow.branchReview.reviewedBy = null;
-        task.workflow.branchReview.comments = '';
+        task.workflow.departmentReview = { status: 'pending', reviewedAt: null, reviewedBy: null, comments: '' };
+        task.workflow.branchReview = { status: 'not-started', reviewedAt: null, reviewedBy: null, comments: '' };
         
         await task.save();
         
-        // Determine the appropriate reviewer based on 1-step hierarchy
+        // Determine reviewer
         let reviewerId = null;
-        if (req.user.role === 'employee' || req.user.role === 'graphic' || req.user.role === 'hr' || req.user.role === 'it') {
+        if (['employee', 'graphic', 'hr', 'it'].includes(req.user.role)) {
             reviewerId = task.departmentManager
                 ? task.departmentManager
                 : (await User.findOne({
                     role: 'department-head',
                     department: task.department,
-                    branch: task.branch
+                    branch: task.branch,
+                    isDeleted: { $ne: true }
                 }).select('_id'))?._id;
         } else if (req.user.role === 'department-head') {
             reviewerId = task.branchHead
                 ? task.branchHead
                 : (await User.findOne({
                     role: 'branch-head',
-                    branch: task.branch
+                    branch: task.branch,
+                    isDeleted: { $ne: true }
                 }).select('_id'))?._id;
         } else if (task.assignedBy && task.assignedBy.toString() !== req.user._id.toString()) {
-            // Fallback to assigner
             reviewerId = task.assignedBy;
         }
 
-        const uploadedFiles = (task.attempts && task.attempts.length > 0)
-            ? (task.attempts[task.attempts.length - 1]?.submissionAttachments || [])
-            : [];
-        
         if (reviewerId) {
             const reviewer = await User.findById(reviewerId).select('email name');
             if (reviewer) {
@@ -838,7 +725,6 @@ export const submitTaskWithTime = async (req, res) => {
                 );
 
                 if (reviewer.email) {
-                    const attachmentNames = uploadedFiles.map(f => f.filename).join(', ');
                     await sendEmailNotification(
                         reviewer.email,
                         'TASK_SUBMITTED',
@@ -848,86 +734,16 @@ export const submitTaskWithTime = async (req, res) => {
                             dueDate: task.dueDate,
                             priority: task.priority,
                             department: task.department,
-                            feedback: `${req.user.name} has submitted this task for your review.\n\nSubmission Note: ${submissionNote}${attachmentNames ? `\n\nAttachments: ${attachmentNames}` : ''}`,
+                            feedback: `${req.user.name} submitted this task for review.\n\nNote: ${task.submissionNote}`,
                             taskId: task._id,
                             senderId: req.user._id
                         },
-                        uploadedFiles
+                        uploaded
                     );
                 }
             }
         }
 
-        // Send submission notification and email to the original assigner as well
-        if (task.assignedBy && task.assignedBy.toString() !== reviewerId?.toString() && task.assignedBy.toString() !== req.user._id.toString()) {
-            try {
-                const assigner = await User.findById(task.assignedBy).select('email name');
-                if (assigner) {
-                    await createNotification(
-                        assigner._id,
-                        'Task Submitted for Review',
-                        `${req.user.name} submitted "${task.title}" for review`,
-                        'task_submitted',
-                        task._id
-                    );
-
-                    if (assigner.email) {
-                        const attachmentNames = uploadedFiles.map(f => f.filename).join(', ');
-                        await sendEmailNotification(
-                            assigner.email,
-                            'TASK_SUBMITTED',
-                            {
-                                employeeName: assigner.name,
-                                taskTitle: task.title,
-                                dueDate: task.dueDate,
-                                priority: task.priority,
-                                department: task.department,
-                                feedback: `${req.user.name} has submitted this task for review.\n\nSubmission Note: ${submissionNote}${attachmentNames ? `\n\nAttachments: ${attachmentNames}` : ''}`,
-                                taskId: task._id,
-                                senderId: req.user._id
-                            },
-                            uploadedFiles
-                        );
-                    }
-                }
-            } catch (assignerErr) {
-                console.error('Failed to notify task assigner of submission:', assignerErr.message);
-            }
-        }
-
-            // CC to department/branch configured email in Settings
-            try {
-                const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' }).lean();
-                const deptEmail = settings?.departmentEmails?.[task.department];
-                const branchEmail = settings?.branchEmails?.[task.branch];
-
-                if (deptEmail) {
-                    await sendEmailNotification(deptEmail, 'TASK_SUBMITTED', {
-                        employeeName: `${task.department} Dept`,
-                        taskTitle: task.title,
-                        dueDate: task.dueDate,
-                        priority: task.priority,
-                        department: task.department,
-                        feedback: `[CC] ${req.user.name} submitted "${task.title}" for review.`,
-                        taskId: task._id
-                    });
-                }
-                if (branchEmail && branchEmail !== deptEmail) {
-                    await sendEmailNotification(branchEmail, 'TASK_SUBMITTED', {
-                        employeeName: `${task.branch} Branch`,
-                        taskTitle: task.title,
-                        dueDate: task.dueDate,
-                        priority: task.priority,
-                        department: task.department,
-                        feedback: `[CC] ${req.user.name} submitted "${task.title}" for review.`,
-                        taskId: task._id
-                    });
-                }
-            } catch (e) {
-                console.warn('CC email error (non-fatal):', e.message);
-            }
-
-        // ── Confirmation to the submitting employee ───────────────────
         await createNotification(
             req.user._id,
             'Task Submitted Successfully',
@@ -935,40 +751,16 @@ export const submitTaskWithTime = async (req, res) => {
             'task_updated',
             task._id
         );
-        if (req.user.email) {
-            const feedback = `Your task has been submitted successfully for review. We will notify you once it is reviewed.${uploadedFiles.length > 0 ? `\n\nYou attached ${uploadedFiles.length} file(s): ${uploadedFiles.map(f => f.filename).join(', ')}` : ''}`;
-            await sendEmailNotification(
-                req.user.email,
-                'TASK_UPDATED',
-                {
-                    employeeName: req.user.name,
-                    taskTitle: task.title,
-                    feedback,
-                    taskId: task._id,
-                    senderId: req.user._id
-                }
-            );
-            
-            // Add to activity log for transparency (visible to employee/reviewer)
-            task.activityLog.push({
-                action: 'status_changed',
-                userId: req.user._id,
-                userName: 'System',
-                details: `Confirmation email sent to ${req.user.email}.`
-            });
-            await task.save();
-        }
         
-        const populatedTask = await Task.findById(task._id)
-            .populate('assignedTo assignedBy assignedTeam', 'name email department');
-        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
-        
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
         res.json({ 
             success: true, 
             data: populatedTask,
-            message: `Task submitted! Time spent: ${timeSpent || '?'} minutes` 
+            message: `Task submitted successfully!` 
         });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
+        console.error('Submit error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -976,7 +768,7 @@ export const submitTaskWithTime = async (req, res) => {
 // ============ REVIEW TASK ============
 export const reviewTask = async (req, res) => {
     try {
-        const { status, adminComments, reviewStage } = req.body;
+        const { status, adminComments } = req.body;
         const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
         
         if (!task) {
@@ -987,33 +779,24 @@ export const reviewTask = async (req, res) => {
         const isDeptHead = req.user.role === 'department-head' && task.department === req.user.department && task.branch === req.user.branch;
         const isBranchHead = req.user.role === 'branch-head' && task.branch === req.user.branch;
 
-        // Reviewer identity checks:
-        // - If task has explicit reviewer assigned, only that reviewer (or admin) can act.
-        // - Otherwise any dept/branch head within matching scope can act (backward compatibility).
-        const isDeptReviewer =
-            isDeptHead &&
-            (!task.departmentManager || task.departmentManager.toString() === req.user._id.toString());
-        const isBranchReviewer =
-            isBranchHead &&
-            (!task.branchHead || task.branchHead.toString() === req.user._id.toString());
-        
+        const isDeptReviewer = isDeptHead && (!task.departmentManager || task.departmentManager.toString() === req.user._id.toString());
+        const isBranchReviewer = isBranchHead && (!task.branchHead || task.branchHead.toString() === req.user._id.toString());
         const isAssigner = task.assignedBy?.toString() === req.user._id.toString();
 
         if (!isAdmin && !isDeptReviewer && !isBranchReviewer && !isAssigner) {
             return res.status(403).json({ 
                 success: false, 
-                message: 'Only Department Head, Branch Head, Assigner, or Admin can review tasks' 
+                message: 'Not authorized to review this task' 
             });
         }
         
         if (task.status !== 'submitted') {
             return res.status(400).json({ 
                 success: false, 
-                message: `Cannot review task in "${task.status}" status. Task must be submitted.` 
+                message: 'Task must be submitted to be reviewed' 
             });
         }
 
-        // --- Multi-Step Review Implementation ---
         const reviewData = {
             status: status,
             reviewedBy: req.user._id,
@@ -1021,8 +804,6 @@ export const reviewTask = async (req, res) => {
             comments: adminComments || (status === 'approved' ? 'Approved' : 'Rejected')
         };
 
-
-        // 1. If reviewer is the ASSIGNER, they can finalize the review immediately
         if (isAssigner || isAdmin) {
             if (status === 'approved') {
                 task.status = 'approved';
@@ -1033,14 +814,13 @@ export const reviewTask = async (req, res) => {
                 task.approvedBy = req.user._id;
             } else {
                 task.status = 'rejected';
+                task.workflow.departmentReview = { ...reviewData, status: 'rejected' };
+                task.workflow.branchReview = { ...reviewData, status: 'rejected' };
             }
-        } 
-        // 2. Standard Workflow: Dept Head -> Branch Head
-        else if (isDeptReviewer && task.workflow.departmentReview.status === 'pending') {
+        } else if (isDeptReviewer && task.workflow.departmentReview.status === 'pending') {
             if (status === 'approved') {
                 task.workflow.departmentReview = { ...reviewData, status: 'approved' };
-                task.workflow.branchReview.status = 'pending'; // Move to next stage
-                // Task stays in 'submitted' status but progress is tracked
+                task.workflow.branchReview.status = 'pending';
             } else {
                 task.status = 'rejected';
                 task.workflow.departmentReview = { ...reviewData, status: 'rejected' };
@@ -1059,11 +839,11 @@ export const reviewTask = async (req, res) => {
         } else {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Invalid review stage or unauthorized for current stage.' 
+                message: 'Invalid review stage flow' 
             });
         }
 
-        task.adminComments = adminComments || (status === 'approved' ? 'Task approved.' : 'Task needs revision.');
+        task.adminComments = adminComments || (status === 'approved' ? 'Approved.' : 'Needs revision.');
         if (task.attempts && task.attempts.length > 0) {
             const lastAttempt = task.attempts[task.attempts.length - 1];
             if (lastAttempt) {
@@ -1072,34 +852,20 @@ export const reviewTask = async (req, res) => {
             }
         }
 
-        try {
-            task.$where = { __v: task.__v };
-            await task.save();
-        } catch (error) {
-            if (error.name === 'VersionError' || error.name === 'DocumentNotFoundError' || error.message.includes('No document found')) {
-                console.error('OCC write collision detected for task:', task._id);
-                return res.status(409).json({ 
-                    success: false, 
-                    message: 'Conflict: This task has been modified or reviewed by another user. Please refresh and try again.' 
-                });
-            }
-            throw error;
-        }
+        await task.save();
 
-        // ── Email routing based on review stage ──────────────────────────────
+        // Send review notifications
         const assignee = await User.findById(task.assignedTo).select('email name');
-
         if (isDeptReviewer && status === 'approved') {
-            // Dept head approved → notify Branch Head to do second review
             const branchHead = task.branchHead
                 ? await User.findById(task.branchHead).select('email name')
-                : await User.findOne({ role: 'branch-head', branch: task.branch }).select('email name');
+                : await User.findOne({ role: 'branch-head', branch: task.branch, isDeleted: { $ne: true } }).select('email name');
 
             if (branchHead) {
                 await createNotification(
                     branchHead._id,
                     'Task Ready for Branch Review',
-                    `Dept Head approved "${task.title}". Please do final review.`,
+                    `Dept Head approved "${task.title}". Final branch review required.`,
                     'task_submitted',
                     task._id
                 );
@@ -1110,22 +876,20 @@ export const reviewTask = async (req, res) => {
                         dueDate: task.dueDate,
                         priority: task.priority,
                         department: task.department,
-                        feedback: `Department Head (${req.user.name}) approved this task. It now requires your final branch review.`,
+                        feedback: `Dept Head (${req.user.name}) approved "${task.title}". Ready for branch head approval.`,
                         taskId: task._id,
                         senderId: req.user._id
                     });
                 }
             }
         } else {
-            // Approved fully (by admin/branch head) OR Rejected at any stage → notify employee
             const notifTitle = status === 'approved' ? '✅ Task Approved!' : '❌ Task Needs Rework';
             const notifMsg = status === 'approved'
-                ? `Your task "${task.title}" has been fully approved. Great work! 🎉`
-                : `Your task "${task.title}" was rejected. Reason: ${adminComments || 'Please check feedback'}`;
+                ? `Your task "${task.title}" has been fully approved.`
+                : `Your task "${task.title}" needs rework. Comments: ${adminComments}`;
 
             if (task.assignedTo) {
-                await createNotification(task.assignedTo, notifTitle, notifMsg,
-                    status === 'approved' ? 'task_approved' : 'task_rejected', task._id);
+                await createNotification(task.assignedTo, notifTitle, notifMsg, status === 'approved' ? 'task_approved' : 'task_rejected', task._id);
             }
 
             if (assignee?.email) {
@@ -1146,12 +910,12 @@ export const reviewTask = async (req, res) => {
             }
         }
 
-        const populatedTask = await Task.findById(task._id).populate('assignedTo assignedBy assignedTeam', 'name email department');
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
-        return res.json({
+        res.json({
             success: true,
             data: populatedTask,
-            message: status === 'approved' ? 'Task approved successfully!' : 'Task rejected. Employee notified.'
+            message: status === 'approved' ? 'Task approved!' : 'Task rejected.'
         });
     } catch (error) {
         console.error('Review error:', error);
@@ -1163,52 +927,28 @@ export const reviewTask = async (req, res) => {
 export const addComment = async (req, res) => {
     try {
         const { comment } = req.body;
+        if (!comment || !String(comment).trim()) {
+            return res.status(400).json({ success: false, message: 'Comment text is required' });
+        }
+
         const task = await Task.findOne({ _id: String(req.params.id), isDeleted: { $ne: true } });
-        
         if (!task) {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
         
-        if (!task.comments) task.comments = [];
         task.comments.push({
             userId: req.user._id,
             userName: req.user.name,
             userRole: req.user.role,
-            message: comment,
+            message: String(comment).trim(),
             createdAt: new Date()
         });
         
         await task.save();
-        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
-
-        // Notify Assigner / Reviewer that an update has been posted
-        if (task.assignedBy && task.assignedBy.toString() !== req.user._id.toString()) {
-            const assigner = await User.findById(task.assignedBy).select('email name');
-            if (assigner) {
-                await createNotification(
-                    assigner._id,
-                    'Task Update',
-                    `${req.user.name} added an update to "${task.title}": ${comment.substring(0, 50)}...`,
-                    'task_updated',
-                    task._id
-                );
-                if (assigner.email) {
-                    await sendEmailNotification(
-                        assigner.email,
-                        'TASK_UPDATED',
-                        {
-                            employeeName: assigner.name,
-                            taskTitle: task.title,
-                            feedback: `${req.user.name} posted an update: "${comment}"`,
-                            taskId: task._id,
-                            senderId: req.user._id
-                        }
-                    );
-                }
-            }
-        }
         
-        res.json({ success: true, data: task, message: 'Comment added successfully' });
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        res.json({ success: true, data: populatedTask, message: 'Comment added successfully' });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -1218,10 +958,7 @@ export const addComment = async (req, res) => {
 export const getDepartmentTasks = async (req, res) => {
     try {
         const department = String(req.params.department);
-        const tasks = await Task.find({ department, isDeleted: { $ne: true } })
-            .populate('assignedTo assignedBy assignedTeam', 'name email')
-            .sort({ createdAt: -1 })
-            .lean();
+        const tasks = await deepPopulateTask(Task.find({ department, isDeleted: { $ne: true } }).sort({ createdAt: -1 })).lean();
         res.json({ success: true, data: tasks });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -1231,17 +968,14 @@ export const getDepartmentTasks = async (req, res) => {
 // ============ GET TEAM TASKS ============
 export const getTeamTasks = async (req, res) => {
     try {
-        const tasks = await Task.find({ 
+        const tasks = await deepPopulateTask(Task.find({ 
             isTeamTask: true,
             isDeleted: { $ne: true },
             $or: [
                 { assignedTeam: req.user._id },
                 { assignedBy: req.user._id }
             ]
-        })
-        .populate('assignedTo assignedBy assignedTeam', 'name email')
-        .sort({ createdAt: -1 })
-        .lean();
+        }).sort({ createdAt: -1 })).lean();
         res.json({ success: true, data: tasks });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -1259,48 +993,39 @@ export const updateTeamProgress = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Task not found' });
         }
         
-        const progress = task.individualProgress?.find(
-            p => p.userId.toString() === req.user._id.toString()
-        );
-        
+        const progress = task.individualProgress?.find(p => p.userId.toString() === req.user._id.toString());
         if (progress) {
             progress.status = status;
             if (status === 'submitted') {
                 progress.submittedAt = new Date();
-                progress.submissionNote = submissionNote;
+                progress.submissionNote = submissionNote ? String(submissionNote).trim() : '';
             }
             await task.save();
         }
         
-        res.json({ success: true, data: task });
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        res.json({ success: true, data: populatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
+// ============ GET DASHBOARD STATS ============
 export const getDashboardStats = async (req, res) => {
     try {
-        const { role } = req.user;
-        const department = req.query.department ? String(req.query.department) : undefined;
-        const branch = req.query.branch ? String(req.query.branch) : undefined;
-        const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
-        const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
+        const department = req.query.department ? String(req.query.department).trim() : undefined;
+        const branch = req.query.branch ? String(req.query.branch).trim() : undefined;
+        const startDate = req.query.startDate ? String(req.query.startDate).trim() : undefined;
+        const endDate = req.query.endDate ? String(req.query.endDate).trim() : undefined;
+        const timeFilter = req.query.timeFilter ? String(req.query.timeFilter).trim() : undefined;
         
-        // Base query from middleware
         let query = req.taskFilter ? { ...req.taskFilter } : {};
         query.isDeleted = { $ne: true };
 
-        // Managers can refine their view
-        if (department && department !== 'all') {
-            query.department = department;
-        }
-        if (branch && branch !== 'all') {
-            query.branch = branch;
-        }
+        if (department && department !== 'all') query.department = department;
+        if (branch && branch !== 'all') query.branch = branch;
         
-        // Date Filtering (Named filters like daily, weekly, monthly or custom dates)
-        const timeFilter = req.query.timeFilter;
         let dateQuery = {};
         if (timeFilter && timeFilter !== 'all') {
             const now = new Date();
@@ -1379,8 +1104,6 @@ export const getDashboardStats = async (req, res) => {
             ])
         ]);
 
-        const recentTasks = [];
-
         const summaryData = statsAgg[0] || {
             totalTasks: 0,
             completedTasks: 0,
@@ -1405,12 +1128,12 @@ export const getDashboardStats = async (req, res) => {
                     inProgress: b.inProgress,
                     submitted: b.submitted
                 })),
-                recentTasks
+                recentTasks: []
             }
         });
     } catch (error) {
         console.error('Stats error:', error);
-        res.status(500).json({ success: false, message: error.message || 'Error loading stats' });
+        res.status(500).json({ success: false, message: 'Error loading dashboard stats' });
     }
 };
 
@@ -1423,8 +1146,6 @@ export const reassignTask = async (req, res) => {
         const task = await Task.findOne({ _id: id, isDeleted: { $ne: true } });
         if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
 
-        const oldAssignee = task.assignedTo;
-        
         task.isTeamTask = !!isTeamTask;
         if (isTeamTask) {
             task.assignedTeam = assignedTeam;
@@ -1434,24 +1155,23 @@ export const reassignTask = async (req, res) => {
             task.assignedTeam = [];
         }
 
-        // Status reset if it was completed/submitted
         if (['completed', 'approved', 'submitted'].includes(task.status)) {
             task.status = 'pending';
         }
 
-        // Log the reassignment
-        if (!task.comments) task.comments = [];
         task.comments.push({
-            user: req.user._id,
-            text: `🔄 Task reassigned. Reason: ${reason || 'Not specified'}`,
+            userId: req.user._id,
+            userName: req.user.name,
+            userRole: req.user.role,
+            message: `🔄 Task reassigned. Reason: ${reason || 'Not specified'}`,
             createdAt: new Date()
         });
 
         await task.save();
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
 
-        // Notify NEW assignee
-        if (isTeamTask) {
+        // Notify new assignees
+        if (isTeamTask && assignedTeam?.length > 0) {
             await createBulkNotifications(
                 assignedTeam,
                 'Task Reassigned to Team',
@@ -1459,7 +1179,6 @@ export const reassignTask = async (req, res) => {
                 'task_assigned',
                 task._id
             );
-            
             for (const memberId of assignedTeam) {
                 try {
                     const member = await User.findById(memberId).select('email name');
@@ -1480,38 +1199,42 @@ export const reassignTask = async (req, res) => {
                         );
                     }
                 } catch (emailErr) {
-                    console.error(`Failed to send task reassignment email to team member ${memberId}:`, emailErr.message);
+                    console.error(`Failed to send email to team member ${memberId}:`, emailErr.message);
                 }
             }
-        } else {
+        } else if (task.assignedTo) {
             await createNotification(
-                assignedTo,
+                task.assignedTo,
                 'Task Reassigned to You',
                 `You have been assigned to: "${task.title}"`,
                 'task_assigned',
                 task._id
             );
-            
-            const assignee = await User.findById(assignedTo).select('email name');
-            if (assignee && assignee.email) {
-                await sendEmailNotification(
-                    assignee.email,
-                    'TASK_ASSIGNED',
-                    {
-                        employeeName: assignee.name,
-                        taskTitle: task.title,
-                        dueDate: task.dueDate,
-                        priority: task.priority,
-                        department: task.department,
-                        feedback: task.description || '',
-                        taskId: task._id,
-                        senderId: req.user._id
-                    }
-                );
+            try {
+                const assignee = await User.findById(task.assignedTo).select('email name');
+                if (assignee && assignee.email) {
+                    await sendEmailNotification(
+                        assignee.email,
+                        'TASK_ASSIGNED',
+                        {
+                            employeeName: assignee.name,
+                            taskTitle: task.title,
+                            dueDate: task.dueDate,
+                            priority: task.priority,
+                            department: task.department,
+                            feedback: task.description || '',
+                            taskId: task._id,
+                            senderId: req.user._id
+                        }
+                    );
+                }
+            } catch (emailErr) {
+                console.error('Failed to send email to assignee:', emailErr.message);
             }
         }
 
-        res.json({ success: true, message: 'Task reassigned successfully', data: task });
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        res.json({ success: true, message: 'Task reassigned successfully', data: populatedTask });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -1523,27 +1246,27 @@ export const getEmployeeSummary = async (req, res) => {
         let match = {};
         const { role, department, branch } = req.user;
         
-        if (role === 'admin' || role === 'hr') {
+        if (role === 'admin' || role === 'it') {
             match = {};
         } else if (role === 'department-head') {
             match = { department, branch };
         } else if (role === 'branch-head') {
             match = { branch };
+        } else if (role === 'hr') {
+            match = { department: 'HR' };
         } else {
             return res.json({ success: true, data: [] });
         }
         
-        // Find relevant employees
         const employees = await User.find({ 
             ...match, 
-            role: { $in: ['employee', 'hr', 'it', 'graphic', 'branch-head', 'department-head'] } // include heads in HR/Admin view if needed, or keep to workers. Wait, we should probably let them see all non-admin. Let's just exclude admin.
+            role: { $in: ['employee', 'hr', 'it', 'graphic', 'branch-head', 'department-head'] },
+            isDeleted: { $ne: true }
         }).select('name department branch role avatar employeeId email phone').lean();
 
-        // Use aggregation to count tasks for these employees
         const employeeIds = employees.map(e => e._id);
         const now = new Date();
 
-        // Build optimization match filters to leverage indexes on Task collection first
         let taskMatch = {};
         if (role === 'department-head') {
             taskMatch.department = department;
@@ -1578,8 +1301,6 @@ export const getEmployeeSummary = async (req, res) => {
                 }
             },
             {
-                // We need to handle team tasks by "unwinding" if necessary.
-                // Using $setUnion prevents duplicate counts if a user is in both assignedTo and assignedTeam.
                 $project: {
                     status: 1,
                     isOverdue: 1,
@@ -1616,7 +1337,7 @@ export const getEmployeeSummary = async (req, res) => {
                 total: 0, pending: 0, inProgress: 0, submitted: 0, completed: 0, overdue: 0
             };
             return {
-                _id: emp._id, // Add _id for key mapping in React
+                _id: emp._id,
                 id: emp._id,
                 name: emp.name,
                 department: emp.department || emp.role,
@@ -1626,7 +1347,7 @@ export const getEmployeeSummary = async (req, res) => {
                 employeeId: emp.employeeId,
                 email: emp.email,
                 phone: emp.phone,
-                totalTasks: stats.total, // map to Dashboard variable names
+                totalTasks: stats.total,
                 pending: stats.pending,
                 inProgress: stats.inProgress,
                 submitted: stats.submitted,
@@ -1662,8 +1383,6 @@ export const updateTaskStatus = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized to update this task' });
         }
 
-        // This “generic” status route is intentionally restricted.
-        // Approved/Rejected should only come from the review endpoints.
         if (status === 'start') {
             if (!['pending', 'rejected', 'reassigned'].includes(task.status)) {
                 return res.status(400).json({ success: false, message: `Cannot start in "${task.status}" status` });
@@ -1675,15 +1394,14 @@ export const updateTaskStatus = async (req, res) => {
                 return res.status(400).json({ success: false, message: 'Task must be in progress to submit' });
             }
             task.status = 'submitted';
-            task.submissionNote = submissionNote;
+            task.submissionNote = submissionNote ? String(submissionNote).trim() : '';
             task.submittedAt = new Date();
         } else if (status === 'comment' && submissionNote) {
-            if (!task.comments) task.comments = [];
             task.comments.push({
                 userId: req.user._id,
                 userName: req.user.name,
                 userRole: req.user.role,
-                message: submissionNote,
+                message: String(submissionNote).trim(),
                 createdAt: new Date()
             });
         } else {
@@ -1694,12 +1412,10 @@ export const updateTaskStatus = async (req, res) => {
         }
         
         await task.save();
-        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
         
-        const populatedTask = await Task.findById(task._id)
-            .populate('assignedTo assignedBy assignedTeam', 'name email department');
-        
+        const populatedTask = await deepPopulateTask(Task.findById(task._id));
         res.json({ success: true, data: populatedTask });
+        eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -1708,9 +1424,9 @@ export const updateTaskStatus = async (req, res) => {
 // ============ GET TIME REPORT ============
 export const getTimeReport = async (req, res) => {
     try {
-        const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
-        const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
-        const department = req.query.department ? String(req.query.department) : undefined;
+        const startDate = req.query.startDate ? String(req.query.startDate).trim() : undefined;
+        const endDate = req.query.endDate ? String(req.query.endDate).trim() : undefined;
+        const department = req.query.department ? String(req.query.department).trim() : undefined;
         let query = { ...(req.taskFilter || {}) };
         query.isDeleted = { $ne: true };
         
@@ -1727,16 +1443,10 @@ export const getTimeReport = async (req, res) => {
             query.department = department;
         }
         
-        const tasks = await Task.find(query)
-            .populate('assignedTo assignedBy', 'name email department')
-            .sort({ createdAt: -1 })
-            .lean();
-        
+        const tasks = await deepPopulateTask(Task.find(query).sort({ createdAt: -1 })).lean();
         res.json({ success: true, data: tasks });
     } catch (error) {
         console.error('Time report error:', error);
         res.status(500).json({ success: false, message: 'Error generating time report' });
     }
 };
-
-// End of file

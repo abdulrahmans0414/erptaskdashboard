@@ -1,26 +1,27 @@
 import User from '../../models/User.js';
 import Task from '../../models/Task.js';
 import Employee from '../../models/Employee.js';
+import Branch from '../../models/Branch.js';
 import eventBus, { EVENTS } from '../../utils/eventBus.js';
 import { deleteFromCloudinary } from '../../middleware/uploadMiddleware.js';
 
 // @desc    Get all users (with pagination, search, and data isolation)
 export const getAllUsers = async (req, res) => {
     try {
-        const page = req.query.page ? parseInt(String(req.query.page)) : 1;
-        const limit = req.query.limit ? parseInt(String(req.query.limit)) : 10;
-        const search = req.query.search ? String(req.query.search) : undefined;
-        const department = req.query.department ? String(req.query.department) : undefined;
-        const branch = req.query.branch ? String(req.query.branch) : undefined;
-        const filterRole = req.query.role ? String(req.query.role) : undefined;
+        const page = req.query.page ? Math.max(1, parseInt(String(req.query.page)) || 1) : 1;
+        const limit = req.query.limit ? Math.max(1, Math.min(100, parseInt(String(req.query.limit)) || 10)) : 10;
+        const search = req.query.search ? String(req.query.search).trim() : undefined;
+        const department = req.query.department ? String(req.query.department).trim() : undefined;
+        const branch = req.query.branch ? String(req.query.branch).trim() : undefined;
+        const filterRole = req.query.role ? String(req.query.role).trim() : undefined;
         
         const skip = (page - 1) * limit;
 
-        // Base query from middleware
+        // Base query from data isolation middleware
         let query = req.userFilter ? { ...req.userFilter } : {};
         query.isDeleted = { $ne: true };
 
-        // Search logic
+        // Search logic with injection protection
         if (search) {
             query.$or = [
                 { name: { $regex: search, $options: 'i' } },
@@ -52,8 +53,8 @@ export const getAllUsers = async (req, res) => {
             data: users,
             pagination: {
                 total,
-                page: parseInt(page),
-                pages: Math.ceil(total / parseInt(limit))
+                page,
+                pages: Math.ceil(total / limit)
             },
             stats: {
                 total,
@@ -75,12 +76,12 @@ export const getUserById = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        // ✅ FIX: Verify the user is accessible under the requester's filter
+        // Verify user is accessible under requester's scoped access filter
         const filter = req.userFilter || {};
         if (Object.keys(filter).length > 0) {
             const allowed = await User.findOne({ _id: id, ...filter }).select('_id');
             if (!allowed) {
-                return res.status(403).json({ success: false, message: 'Access denied to this user' });
+                return res.status(403).json({ success: false, message: 'Access denied to this user profile' });
             }
         }
 
@@ -91,7 +92,6 @@ export const getUserById = async (req, res) => {
 };
 
 // @desc    Create new user (Admin only)
-// ✅ FIX: Do NOT manually hash – User model pre-save hook handles it
 export const createUser = async (req, res) => {
     try {
         const { name, email, password, role, department, branch, phone, address, bloodGroup, dateOfJoining, customFields } = req.body;
@@ -102,19 +102,40 @@ export const createUser = async (req, res) => {
 
         const userExists = await User.findOne({ email });
         if (userExists) {
-            return res.status(400).json({ success: false, message: 'User already exists' });
+            return res.status(400).json({ success: false, message: 'User with this email already exists' });
+        }
+
+        // Cross-Component branch/department validation
+        const targetBranchName = branch ? String(branch).trim() : 'Gaurabagh';
+        const targetDeptName = department ? String(department).trim() : 'IT';
+
+        const targetBranch = await Branch.findOne({ 
+            name: { $regex: new RegExp('^' + targetBranchName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+            isDeleted: { $ne: true }
+        });
+
+        if (!targetBranch) {
+            return res.status(400).json({ success: false, message: `Target branch "${targetBranchName}" does not exist or is deleted` });
+        }
+
+        const deptExists = targetBranch.departments.some(d => d.toLowerCase() === targetDeptName.toLowerCase());
+        if (!deptExists) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Department "${targetDeptName}" does not exist in branch "${targetBranch.name}". Mapped departments are: ${targetBranch.departments.join(', ')}` 
+            });
         }
         
         const user = await User.create({
-            name, 
-            email, 
-            password,  // plain text – pre-save hook hashes it
-            role: role || 'employee',
-            department: department || 'IT',
-            branch: branch || 'Gaurabagh',
-            phone: phone || null,
-            address: address || null,
-            bloodGroup: bloodGroup || null,
+            name: String(name).trim(), 
+            email: String(email).trim().toLowerCase(), 
+            password: String(password),  // hashed by pre-save schema hook
+            role: role ? String(role).trim() : 'employee',
+            department: targetDeptName,
+            branch: targetBranch.name,
+            phone: phone ? String(phone).trim() : null,
+            address: address ? String(address).trim() : null,
+            bloodGroup: bloodGroup ? String(bloodGroup).trim() : null,
             dateOfJoining: dateOfJoining || Date.now(),
             customFields: customFields || {},
             isActive: true
@@ -128,7 +149,7 @@ export const createUser = async (req, res) => {
     }
 };
 
-// @desc    Update user (Admin only)
+// @desc    Update user (Admin / Scoped Heads / Self)
 export const updateUser = async (req, res) => {
     try {
         const {
@@ -142,62 +163,88 @@ export const updateUser = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        const isSelf = req.user._id.toString() === req.params.id;
+        const isSelf = req.user._id.toString() === id;
         const canEditAll = ['admin', 'it'].includes(req.user.role);
         
-        // Dynamic access check for branch head and department head
+        // Dynamic access scoping
         const isBranchHead = req.user.role === 'branch-head' && user.branch === req.user.branch;
         const isDeptHead = req.user.role === 'department-head' && user.branch === req.user.branch && user.department === req.user.department;
         const canEditScoped = isBranchHead || isDeptHead;
 
         if (canEditAll || canEditScoped) {
-            if (name) user.name = name;
-            if (email) user.email = email;
+            // Cross-Component branch/department validation if either changes
+            if (branch || department) {
+                const targetBranchName = branch ? String(branch).trim() : user.branch;
+                const targetDeptName = department ? String(department).trim() : user.department;
+
+                const targetBranch = await Branch.findOne({ 
+                    name: { $regex: new RegExp('^' + targetBranchName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+                    isDeleted: { $ne: true }
+                });
+
+                if (!targetBranch) {
+                    return res.status(400).json({ success: false, message: `Branch "${targetBranchName}" does not exist` });
+                }
+
+                const deptExists = targetBranch.departments.some(d => d.toLowerCase() === targetDeptName.toLowerCase());
+                if (!deptExists) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `Department "${targetDeptName}" is not mapped or active in branch "${targetBranch.name}". Mapped departments are: ${targetBranch.departments.join(', ')}` 
+                    });
+                }
+
+                // If branch actually changes, cascade update tasks
+                if (targetBranch.name !== user.branch) {
+                    user.branch = targetBranch.name;
+                    await Task.updateMany(
+                        { $or: [{ assignedTo: user._id }, { assignedTeam: user._id }] },
+                        { branch: targetBranch.name }
+                    );
+                }
+                user.department = targetDeptName;
+            }
+
+            if (name) user.name = String(name).trim();
+            if (email) user.email = String(email).trim().toLowerCase();
             
             // Validate role update to prevent security escalation
             if (role) {
                 if (canEditScoped && role !== user.role) {
                     const elevatedRoles = ['admin', 'it', 'branch-head'];
                     if (elevatedRoles.includes(role)) {
-                        return res.status(403).json({ success: false, message: 'You are not authorized to elevate users to this role' });
+                        return res.status(403).json({ success: false, message: 'You are not authorized to elevate users to high-privilege roles' });
                     }
                 }
-                user.role = role;
+                user.role = String(role).trim();
             }
             
-            if (department) user.department = department;
-            if (branch && branch !== user.branch) {
-                user.branch = branch;
-                // Cascade branch update to all tasks associated with this user
-                await Task.updateMany(
-                    { $or: [{ assignedTo: user._id }, { assignedTeam: user._id }] },
-                    { branch: branch }
-                );
-            }
-            if (isActive !== undefined) user.isActive = isActive;
-            if (avatar) user.avatar = avatar;
-            if (phone !== undefined) user.phone = phone;
-            if (address !== undefined) user.address = address;
-            if (bloodGroup !== undefined) user.bloodGroup = bloodGroup;
+            if (isActive !== undefined) user.isActive = Boolean(isActive);
+            if (avatar) user.avatar = String(avatar);
+            if (phone !== undefined) user.phone = phone ? String(phone).trim() : null;
+            if (address !== undefined) user.address = address ? String(address).trim() : null;
+            if (bloodGroup !== undefined) user.bloodGroup = bloodGroup ? String(bloodGroup).trim() : null;
             if (dateOfJoining) user.dateOfJoining = dateOfJoining;
             if (customFields) user.customFields = customFields;
-            // Only admin/IT can set employeeId (avoid spoofing)
-            if (canEditAll && employeeId !== undefined) user.employeeId = employeeId || undefined;
+            if (canEditAll && employeeId !== undefined) user.employeeId = employeeId ? String(employeeId).trim() : undefined;
         } else if (isSelf) {
-            if (name) user.name = name;
-            if (email) user.email = email;
-            if (phone !== undefined) user.phone = phone;
-            if (address !== undefined) user.address = address;
-            if (bloodGroup !== undefined) user.bloodGroup = bloodGroup;
+            // Self-service updates
+            if (name) user.name = String(name).trim();
+            if (email) user.email = String(email).trim().toLowerCase();
+            if (phone !== undefined) user.phone = phone ? String(phone).trim() : null;
+            if (address !== undefined) user.address = address ? String(address).trim() : null;
+            if (bloodGroup !== undefined) user.bloodGroup = bloodGroup ? String(bloodGroup).trim() : null;
             if (customFields) user.customFields = customFields;
             if (dateOfJoining) user.dateOfJoining = dateOfJoining;
         } else {
-            return res.status(403).json({ success: false, message: 'Only admins and authorized heads may update users' });
+            return res.status(403).json({ success: false, message: 'Only admins, authorized heads, or profile owners may update users' });
         }
 
-        // ✅ FIX: Allow password update for self, admin, or authorized manager - pre-save hook will hash it
-        if (password && password.trim()) {
-            if (isSelf || canEditAll || canEditScoped) user.password = password;
+        // Allow password updates
+        if (password && String(password).trim()) {
+            if (isSelf || canEditAll || canEditScoped) {
+                user.password = String(password); // hashed by pre-save schema hook
+            }
         }
         
         await user.save();
@@ -219,27 +266,36 @@ export const deleteUser = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        // ✅ FIX: Prevent deleting self
+        // Prevent deleting self
         if (user._id.toString() === req.user._id.toString()) {
             return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
         }
 
-        // ✅ FIX: SOFT DELETE instead of HARD DELETE for data integrity
+        // Soft-delete the user
         user.isActive = false;
         user.isDeleted = true;
         user.deletedAt = new Date();
         await user.save();
 
-        // Cascade task assignments:
-        // Update all tasks where assignedTo is this user. We set assignedTo = null
-        await Task.updateMany({ assignedTo: user._id }, { assignedTo: null });
-        // Update team tasks: pull this user from the assignedTeam array
-        await Task.updateMany({ assignedTeam: user._id }, { $pull: { assignedTeam: user._id } });
-
-        // Also if they have an Employee profile, soft-delete that too:
-        await Employee.updateMany({ email: user.email }, { isActive: false, isDeleted: true, deletedAt: new Date() });
+        // Cross-Component Cascade: Transition all active assigned tasks to 'Unassigned' state (assignedTo = null, status = 'pending')
+        await Task.updateMany(
+            { assignedTo: user._id, isDeleted: { $ne: true } }, 
+            { assignedTo: null, status: 'pending' }
+        );
         
-        res.json({ success: true, message: 'User soft-deleted successfully, associated assignments cleaned' });
+        // Remove from task teams
+        await Task.updateMany(
+            { assignedTeam: user._id, isDeleted: { $ne: true } }, 
+            { $pull: { assignedTeam: user._id } }
+        );
+
+        // Soft-delete linked Employee profile
+        await Employee.updateMany(
+            { email: user.email }, 
+            { isActive: false, isDeleted: true, deletedAt: new Date() }
+        );
+        
+        res.json({ success: true, message: 'User soft-deleted successfully and tasks cascaded to Unassigned state' });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -259,7 +315,8 @@ export const getDeletedUsers = async (req, res) => {
 // @desc    Restore a soft-deleted user (Admin only)
 export const restoreUser = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id);
+        const id = String(req.params.id);
+        const user = await User.findById(id);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -269,8 +326,11 @@ export const restoreUser = async (req, res) => {
         user.deletedAt = undefined;
         await user.save();
 
-        // Also restore Employee profile if soft-deleted:
-        await Employee.updateMany({ email: user.email }, { isActive: true, isDeleted: false, deletedAt: undefined });
+        // Restore Employee profile
+        await Employee.updateMany(
+            { email: user.email }, 
+            { isActive: true, isDeleted: false, deletedAt: undefined }
+        );
 
         res.json({ success: true, message: 'User restored successfully', data: user });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
@@ -279,11 +339,11 @@ export const restoreUser = async (req, res) => {
     }
 };
 
-// @desc    Get users by department (optional: ?branch=X for branch scoping)
+// @desc    Get users by department
 export const getUsersByDepartment = async (req, res) => {
     try {
         const department = String(req.params.department);
-        const branch = req.query.branch ? String(req.query.branch) : undefined;
+        const branch = req.query.branch ? String(req.query.branch).trim() : undefined;
         const filter = { department, isActive: true, isDeleted: { $ne: true } };
         if (branch) filter.branch = branch;
         const users = await User.find(filter).select('-password').sort({ name: 1 });
@@ -304,7 +364,7 @@ export const getUsersByBranch = async (req, res) => {
     }
 };
 
-// @desc    Upload avatar - uses Cloudinary via uploadSingleToCloudinary middleware
+// @desc    Upload avatar
 export const uploadAvatar = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
@@ -313,15 +373,14 @@ export const uploadAvatar = async (req, res) => {
         }
 
         if (!req.uploadedFile) {
-            return res.status(400).json({ success: false, message: 'No image uploaded' });
+            return res.status(400).json({ success: false, message: 'No image file uploaded' });
         }
 
-        // Delete old avatar from Cloudinary if it exists and has a publicId
+        // Delete old avatar from Cloudinary if configured
         if (user.avatarPublicId) {
             await deleteFromCloudinary(user.avatarPublicId);
         }
 
-        // Save Cloudinary URL (permanent CDN link)
         user.avatar = req.uploadedFile.fileUrl;
         user.avatarPublicId = req.uploadedFile.publicId;
         await user.save();

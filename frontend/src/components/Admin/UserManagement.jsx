@@ -53,29 +53,29 @@ const ROLE_LABELS = {
 };
 
 const ROLE_BADGE = {
-  admin: "bg-red-500/10 text-red-400 border-red-500/20",
-  "department-head": "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  "branch-head": "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-  hr: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  it: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-  graphic: "bg-pink-500/10 text-pink-400 border-pink-500/20",
-  coordinator: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  mentor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  teacher: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-  student: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  employee: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  admin: "bg-indigo-50 text-indigo-700 border-indigo-100",
+  "department-head": "bg-amber-50 text-amber-700 border-amber-100",
+  "branch-head": "bg-sky-50 text-sky-700 border-sky-100",
+  hr: "bg-purple-50 text-purple-700 border-purple-100",
+  it: "bg-blue-50 text-blue-700 border-blue-100",
+  graphic: "bg-pink-50 text-pink-700 border-pink-100",
+  coordinator: "bg-cyan-50 text-cyan-700 border-cyan-100",
+  mentor: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  teacher: "bg-teal-50 text-teal-700 border-teal-100",
+  student: "bg-yellow-50 text-yellow-700 border-yellow-100",
+  employee: "bg-slate-50 text-slate-700 border-slate-100",
 };
 
 const DEPT_BADGE = {
-  IT: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  HR: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  Graphic: "bg-pink-500/10 text-pink-400 border-pink-500/20",
-  Finance: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  Academic: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-  Marketing: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  Legal: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-  Transport: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  Operations: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  IT: "bg-blue-50 text-blue-700 border-blue-100",
+  HR: "bg-purple-50 text-purple-700 border-purple-100",
+  Graphic: "bg-pink-50 text-pink-700 border-pink-100",
+  Finance: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  Academic: "bg-indigo-50 text-indigo-700 border-indigo-100",
+  Marketing: "bg-amber-50 text-amber-700 border-amber-100",
+  Legal: "bg-rose-50 text-rose-700 border-rose-100",
+  Transport: "bg-cyan-50 text-cyan-700 border-cyan-100",
+  Operations: "bg-slate-50 text-slate-700 border-slate-100",
 };
 
 const EMPTY_FORM = {
@@ -112,7 +112,7 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index * 0.02, 0.3) }}
-      className="hover:bg-slate-800/40 border-b border-slate-800/60 transition-colors"
+      className="hover:bg-slate-50/60 border-b border-slate-105 transition-colors bg-white"
     >
       <td className="py-3.5 px-5">
         <div className="flex items-center gap-3.5">
@@ -120,33 +120,33 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
             {user.name?.charAt(0)}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-slate-200 truncate hover:text-sky-400 transition-colors">
+            <p className="font-semibold text-slate-800 truncate hover:text-blue-600 transition-colors">
               {user.name}
             </p>
-            <p className="text-xs text-slate-400 truncate flex items-center gap-1">
+            <p className="text-xs text-slate-550 truncate flex items-center gap-1">
               <FiMail className="opacity-70" /> {user.email}
             </p>
           </div>
         </div>
       </td>
-      <td className="py-3.5 px-5 text-sm font-semibold text-slate-300">
+      <td className="py-3.5 px-5 text-sm font-semibold text-slate-600">
         {user.employeeId || "—"}
       </td>
       <td className="py-3.5 px-5">
         <span
-          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${DEPT_BADGE[user.department] || "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}
+          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${DEPT_BADGE[user.department] || "bg-slate-50 text-slate-600 border-slate-205"}`}
         >
           {user.department || "—"}
         </span>
       </td>
-      <td className="py-3.5 px-5 text-sm text-slate-300 whitespace-nowrap">
-        <span className="flex items-center gap-1.5 text-slate-300">
-          <FiMapPin className="text-sky-400 text-xs" /> {user.branch || "Gaurabagh"}
+      <td className="py-3.5 px-5 text-sm text-slate-600 whitespace-nowrap">
+        <span className="flex items-center gap-1.5 text-slate-600">
+          <FiMapPin className="text-slate-400 text-xs" /> {user.branch || "Gaurabagh"}
         </span>
       </td>
       <td className="py-3.5 px-5">
         <span
-          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${ROLE_BADGE[user.role] || "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}
+          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${ROLE_BADGE[user.role] || "bg-slate-50 text-slate-600 border-slate-205"}`}
         >
           {ROLE_LABELS[user.role] || user.role}
         </span>
@@ -155,12 +155,12 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
         <span
           className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold border ${
             user.isActive !== false
-              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-              : "bg-red-500/10 text-red-400 border-red-500/20"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+              : "bg-rose-50 text-rose-700 border-rose-100"
           }`}
         >
           <span
-            className={`h-1.5 w-1.5 rounded-full ${user.isActive !== false ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`}
+            className={`h-1.5 w-1.5 rounded-full ${user.isActive !== false ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`}
           />
           {user.isActive !== false ? "Active" : "Inactive"}
         </span>
@@ -169,14 +169,14 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
         <div className="flex justify-end gap-1.5">
           <button
             onClick={() => onEdit(user)}
-            className="inline-flex items-center gap-1.5 text-sky-400 hover:bg-sky-500/10 active:scale-95 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border border-transparent hover:border-sky-500/20"
+            className="inline-flex items-center gap-1.5 text-blue-650 hover:bg-blue-50 active:scale-95 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border border-transparent hover:border-blue-100"
           >
             <FiEdit2 size={13} /> Edit
           </button>
           {isAdmin && (
             <button
               onClick={() => onDelete(user)}
-              className="inline-flex items-center gap-1.5 text-red-400 hover:bg-red-500/10 active:scale-95 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border border-transparent hover:border-red-500/20"
+              className="inline-flex items-center gap-1.5 text-rose-650 hover:bg-rose-50 active:scale-95 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border border-transparent hover:border-rose-100"
             >
               <FiTrash2 size={13} /> Delete
             </button>
@@ -494,7 +494,7 @@ const UserManagement = () => {
     return departments;
   }, [formData.branch, dbBranches, departments]);
 
-  const inputClass = "w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 hover:border-slate-700 transition-all placeholder-slate-600";
+  const inputClass = "w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition-all placeholder-slate-400";
 
   // Combobox Formats
   const branchComboboxOptions = useMemo(() => {
@@ -506,20 +506,20 @@ const UserManagement = () => {
   }, [departmentsForSelectedBranch]);
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100">
+    <div className="min-h-screen bg-transparent text-slate-800 antialiased subpixel-antialiased">
       <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-7">
         
         {/* Modern Enterprise Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800/80 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-6">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center text-2xl shadow-lg shadow-sky-500/20">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white grid place-items-center text-2xl shadow-lg shadow-blue-500/20">
               👥
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
                 User Management
               </h1>
-              <p className="text-slate-400 text-sm mt-0.5">
+              <p className="text-slate-500 text-sm mt-0.5">
                 Configure corporate roles, branches, and monitor live workloads
               </p>
             </div>
@@ -527,7 +527,7 @@ const UserManagement = () => {
           <div className="flex flex-wrap gap-2.5">
             <button
               onClick={() => setShowRecycleBin(true)}
-              className="inline-flex items-center justify-center gap-2 bg-slate-900 border border-slate-800 hover:border-slate-700 active:scale-95 text-slate-300 px-5 py-2.5 rounded-xl font-semibold shadow-md transition-all text-sm"
+              className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-350 active:scale-95 text-slate-700 px-5 py-2.5 rounded-xl font-semibold shadow-sm transition-all text-sm"
             >
               ♻️ Recycle Bin
             </button>
@@ -542,18 +542,18 @@ const UserManagement = () => {
           </div>
         </div>
 
-        {/* Premium Dark Cards Statistics Dashboard */}
+        {/* Premium Light Cards Statistics Dashboard */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: "Total Accounts", value: userStats.total, color: "text-slate-100", icon: <FiUsers className="text-slate-400" /> },
-            { label: "Active Employees", value: userStats.active, color: "text-emerald-400", icon: <FiCheckCircle className="text-emerald-400/80" /> },
-            { label: "Company Divisions", value: departments.length, color: "text-sky-400", icon: <FiBriefcase className="text-sky-400/80" /> },
-            { label: "Active Branches", value: finalBranches.length, color: "text-indigo-400", icon: <FiMapPin className="text-indigo-400/80" /> },
-            { label: "Global Admins", value: userStats.admins, color: "text-purple-400", icon: <FiShield className="text-purple-400/80" /> },
+            { label: "Total Accounts", value: userStats.total, color: "text-slate-800", icon: <FiUsers className="text-slate-400" /> },
+            { label: "Active Employees", value: userStats.active, color: "text-emerald-600", icon: <FiCheckCircle className="text-emerald-500/80" /> },
+            { label: "Company Divisions", value: departments.length, color: "text-blue-600", icon: <FiBriefcase className="text-blue-500/80" /> },
+            { label: "Active Branches", value: finalBranches.length, color: "text-indigo-650", icon: <FiMapPin className="text-indigo-500/80" /> },
+            { label: "Global Admins", value: userStats.admins, color: "text-purple-600", icon: <FiShield className="text-purple-500/80" /> },
           ].map((s, idx) => (
             <div
               key={idx}
-              className="relative overflow-hidden bg-slate-900/60 border border-slate-800 rounded-2xl px-5 py-4 shadow-xl backdrop-blur-xl group hover:border-slate-750 transition-all duration-300"
+              className="relative overflow-hidden bg-white/70 border border-slate-100 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md group hover:border-slate-200 transition-all duration-300"
             >
               <div className="absolute right-3 top-3 opacity-20 group-hover:opacity-40 transition-opacity">
                 {s.icon}
@@ -567,16 +567,16 @@ const UserManagement = () => {
         </div>
 
         {/* Premium Filter Controls Grid */}
-        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-3 shadow-xl backdrop-blur-md">
+        <div className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row gap-3 shadow-sm">
           <div className="relative flex-1">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
               <FiSearch size={16} />
             </span>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, email, employee ID..."
-              className="w-full bg-slate-950/70 border border-slate-850 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-100 transition placeholder-slate-600"
+              className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 transition placeholder-slate-400"
             />
           </div>
           
@@ -584,7 +584,7 @@ const UserManagement = () => {
             <select
               value={roleFilter}
               onChange={(e) => setPage(1) || setRoleFilter(e.target.value)}
-              className="bg-slate-950/75 border border-slate-850 text-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition cursor-pointer"
+              className="bg-white border border-slate-200 text-slate-750 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
             >
               <option value="all">All Roles</option>
               {roles.map((r) => (
@@ -597,7 +597,7 @@ const UserManagement = () => {
             <select
               value={branchFilter}
               onChange={(e) => setPage(1) || setBranchFilter(e.target.value)}
-              className="bg-slate-950/75 border border-slate-850 text-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition cursor-pointer"
+              className="bg-white border border-slate-200 text-slate-750 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
             >
               <option value="all">All Branches</option>
               {finalBranches.map((b) => (
@@ -611,28 +611,28 @@ const UserManagement = () => {
 
         {/* Live List Representation */}
         {loading ? (
-          <div className="bg-slate-900/30 rounded-2xl border border-slate-800 p-6 space-y-3">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="h-14 bg-slate-900/80 rounded-xl animate-pulse border border-slate-850"
+                className="h-14 bg-slate-50 rounded-xl animate-pulse border border-slate-100"
               />
             ))}
           </div>
         ) : users.length === 0 ? (
-          <div className="bg-slate-900/30 rounded-3xl border border-dashed border-slate-800 py-20 text-center shadow-xl backdrop-blur-sm">
+          <div className="bg-white rounded-3xl border border-dashed border-slate-200 py-20 text-center shadow-sm">
             <div className="text-5xl mb-4">👥</div>
-            <p className="text-slate-300 font-bold text-lg">No active users match filters</p>
+            <p className="text-slate-700 font-bold text-lg">No active users match filters</p>
             <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
               Change the search query or filters. Deleted users reside safely in the Recycle Bin.
             </p>
           </div>
         ) : (
           <>
-            <div className="hidden md:block bg-slate-900/30 rounded-2xl shadow-2xl border border-slate-800/80 overflow-hidden backdrop-blur-xl">
+            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-950/60 border-b border-slate-800 text-slate-400">
+                  <thead className="bg-slate-50 border-b border-slate-100 text-slate-500">
                     <tr>
                       <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
                         User Profile / Contact
@@ -657,7 +657,7 @@ const UserManagement = () => {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-850/60">
+                  <tbody className="divide-y divide-slate-100">
                     {users.map((item, index) => (
                       <UserTableRow
                         key={item._id}
@@ -674,7 +674,7 @@ const UserManagement = () => {
 
               {/* Advanced Pagination UI */}
               {pagination.pages > 1 && (
-                <div className="p-4 border-t border-slate-850 bg-slate-950/40 flex items-center justify-between px-6">
+                <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between px-6">
                   <p className="text-xs text-slate-500">
                     Showing page {page} of {pagination.pages} ({pagination.total} entries total)
                   </p>
@@ -682,7 +682,7 @@ const UserManagement = () => {
                     <button
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="p-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-slate-300 transition-colors"
+                      className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white text-slate-650 transition-colors"
                     >
                       ◀
                     </button>
@@ -693,7 +693,7 @@ const UserManagement = () => {
                         <button
                           key={p}
                           onClick={() => setPage(p)}
-                          className={`w-9 h-9 rounded-lg text-xs font-bold transition-all border ${page === p ? "bg-sky-600 border-sky-500 text-white shadow-lg" : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700"}`}
+                          className={`w-9 h-9 rounded-lg text-xs font-bold transition-all border ${page === p ? "bg-blue-600 border-blue-500 text-white shadow-md" : "bg-white border-slate-200 text-slate-600 hover:border-slate-350 hover:bg-slate-50"}`}
                         >
                           {p}
                         </button>
@@ -702,7 +702,7 @@ const UserManagement = () => {
                     <button
                       onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
                       disabled={page === pagination.pages}
-                      className="p-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-slate-300 transition-colors"
+                      className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white text-slate-650 transition-colors"
                     >
                       ▶
                     </button>
@@ -716,50 +716,50 @@ const UserManagement = () => {
               {users.map((item, index) => (
                 <div
                   key={item._id}
-                  className="bg-slate-900/80 rounded-2xl border border-slate-800 p-4 shadow-xl space-y-3"
+                  className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover:shadow-md transition-all duration-300 space-y-3"
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center font-bold text-sm uppercase">
                       {item.name?.charAt(0)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-slate-200 truncate">{item.name}</p>
-                      <p className="text-xs text-slate-400 truncate">{item.email}</p>
+                      <p className="font-bold text-slate-800 truncate">{item.name}</p>
+                      <p className="text-xs text-slate-500 truncate">{item.email}</p>
                     </div>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
                         item.isActive !== false
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                          : "bg-red-500/10 text-red-400 border-red-500/20"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                          : "bg-rose-50 text-rose-700 border-rose-100"
                       }`}
                     >
                       {item.isActive !== false ? "Active" : "Inactive"}
                     </span>
                   </div>
                   
-                  <div className="flex flex-wrap gap-1.5 border-t border-slate-800 pt-3 text-[11px]">
-                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${ROLE_BADGE[item.role] || "bg-slate-500/10 text-slate-400"}`}>
+                  <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 text-[11px]">
+                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${ROLE_BADGE[item.role] || "bg-slate-50 text-slate-650"}`}>
                       {ROLE_LABELS[item.role] || item.role}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${DEPT_BADGE[item.department] || "bg-slate-500/10 text-slate-400"}`}>
+                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${DEPT_BADGE[item.department] || "bg-slate-50 text-slate-650"}`}>
                       {item.department || "IT"}
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-lg border border-slate-800 bg-slate-950/50 text-slate-300">
+                    <span className="px-2.5 py-0.5 rounded-lg border border-slate-100 bg-slate-50 text-slate-600">
                       📍 {item.branch || "Gaurabagh"}
                     </span>
                   </div>
 
-                  <div className="flex gap-2 border-t border-slate-800/60 pt-3">
+                  <div className="flex gap-2 border-t border-slate-100 pt-3">
                     <button
                       onClick={() => handleEditClick(item)}
-                      className="flex-1 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 text-xs font-bold transition border border-sky-500/10"
+                      className="flex-1 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold transition border border-blue-100"
                     >
                       ✏️ Edit
                     </button>
                     {isAdmin && (
                       <button
                         onClick={() => setConfirmDelete(item)}
-                        className="flex-1 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold transition border border-red-500/10"
+                        className="flex-1 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition border border-red-100"
                       >
                         🗑️ Delete
                       </button>
@@ -775,24 +775,24 @@ const UserManagement = () => {
       {/* Recycle Bin Modal Overlay */}
       <AnimatePresence>
         {showRecycleBin && (
-          <div className="fixed inset-0 bg-[#060814]/80 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+              className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden text-slate-800"
             >
-              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
+              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-100 sticky top-0 bg-white z-10">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">♻️</span>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-100">Recycle Bin</h2>
-                    <p className="text-xs text-slate-400">Soft-deleted users directory</p>
+                    <h2 className="text-lg font-bold text-slate-800">Recycle Bin</h2>
+                    <p className="text-xs text-slate-500">Soft-deleted users directory</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowRecycleBin(false)}
-                  className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 hover:text-white text-lg transition flex items-center justify-center"
+                  className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-850 text-lg transition flex items-center justify-center"
                 >
                   <FiX size={16} />
                 </button>
@@ -801,30 +801,30 @@ const UserManagement = () => {
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
                 {binLoading ? (
                   <div className="text-center py-12 text-slate-500 flex flex-col items-center justify-center gap-2">
-                    <FiRefreshCw size={24} className="animate-spin text-sky-500" />
+                    <FiRefreshCw size={24} className="animate-spin text-blue-600" />
                     <span className="text-sm font-semibold">Scanning directory...</span>
                   </div>
                 ) : deletedUsers.length === 0 ? (
                   <div className="text-center py-16 text-slate-500">
                     <FiCheckCircle size={44} className="mx-auto mb-3 text-emerald-500/80 animate-bounce" />
-                    <p className="font-bold text-slate-350">Recycle Bin is empty</p>
-                    <p className="text-xs text-slate-500 mt-1">Zero soft-deleted accounts found.</p>
+                    <p className="font-bold text-slate-700">Recycle Bin is empty</p>
+                    <p className="text-xs text-slate-400 mt-1">Zero soft-deleted accounts found.</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-800/80">
+                  <div className="divide-y divide-slate-100">
                     {deletedUsers.map((item) => (
                       <div
                         key={item._id}
                         className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-xl bg-slate-800 text-slate-300 grid place-items-center font-bold text-xs uppercase">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-600 grid place-items-center font-bold text-xs uppercase">
                             {item.name?.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-200 text-sm">{item.name}</p>
-                            <p className="text-xs text-slate-400">{item.email}</p>
-                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-semibold">
+                            <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                            <p className="text-xs text-slate-500">{item.email}</p>
+                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-450 font-semibold">
                               <span>🏢 {item.department}</span>
                               <span>•</span>
                               <span>📍 {item.branch}</span>
@@ -834,7 +834,7 @@ const UserManagement = () => {
                         <button
                           onClick={() => handleRestore(item._id, item.name)}
                           disabled={restoringId === item._id}
-                          className="self-start sm:self-center px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/20 hover:border-emerald-500/35 text-emerald-400 text-xs font-bold tracking-wide transition flex items-center gap-1.5 disabled:opacity-50"
+                          className="self-start sm:self-center px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 text-emerald-700 text-xs font-bold tracking-wide transition flex items-center gap-1.5 disabled:opacity-50"
                         >
                           {restoringId === item._id ? (
                             <>
@@ -859,30 +859,30 @@ const UserManagement = () => {
       {/* Confirmation Soft Delete Modal */}
       <AnimatePresence>
         {confirmDelete && (
-          <div className="fixed inset-0 bg-[#060814]/85 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 w-full max-w-md text-center"
+              className="bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 w-full max-w-md text-center text-slate-800"
             >
-              <div className="mx-auto h-12 w-12 rounded-full bg-red-500/10 text-red-400 grid place-items-center text-xl mb-4 border border-red-500/25 animate-pulse">
+              <div className="mx-auto h-12 w-12 rounded-full bg-red-50 text-red-505 grid place-items-center text-xl mb-4 border border-red-100 animate-pulse">
                 <FiAlertTriangle />
               </div>
-              <h3 className="text-lg font-extrabold text-slate-200">Soft-Delete User?</h3>
-              <p className="text-sm text-slate-400 mt-2">
+              <h3 className="text-lg font-extrabold text-slate-850">Soft-Delete User?</h3>
+              <p className="text-sm text-slate-550 mt-2">
                 This will soft-delete <strong>{confirmDelete.name}</strong>. Their data, credentials, and profile remain completely archived in the Recycle Bin for restoration.
               </p>
               <div className="flex gap-2.5 mt-6">
                 <button
                   onClick={() => setConfirmDelete(null)}
-                  className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition"
+                  className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleDelete(confirmDelete)}
-                  className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold transition shadow-lg shadow-red-600/10"
+                  className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition shadow-md"
                 >
                   Archive User
                 </button>
@@ -896,7 +896,7 @@ const UserManagement = () => {
       <AnimatePresence>
         {showModal && (
           <div
-            className="fixed inset-0 bg-[#060814]/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 z-[99] overflow-y-auto"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 z-[99] overflow-y-auto"
             onClick={() => setShowModal(false)}
           >
             <motion.div
@@ -905,19 +905,19 @@ const UserManagement = () => {
               exit={{ opacity: 0, y: 30, scale: 0.98 }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-900 w-full sm:max-w-5xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[100vh] sm:max-h-[92vh] overflow-hidden flex flex-col border border-slate-800"
+              className="bg-white w-full sm:max-w-5xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[100vh] sm:max-h-[92vh] overflow-hidden flex flex-col border border-slate-200"
             >
               {/* Header section with notification banner */}
-              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-800 sticky top-0 bg-slate-900 z-20">
+              <div className="flex justify-between items-center px-6 py-4.5 border-b border-slate-150 sticky top-0 bg-white z-20">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     {editingUser ? "✏️ Edit Employee Profile" : "👤 Provision New Corporate User"}
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Enterprise security classification matrix enabled</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Enterprise security classification matrix enabled</p>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition"
+                  className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition"
                 >
                   <FiX size={16} />
                 </button>
@@ -925,7 +925,7 @@ const UserManagement = () => {
 
               {/* Dynamic Warning/Error Banner */}
               {bannerError && (
-                <div className="bg-red-500/10 border-b border-red-500/20 text-red-400 px-6 py-3 text-xs font-semibold flex items-center gap-2 animate-[slideUp_.25s_ease-out]">
+                <div className="bg-red-50 border-b border-red-100 text-red-650 px-6 py-3 text-xs font-semibold flex items-center gap-2 animate-[slideUp_.25s_ease-out]">
                   <FiAlertTriangle size={14} className="flex-shrink-0 text-red-400" />
                   <span>{bannerError}</span>
                 </div>
@@ -933,11 +933,11 @@ const UserManagement = () => {
 
               {/* Split Pane Container */}
               <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
-                <div className="flex-1 overflow-y-auto md:grid md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+                <div className="flex-1 overflow-y-auto md:grid md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200">
                   
                   {/* Left Column Pane (Core Information Inputs) */}
                   <div className="p-6 space-y-4.5 md:col-span-7">
-                    <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                       <span>01.</span> Core Identity & Personal Details
                     </h3>
 
@@ -1017,7 +1017,7 @@ const UserManagement = () => {
                     </Field>
 
                     {/* Security Authentication Code */}
-                    <Field label={editingUser ? "Security Update Password" : "Account Password" } required={!editingUser}>
+                    <Field label={editingUser ? "Security Update Password" : "Account Password"} required={!editingUser}>
                       <div className="relative">
                         <input
                           type={showPwd ? "text" : "password"}
@@ -1030,7 +1030,7 @@ const UserManagement = () => {
                         <button
                           type="button"
                           onClick={() => setShowPwd((s) => !s)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
                           tabIndex={-1}
                         >
                           {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
@@ -1040,8 +1040,8 @@ const UserManagement = () => {
 
                     {/* Dynamic Custom Fields */}
                     {settings?.userCustomFields?.length > 0 && (
-                      <div className="pt-4 border-t border-slate-800/80 space-y-4">
-                        <h4 className="text-xs font-bold text-sky-400 tracking-wide uppercase">
+                      <div className="pt-4 border-t border-slate-200 space-y-4">
+                        <h4 className="text-xs font-bold text-blue-600 tracking-wide uppercase">
                           03. Customizable Corporate Extensions
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1073,7 +1073,7 @@ const UserManagement = () => {
                   <div className="p-6 md:col-span-5 flex flex-col space-y-4">
                     
                     {/* Modern Framer Motion Tabs Header */}
-                    <div className="flex border-b border-slate-850 p-0.5 bg-slate-950/60 rounded-xl relative">
+                    <div className="flex border border-slate-200 p-0.5 bg-slate-50 rounded-xl relative">
                       {[
                         { id: "affiliation", label: "Affiliation", icon: <FiBriefcase /> },
                         { id: "tasks", label: `Active Workload (${editingUser ? userTasks.length : 0})`, icon: <FiGrid /> }
@@ -1082,13 +1082,13 @@ const UserManagement = () => {
                           key={t.id}
                           type="button"
                           onClick={() => setActiveRightTab(t.id)}
-                          className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeRightTab === t.id ? "text-slate-100" : "text-slate-500 hover:text-slate-300"}`}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeRightTab === t.id ? "text-slate-800" : "text-slate-500 hover:text-slate-700"}`}
                         >
                           {t.icon} {t.label}
                           {activeRightTab === t.id && (
                             <motion.div
                               layoutId="rightTabOutline"
-                              className="absolute inset-0 bg-slate-900 border border-slate-800 rounded-lg -z-10 shadow-lg"
+                              className="absolute inset-0 bg-white border border-slate-200 rounded-lg -z-10 shadow-sm"
                               transition={{ type: "spring", stiffness: 350, damping: 25 }}
                             />
                           )}
@@ -1106,7 +1106,7 @@ const UserManagement = () => {
                           transition={{ duration: 0.2 }}
                           className="space-y-4.5"
                         >
-                          <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                          <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                             <span>02.</span> Professional Scope Matrix
                           </h3>
 
@@ -1114,10 +1114,10 @@ const UserManagement = () => {
                             <select
                               value={formData.role}
                               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                              className="w-full bg-slate-950/70 border border-slate-800 text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 transition cursor-pointer"
+                              className="w-full bg-white border border-slate-200 text-slate-850 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer hover:border-slate-350"
                             >
                               {roles.map((r) => (
-                                <option key={r} value={r} className="bg-slate-900">
+                                <option key={r} value={r} className="bg-white text-slate-850">
                                   {ROLE_LABELS[r]}
                                 </option>
                               ))}
@@ -1145,16 +1145,16 @@ const UserManagement = () => {
                           />
 
                           <div className="pt-3">
-                            <label className="flex items-start justify-between gap-3 cursor-pointer bg-slate-950/50 border border-slate-850 hover:border-slate-800 rounded-2xl px-4 py-3.5 transition-all select-none">
+                            <label className="flex items-start justify-between gap-3 cursor-pointer bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl px-4 py-3.5 transition-all select-none">
                               <div className="space-y-0.5">
-                                <p className="text-xs font-bold uppercase tracking-wider text-slate-350">Security Access Pipeline</p>
+                                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Security Access Pipeline</p>
                                 <p className="text-[11px] text-slate-500 leading-tight">Enables or disables system authentication key</p>
                               </div>
                               <input
                                 type="checkbox"
                                 checked={formData.isActive}
                                 onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                                className="w-5 h-5 rounded-lg border-slate-800 bg-slate-900 text-sky-600 focus:ring-sky-500/30 focus:ring-offset-slate-900"
+                                className="w-5 h-5 rounded-lg border-slate-300 bg-white text-blue-650 focus:ring-blue-500/20 focus:ring-offset-white"
                               />
                             </label>
                           </div>
@@ -1169,14 +1169,14 @@ const UserManagement = () => {
                           transition={{ duration: 0.2 }}
                           className="flex flex-col flex-1 overflow-hidden h-full space-y-3.5"
                         >
-                          <h3 className="text-sm font-bold text-sky-400 flex items-center gap-2 border-b border-slate-800 pb-2">
+                          <h3 className="text-sm font-bold text-blue-600 flex items-center gap-2 border-b border-slate-200 pb-2">
                             <span>📋</span> Assigned Workplace Workload
                           </h3>
 
                           {!editingUser ? (
-                            <div className="text-center py-16 px-4 bg-slate-950/40 rounded-2xl border border-slate-850 border-dashed">
-                              <FiBriefcase className="mx-auto mb-2 text-slate-600" size={32} />
-                              <p className="text-xs font-semibold text-slate-400">Creation Mode Active</p>
+                            <div className="text-center py-16 px-4 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+                              <FiBriefcase className="mx-auto mb-2 text-slate-400" size={32} />
+                              <p className="text-xs font-semibold text-slate-600">Creation Mode Active</p>
                               <p className="text-[11px] text-slate-500 mt-1">
                                 Tasks can be queried or assigned once this employee profile is physically saved and recorded in the database.
                               </p>
@@ -1184,7 +1184,7 @@ const UserManagement = () => {
                           ) : (
                             <div className="flex-1 flex flex-col overflow-hidden space-y-3">
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
                                   <FiSearch size={14} />
                                 </span>
                                 <input
@@ -1192,43 +1192,43 @@ const UserManagement = () => {
                                   value={tasksSearchQuery}
                                   onChange={(e) => setTasksSearchQuery(e.target.value)}
                                   placeholder="Search assigned tasks..."
-                                  className="w-full bg-slate-950/80 border border-slate-850 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/30 text-slate-100"
+                                  className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 placeholder-slate-400"
                                 />
                               </div>
 
                               <div className="flex-1 overflow-y-auto custom-scrollbar pr-0.5 space-y-2 max-h-[300px]">
                                 {tasksLoading ? (
                                   <div className="text-center py-8 text-xs text-slate-500 flex items-center justify-center gap-1.5">
-                                    <FiRefreshCw className="animate-spin text-sky-500" /> Scanning backlog...
+                                    <FiRefreshCw className="animate-spin text-blue-600" /> Scanning backlog...
                                   </div>
                                 ) : filteredUserTasks.length === 0 ? (
-                                  <div className="text-center py-10 bg-slate-950/20 rounded-xl border border-slate-850 text-slate-500 text-xs">
+                                  <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs">
                                     No matching tasks in database.
                                   </div>
                                 ) : (
                                   filteredUserTasks.map(t => {
                                     const priorityColors = {
-                                      low: "text-green-400 bg-green-500/10 border-green-500/20",
-                                      medium: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-                                      high: "text-rose-400 bg-rose-500/10 border-rose-500/20",
-                                      urgent: "text-red-400 bg-red-500/10 border-red-500/20",
+                                      low: "text-emerald-700 bg-emerald-50 border-emerald-100",
+                                      medium: "text-amber-700 bg-amber-50 border-amber-100",
+                                      high: "text-rose-700 bg-rose-50 border-rose-100",
+                                      urgent: "text-red-700 bg-red-50 border-red-100",
                                     };
                                     
                                     return (
                                       <div
                                         key={t._id}
-                                        className="p-3 bg-slate-950/75 border border-slate-850 hover:border-slate-800 rounded-xl space-y-1.5 hover:shadow-lg transition-all"
+                                        className="p-3 bg-white border border-slate-200 hover:border-slate-350 rounded-xl space-y-1.5 hover:shadow-md transition-all"
                                       >
                                         <div className="flex justify-between items-start gap-2">
-                                          <p className="text-xs font-bold text-slate-200 line-clamp-1">{t.title}</p>
-                                          <span className={`text-[9px] font-bold px-1.5 py-0.5 border rounded uppercase ${priorityColors[t.priority] || "bg-slate-800 text-slate-400"}`}>
+                                          <p className="text-xs font-bold text-slate-800 line-clamp-1">{t.title}</p>
+                                          <span className={`text-[9px] font-bold px-1.5 py-0.5 border rounded uppercase ${priorityColors[t.priority] || "bg-slate-100 text-slate-600 border-slate-200"}`}>
                                             {t.priority}
                                           </span>
                                         </div>
-                                        <p className="text-[10px] text-slate-450 line-clamp-2 leading-snug">{t.description || "No description provided."}</p>
-                                        <div className="flex justify-between items-center text-[9px] text-slate-500 pt-1 font-semibold border-t border-slate-850/50">
+                                        <p className="text-[10px] text-slate-550 line-clamp-2 leading-snug">{t.description || "No description provided."}</p>
+                                        <div className="flex justify-between items-center text-[9px] text-slate-500 pt-1 font-semibold border-t border-slate-100">
                                           <span>📅 Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "—"}</span>
-                                          <span className="capitalize px-1.5 py-0.5 rounded-full bg-slate-850 text-slate-400 border border-slate-800">{t.status || "Pending"}</span>
+                                          <span className="capitalize px-1.5 py-0.5 rounded-full bg-slate-50 text-slate-650 border border-slate-200">{t.status || "Pending"}</span>
                                         </div>
                                       </div>
                                     );
@@ -1244,18 +1244,18 @@ const UserManagement = () => {
                 </div>
 
                 {/* Split Pane Footer controls */}
-                <div className="flex gap-3 px-6 py-4 border-t border-slate-800 bg-slate-950/50 mt-auto">
+                <div className="flex gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 mt-auto">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-98 text-slate-300 font-bold transition text-sm"
+                    className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 active:scale-98 text-slate-700 font-bold transition text-sm"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold shadow-lg shadow-sky-500/10 transition-all active:scale-[.98] disabled:opacity-50 text-sm"
+                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/10 transition-all active:scale-[.98] disabled:opacity-50 text-sm"
                   >
                     {submitting ? "Processing Registry..." : editingUser ? "Commit Profile Update" : "Establish Corporate Profile"}
                   </button>

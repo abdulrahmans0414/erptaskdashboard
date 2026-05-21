@@ -117,9 +117,9 @@ export const SearchableCombobox = ({
     };
 
     return (
-        <div ref={containerRef} className={`relative flex flex-col gap-1.5 w-full ${className}`}>
+        <div ref={containerRef} className={`relative flex flex-col gap-1.5 w-full antialiased subpixel-antialiased ${className}`}>
             {label && (
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                     {label}
                 </label>
             )}
@@ -132,11 +132,11 @@ export const SearchableCombobox = ({
                             inputRef.current?.focus();
                         }
                     }}
-                    className={`flex items-center w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-900/60 backdrop-blur-md transition-all duration-300 cursor-text group ${
-                        isOpen ? 'border-sky-500 ring-2 ring-sky-500/20 bg-slate-900 shadow-[0_0_15px_rgba(14,165,233,0.1)]' : 'hover:border-slate-500'
+                    className={`flex items-center w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 bg-white transition-all duration-300 cursor-text group ${
+                        isOpen ? 'border-blue-500 ring-2 ring-blue-500/20 bg-white shadow-sm' : 'hover:border-slate-350'
                     } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${error ? 'border-red-500 focus-within:ring-red-500/20' : ''}`}
                 >
-                    <FiSearch className="text-slate-500 mr-2.5 group-focus-within:text-sky-500 transition-colors" size={16} />
+                    <FiSearch className="text-slate-500 mr-2.5 group-focus-within:text-blue-500 transition-colors" size={16} />
                     
                     <input
                         ref={inputRef}
@@ -149,7 +149,7 @@ export const SearchableCombobox = ({
                         }}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
-                        className="w-full text-sm font-medium text-slate-100 bg-transparent border-none outline-none focus:ring-0 p-0 placeholder-slate-500"
+                        className="w-full text-sm font-medium text-slate-800 bg-transparent border-none outline-none focus:ring-0 p-0 placeholder-slate-400"
                     />
 
                     <div className="flex items-center gap-1.5 ml-2">
@@ -157,13 +157,13 @@ export const SearchableCombobox = ({
                             <button
                                 type="button"
                                 onClick={handleClear}
-                                className="p-1 rounded-full text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-all duration-200"
+                                className="p-1 rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all duration-200"
                             >
                                 <FiX size={14} />
                             </button>
                         )}
                         <FiChevronDown 
-                            className={`text-slate-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-sky-500' : ''}`} 
+                            className={`text-slate-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-600' : ''}`} 
                             size={16} 
                         />
                     </div>
@@ -176,7 +176,7 @@ export const SearchableCombobox = ({
                             animate={{ opacity: 1, y: 4, scale: 1 }}
                             exit={{ opacity: 0, y: 5, scale: 0.98 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute z-[999] w-full mt-1.5 bg-slate-900 border border-slate-800 rounded-xl shadow-[0_12px_30px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-xl"
+                            className="absolute z-[999] w-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-150 overflow-hidden"
                         >
                             <div className="max-h-[260px] overflow-y-auto custom-scrollbar py-1">
                                 {filteredOptions.length === 0 ? (
@@ -194,9 +194,9 @@ export const SearchableCombobox = ({
                                                 onClick={() => handleSelect(opt)}
                                                 onMouseEnter={() => setActiveIndex(index)}
                                                 className={`flex items-center justify-between px-3.5 py-2.5 mx-1.5 my-0.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer select-none ${
-                                                    isSelected ? 'bg-sky-600 text-white' : ''
+                                                    isSelected ? 'bg-blue-600 text-white font-semibold' : ''
                                                 } ${
-                                                    isActive && !isSelected ? 'bg-slate-800 text-slate-100' : 'text-slate-300'
+                                                    isActive && !isSelected ? 'bg-slate-50 text-slate-800' : 'text-slate-650'
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3">
@@ -204,13 +204,13 @@ export const SearchableCombobox = ({
                                                         <img 
                                                             src={opt.avatar} 
                                                             alt={opt.label} 
-                                                            className="w-7 h-7 rounded-full border border-slate-700 object-cover flex-shrink-0"
+                                                            className="w-7 h-7 rounded-full border border-slate-200 object-cover flex-shrink-0"
                                                         />
                                                     )}
                                                     <div className="flex flex-col">
                                                         <span className="leading-tight">{opt.label}</span>
                                                         {opt.subLabel && (
-                                                            <span className={`text-[11px] mt-0.5 leading-none ${isSelected ? 'text-sky-200' : 'text-slate-500'}`}>
+                                                            <span className={`text-[11px] mt-0.5 leading-none ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
                                                                 {opt.subLabel}
                                                             </span>
                                                         )}
