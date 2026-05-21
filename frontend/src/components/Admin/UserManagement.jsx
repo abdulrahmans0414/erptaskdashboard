@@ -84,10 +84,6 @@ const EMPTY_FORM = {
   role: "employee",
   department: "IT",
   branch: "Gaurabagh",
-  phone: "",
-  address: "",
-  bloodGroup: "",
-  dateOfJoining: new Date().toISOString().split('T')[0],
   employeeId: "",
   customFields: {},
   isActive: true,
@@ -426,14 +422,10 @@ const UserManagement = () => {
     setFormData({
       name: userToEdit.name || "",
       email: userToEdit.email || "",
-      password: "", 
+      password: "",
       role: userToEdit.role || "employee",
       department: userToEdit.department || "IT",
       branch: userToEdit.branch || "Gaurabagh",
-      phone: userToEdit.phone || "",
-      address: userToEdit.address || "",
-      bloodGroup: userToEdit.bloodGroup || "",
-      dateOfJoining: userToEdit.dateOfJoining ? userToEdit.dateOfJoining.split('T')[0] : new Date().toISOString().split('T')[0],
       employeeId: userToEdit.employeeId || "",
       customFields: userToEdit.customFields || {},
       isActive: userToEdit.isActive !== false,
@@ -819,68 +811,28 @@ const UserManagement = () => {
                         />
                       </Field>
 
-                      <Field label="Blood Group">
-                        <input
-                          type="text"
-                          placeholder="e.g. O+ or AB-"
-                          value={formData.bloodGroup}
-                          onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                          className={inputClass}
-                        />
+                      {/* Account Password */}
+                      <Field label={editingUser ? "Security Update Password" : "Account Password"} required={!editingUser}>
+                        <div className="relative">
+                          <input
+                            type={showPwd ? "text" : "password"}
+                            required={!editingUser}
+                            placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            className={`${inputClass} pr-10`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPwd((s) => !s)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                          </button>
+                        </div>
                       </Field>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
-                      <Field label="Phone Contact">
-                        <input
-                          type="text"
-                          placeholder="e.g. +91 9900..."
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className={inputClass}
-                        />
-                      </Field>
-                      <Field label="Date of Joining" required>
-                        <input
-                          type="date"
-                          value={formData.dateOfJoining}
-                          onChange={(e) => setFormData({ ...formData, dateOfJoining: e.target.value })}
-                          className={inputClass}
-                        />
-                      </Field>
-                    </div>
-
-                    <Field label="Home Address (Residency)">
-                      <textarea
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className={`${inputClass} h-auto py-2`}
-                        rows="2"
-                        placeholder="Street address, City, Pincode"
-                      />
-                    </Field>
-
-                    {/* Security Authentication Code */}
-                    <Field label={editingUser ? "Security Update Password" : "Account Password"} required={!editingUser}>
-                      <div className="relative">
-                        <input
-                          type={showPwd ? "text" : "password"}
-                          required={!editingUser}
-                          placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          className={`${inputClass} pr-10`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPwd((s) => !s)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
-                          tabIndex={-1}
-                        >
-                          {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                        </button>
-                      </div>
-                    </Field>
 
                     {/* Dynamic Custom Fields */}
                     {settings?.userCustomFields?.length > 0 && (

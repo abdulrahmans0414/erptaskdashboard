@@ -40,8 +40,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     assignedTo: "",
     dueDate: "",
     priority: "medium",
-    estimatedHours: "",
-    estimatedMinutes: "",
   });
 
   const [userSearch, setUserSearch] = useState("");
@@ -137,8 +135,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       assignedTo: "",
       dueDate: "",
       priority: "medium",
-      estimatedHours: "",
-      estimatedMinutes: "",
     });
     setUserSearch("");
     setIsTeamTask(false);
@@ -238,9 +234,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
     setLoading(true);
     setError("");
-    const eh = parseFloat(formData.estimatedHours) || 0;
-    const em = parseFloat(formData.estimatedMinutes) || 0;
-
     const taskData = isTeamTask
       ? {
           title: formData.title,
@@ -249,8 +242,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           branch: formData.branch,
           dueDate: formData.dueDate,
           priority: formData.priority,
-          estimatedHours: Math.max(0, eh),
-          estimatedMinutes: Math.max(0, em),
           isTeamTask: true,
           assignedTeam: selectedTeam,
           collaboratingDepartments: collaboratingDepts,
@@ -263,8 +254,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           assignedTo: formData.assignedTo,
           dueDate: formData.dueDate,
           priority: formData.priority,
-          estimatedHours: Math.max(0, eh),
-          estimatedMinutes: Math.max(0, em),
           isTeamTask: false,
         };
 
@@ -412,44 +401,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                       <option value="high" className="bg-white text-slate-850">🟠 High Priority</option>
                       <option value="urgent" className="bg-white text-slate-850">🔴 Urgent Backlog</option>
                     </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                      Estimated Hours Estimate
-                    </label>
-                    <div className="relative">
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">HRS</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.5"
-                        value={formData.estimatedHours}
-                        onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-12 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition placeholder-slate-400"
-                        placeholder="e.g. 12"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
-                      Estimated Minutes Buffer
-                    </label>
-                    <div className="relative">
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">MIN</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={formData.estimatedMinutes}
-                        onChange={(e) => setFormData({ ...formData, estimatedMinutes: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-12 py-2.5 text-sm text-slate-850 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-slate-350 transition placeholder-slate-400"
-                        placeholder="e.g. 30"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>

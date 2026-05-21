@@ -1,6 +1,6 @@
 import api from './client.js';
 
-export const getBranches = () => api.get('/branches');
+export const getBranches = (params) => api.get('/branches', { params });
 export const getBranchById = (id) => api.get(`/branches/${id}`);
 export const createBranch = (data) => api.post('/branches', data);
 export const updateBranch = (id, data) => api.put(`/branches/${id}`, data);

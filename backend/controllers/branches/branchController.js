@@ -73,7 +73,18 @@ const syncBranchHeadUser = async (branch) => {
 
 export const getAllBranches = async (req, res) => {
     try {
-        const branches = await Branch.find({ isDeleted: { $ne: true } })
+        const search = req.query.search ? String(req.query.search).trim() : undefined;
+        const query = { isDeleted: { $ne: true } };
+        if (search) {
+            const re = new RegExp(search, 'i');
+            query.$or = [
+                { name: re },
+                { code: re },
+                { city: re },
+                { location: re },
+            ];
+        }
+        const branches = await Branch.find(query)
             .populate('manager', 'name email avatar')
             .populate('head', 'name email avatar');
         res.json({ success: true, data: branches });

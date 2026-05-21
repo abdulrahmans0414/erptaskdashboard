@@ -206,10 +206,12 @@ const BranchManagement = () => {
     }
   };
 
-  const loadBranches = async () => {
+  const loadBranches = async (searchTerm) => {
     setLoading(true);
     try {
-      const response = await getBranches();
+      const params = {};
+      if (searchTerm && searchTerm.trim()) params.search = searchTerm.trim();
+      const response = await getBranches(params);
       if (response.data.success) setBranches(response.data.data);
     } catch (error) {
       console.error("Error loading branches:", error);
@@ -232,6 +234,14 @@ const BranchManagement = () => {
     loadUsersList();
     loadDeletedBranches();
   }, []);
+
+  // Debounced server-side search — fires 400ms after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadBranches(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     if (!showModal && !showTransferModal && !confirmDelete) return;
@@ -272,7 +282,7 @@ const BranchManagement = () => {
         showToast(`Successfully transferred ${transferEmployee.name} to ${transferForm.targetBranch}`);
         setShowTransferModal(false);
         setTransferEmployee(null);
-        loadBranches();
+        loadBranches(search);
         loadUsersList();
       } else {
         showToast(res.data.message || "Transfer failed", "error");
@@ -311,7 +321,7 @@ const BranchManagement = () => {
       setEditingBranch(null);
       setFormData(EMPTY_FORM);
       setBannerError(null);
-      loadBranches();
+      loadBranches(search);
       loadUsersList();
     } catch (error) {
       console.error("Error saving branch:", error);
@@ -330,7 +340,7 @@ const BranchManagement = () => {
       await deleteBranch(branch._id);
       setConfirmDelete(null);
       showToast("Branch moved to Recycle Bin");
-      loadBranches();
+      loadBranches(search);
       loadDeletedBranches();
       loadUsersList();
     } catch (error) {
@@ -344,7 +354,7 @@ const BranchManagement = () => {
       const response = await restoreBranch(id);
       if (response.data.success) {
         showToast("Branch successfully restored from Recycle Bin");
-        loadBranches();
+        loadBranches(search);
         loadDeletedBranches();
         loadUsersList();
         // Auto refresh bin count
@@ -393,17 +403,7 @@ const BranchManagement = () => {
     setShowModal(true);
   };
 
-  const filtered = (branches || []).filter((b) => {
-    const q = search.toLowerCase();
-    return (
-      !q ||
-      b?.name?.toLowerCase().includes(q) ||
-      b?.code?.toLowerCase().includes(q) ||
-      b?.city?.toLowerCase().includes(q) ||
-      b?.location?.toLowerCase().includes(q)
-    );
-  });
-
+  // Active members filtered locally (operates on already-fetched modal user list, not branch list)
   // Get active members assigned to the editing branch
   const activeMembers = (allUsers || []).filter(u => 
     u?.branch && 
@@ -548,7 +548,7 @@ const BranchManagement = () => {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : branches.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -564,7 +564,7 @@ const BranchManagement = () => {
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filtered.map((branch, i) => (
+            {branches.map((branch, i) => (
               <motion.div
                 layoutId={`branch-${branch._id}`}
                 key={branch._id}
