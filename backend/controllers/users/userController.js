@@ -123,7 +123,7 @@ export const updateUser = async (req, res) => {
     try {
         const {
             name, email, role, department, branch, isActive, avatar, password,
-            phone, address, bloodGroup, dateOfJoining, customFields
+            phone, address, bloodGroup, dateOfJoining, customFields, employeeId
         } = req.body;
         const user = await User.findById(req.params.id);
         
@@ -163,6 +163,8 @@ export const updateUser = async (req, res) => {
             if (bloodGroup !== undefined) user.bloodGroup = bloodGroup;
             if (dateOfJoining) user.dateOfJoining = dateOfJoining;
             if (customFields) user.customFields = customFields;
+            // Only admin/IT can set employeeId (avoid spoofing)
+            if (canEditAll && employeeId !== undefined) user.employeeId = employeeId || undefined;
         } else if (isSelf) {
             if (name) user.name = name;
             if (email) user.email = email;
@@ -214,11 +216,14 @@ export const deleteUser = async (req, res) => {
     }
 };
 
-// @desc    Get users by department
+// @desc    Get users by department (optional: ?branch=X for branch scoping)
 export const getUsersByDepartment = async (req, res) => {
     try {
         const { department } = req.params;
-        const users = await User.find({ department, isActive: true }).select('-password').sort({ name: 1 });
+        const { branch } = req.query;
+        const filter = { department, isActive: true };
+        if (branch) filter.branch = branch;
+        const users = await User.find(filter).select('-password').sort({ name: 1 });
         res.json({ success: true, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

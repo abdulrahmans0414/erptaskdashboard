@@ -55,6 +55,22 @@ const EditProfileModal = ({
                         ))}
                     </div>
 
+                    {/* Employee ID Field */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            Employee ID
+                            {!isAdmin && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded ml-1">Read-only</span>}
+                        </label>
+                        <input
+                            type="text"
+                            disabled={!isAdmin}
+                            value={editForm.employeeId || ""}
+                            onChange={(e) => setEditForm({ ...editForm, employeeId: e.target.value })}
+                            placeholder={isAdmin ? "e.g. EMP123" : "Not set"}
+                            className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition font-mono disabled:bg-slate-50 disabled:text-slate-500"
+                        />
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">
                             Home Address
@@ -71,7 +87,7 @@ const EditProfileModal = ({
                         {[
                             { label: "Department", key: "department", options: settings?.departments || [], protected: true },
                             { label: "Branch", key: "branch", options: settings?.branches || [], protected: true },
-                            { label: "Role", key: "role", options: ['admin', 'department-head', 'branch-head', 'hr', 'it', 'graphic', 'employee'], protected: true },
+                            { label: "Role", key: "role", options: ['admin', 'department-head', 'branch-head', 'hr', 'it', 'graphic', 'employee', 'coordinator', 'mentor', 'teacher', 'student'], protected: true },
                             { label: "Date of Joining", key: "dateOfJoining", type: "date", protected: true },
                         ].map((f) => (
                             <div key={f.key}>
@@ -168,4 +184,3 @@ const EditProfileModal = ({
 };
 
 export default EditProfileModal;
-

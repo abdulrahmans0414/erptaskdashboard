@@ -61,7 +61,7 @@ const StatCard = ({ label, value, accent, onClick, active }) => (
 const EmployeeProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   const { settings } = useSettings();
   const pollingRef = useRef(null);
 
@@ -135,13 +135,17 @@ const EmployeeProfile = () => {
       });
       setTasks(empTasks);
 
-      // Team members: fetch scoped list (works for branch-head / dept-head too)
+      // Team members: fetch scoped list based on role
       let team = [];
       if (currentUser?.role === "branch-head" && emp.branch) {
         const r = await getUsersByBranch(emp.branch);
         team = r.data?.data || [];
       } else if (currentUser?.role === "department-head" && emp.department) {
-        const r = await getUsersByDepartment(emp.department);
+        const r = await getUsersByDepartment(emp.department, emp.branch); // branch-scoped
+        team = r.data?.data || [];
+      } else if ((currentUser?.role === "admin" || currentUser?.role === "it") && emp.branch) {
+        // Admin/IT can see the full team of whoever's profile they're viewing
+        const r = await getUsersByBranch(emp.branch);
         team = r.data?.data || [];
       } else {
         team = [];
@@ -160,15 +164,29 @@ const EmployeeProfile = () => {
       const deptTasks = allTasks.filter(
         (t) => t.department === emp.department && t.branch === emp.branch,
       );
-      const deptCompleted = deptTasks.filter(
+      // For dept stats: if admin/IT, also fetch dept-wide tasks (not just this employee's)
+      let deptAllTasks = deptTasks;
+      if (
+        (currentUser?.role === "admin" || currentUser?.role === "it" || currentUser?.role === "branch-head") &&
+        emp.department && emp.branch
+      ) {
+        try {
+          const deptRes = await getTasks({ department: emp.department, branch: emp.branch, limit: 5000 });
+          deptAllTasks = deptRes.data?.data || deptTasks;
+        } catch (e) {
+          console.warn("Failed to fetch dept tasks:", e);
+          deptAllTasks = deptTasks;
+        }
+      }
+      const deptCompleted = deptAllTasks.filter(
         (t) => t.status === "completed" || t.status === "approved",
       ).length;
       setDepartmentStats({
-        totalTasks: deptTasks.length,
+        totalTasks: deptAllTasks.length,
         completedTasks: deptCompleted,
         avgCompletionRate:
-          deptTasks.length > 0
-            ? ((deptCompleted / deptTasks.length) * 100).toFixed(0)
+          deptAllTasks.length > 0
+            ? ((deptCompleted / deptAllTasks.length) * 100).toFixed(0)
             : 0,
       });
     } catch (error) {
@@ -247,6 +265,7 @@ const EmployeeProfile = () => {
       department: employee.department || "IT",
       branch: employee.branch || "Gaurabagh",
       role: employee.role || "employee",
+      employeeId: employee.employeeId || "",
       customFields: employee.customFields || {},
       password: "", // Always start with empty password
     });
@@ -262,6 +281,11 @@ const EmployeeProfile = () => {
         toast.success("Profile updated successfully");
         setShowEditModal(false);
         await loadData();
+        // If editing own profile, refresh auth context so header/sidebar updates
+        const selfId = currentUser?._id?.toString() || currentUser?.id?.toString();
+        if (effectiveId?.toString() === selfId) {
+          await refreshUser();
+        }
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Update failed");

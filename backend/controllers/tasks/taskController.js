@@ -235,23 +235,52 @@ export const createTask = async (req, res) => {
                 task._id
             );
             // Send Email to the assignee
-            const assignee = await User.findById(assignedTo).select('email name');
-            if (assignee && assignee.email) {
-                await sendEmailNotification(
-                    assignee.email,
-                    'TASK_ASSIGNED',
-                    {
-                        employeeName: assignee.name,
-                        taskTitle: task.title,
-                        dueDate: task.dueDate,
-                        priority: task.priority,
-                        department: task.department,
-                        feedback: task.description || '',
-                        taskId: task._id,
-                        senderId: req.user._id
-                    },
-                    task.taskFormAttachments
-                );
+            try {
+                const assignee = await User.findById(assignedTo).select('email name');
+                if (assignee && assignee.email) {
+                    const emailSent = await sendEmailNotification(
+                        assignee.email,
+                        'TASK_ASSIGNED',
+                        {
+                            employeeName: assignee.name,
+                            taskTitle: task.title,
+                            dueDate: task.dueDate,
+                            priority: task.priority,
+                            department: task.department,
+                            feedback: task.description || '',
+                            taskId: task._id,
+                            senderId: req.user._id
+                        },
+                        task.taskFormAttachments
+                    );
+                    if (!emailSent) {
+                        console.warn(`Email not sent for task ${task._id} to ${assignee.email}`);
+                        // Notify the creator that email delivery failed
+                        await createNotification(
+                            req.user._id,
+                            'Email Delivery Failed',
+                            `Task "${title}" created. However, email notification could not be sent to ${assignee.email}. Please check SMTP settings.`,
+                            'task_updated',
+                            task._id
+                        );
+                    }
+                } else {
+                    console.warn(`No email address found for assignee ${assignedTo}`);
+                }
+            } catch (emailErr) {
+                console.error('Failed to send task assignment email:', emailErr.message);
+                // Notify creator about email failure without blocking task creation
+                try {
+                    await createNotification(
+                        req.user._id,
+                        'Email Delivery Failed',
+                        `Task "${title}" was created successfully, but email notification failed: ${emailErr.message}`,
+                        'task_updated',
+                        task._id
+                    );
+                } catch (notifErr) {
+                    console.error('Failed to create email failure notification:', notifErr.message);
+                }
             }
         }
         

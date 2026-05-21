@@ -63,12 +63,8 @@ const Header = ({
 
   return (
     <header
-      className="bg-white/80 backdrop-blur-xl border-b border-gray-200/70 fixed top-0 right-0 left-0 lg:left-auto z-30 transition-all duration-300 h-14 shadow-sm"
-      style={{
-        ...(typeof window !== "undefined" && window.innerWidth >= 1024
-          ? { left: sidebarCollapsed ? 80 : 256 }
-          : {}),
-      }}
+      className="bg-white/90 backdrop-blur-xl border-b border-slate-200/70 fixed top-0 right-0 left-0 lg:left-auto z-30 transition-all duration-300 h-14 shadow-sm"
+      style={!isMobile ? { left: sidebarCollapsed ? 80 : 256 } : {}}
     >
       <div className="px-3 sm:px-5 lg:px-6 h-full flex items-center justify-between gap-3">
         {/* LEFT: Collapse button + page title */}

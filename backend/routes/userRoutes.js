@@ -19,8 +19,8 @@ router.use(protect);
 
 // User management with data isolation
 router.get('/', authorize('admin', 'it', 'branch-head', 'department-head', 'hr'), filterUsersByAccess, getAllUsers);
-router.get('/department/:department', authorize('admin', 'it', 'department-head'), getUsersByDepartment);
-router.get('/branch/:branch', authorize('admin', 'it', 'branch-head'), getUsersByBranch);
+router.get('/department/:department', authorize('admin', 'it', 'department-head', 'hr'), getUsersByDepartment);
+router.get('/branch/:branch', authorize('admin', 'it', 'branch-head', 'department-head'), getUsersByBranch);
 
 // ✅ IMPORTANT: Specific routes before :id routes
 // Avatar upload now goes to Cloudinary (permanent URL, not local disk)
