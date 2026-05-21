@@ -66,6 +66,10 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    isArchived: {
+        type: Boolean,
+        default: false
+    },
     lastLogin: Date,
     employeeId: { type: String, unique: true, sparse: true }
 }, {

@@ -21,9 +21,12 @@ const branchSchema = new mongoose.Schema({
     phone: String,
     email: String,
     manager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    head: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     headName: { type: String },  // Branch Head Name
     headEmail: { type: String },  // Branch Head Email
     isActive: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date },
     settings: {
         timezone: { type: String, default: 'Asia/Kolkata' },
         workingHours: {

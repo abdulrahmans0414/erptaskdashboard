@@ -164,7 +164,8 @@ department: {
     // Time logs & Submission
     timeLogs: [timeLogSchema],
     submissionNote: String,
-    adminComments: String
+    adminComments: String,
+    isArchived: { type: Boolean, default: false }
 }, { timestamps: true });
 
 // ALL METHODS

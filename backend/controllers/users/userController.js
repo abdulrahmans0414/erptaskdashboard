@@ -1,4 +1,5 @@
 import User from '../../models/User.js';
+import Task from '../../models/Task.js';
 import eventBus, { EVENTS } from '../../utils/eventBus.js';
 import { deleteFromCloudinary } from '../../middleware/uploadMiddleware.js';
 
@@ -10,6 +11,7 @@ export const getAllUsers = async (req, res) => {
 
         // Base query from middleware
         let query = req.userFilter ? { ...req.userFilter } : {};
+        query.isArchived = { $ne: true };
 
         // Search logic
         if (search) {
@@ -155,7 +157,14 @@ export const updateUser = async (req, res) => {
             }
             
             if (department) user.department = department;
-            if (branch) user.branch = branch;
+            if (branch && branch !== user.branch) {
+                user.branch = branch;
+                // Cascade branch update to all tasks associated with this user
+                await Task.updateMany(
+                    { $or: [{ assignedTo: user._id }, { assignedTeam: user._id }] },
+                    { branch: branch }
+                );
+            }
             if (isActive !== undefined) user.isActive = isActive;
             if (avatar) user.avatar = avatar;
             if (phone !== undefined) user.phone = phone;
@@ -221,7 +230,7 @@ export const getUsersByDepartment = async (req, res) => {
     try {
         const { department } = req.params;
         const { branch } = req.query;
-        const filter = { department, isActive: true };
+        const filter = { department, isActive: true, isArchived: { $ne: true } };
         if (branch) filter.branch = branch;
         const users = await User.find(filter).select('-password').sort({ name: 1 });
         res.json({ success: true, data: users });
@@ -234,7 +243,7 @@ export const getUsersByDepartment = async (req, res) => {
 export const getUsersByBranch = async (req, res) => {
     try {
         const { branch } = req.params;
-        const users = await User.find({ branch, isActive: true }).select('-password').sort({ name: 1 });
+        const users = await User.find({ branch, isActive: true, isArchived: { $ne: true } }).select('-password').sort({ name: 1 });
         res.json({ success: true, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

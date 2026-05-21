@@ -321,6 +321,7 @@ export const getTasks = async (req, res) => {
         
         // Base query from auth middleware
         let query = { ...(req.taskFilter || {}) };
+        query.isArchived = { $ne: true };
 
         // Keyset Cursor Pagination
         if (nextCursor) {
@@ -1200,7 +1201,7 @@ export const addComment = async (req, res) => {
 export const getDepartmentTasks = async (req, res) => {
     try {
         const { department } = req.params;
-        const tasks = await Task.find({ department })
+        const tasks = await Task.find({ department, isArchived: { $ne: true } })
             .populate('assignedTo assignedBy assignedTeam', 'name email')
             .sort({ createdAt: -1 })
             .lean();
@@ -1215,6 +1216,7 @@ export const getTeamTasks = async (req, res) => {
     try {
         const tasks = await Task.find({ 
             isTeamTask: true,
+            isArchived: { $ne: true },
             $or: [
                 { assignedTeam: req.user._id },
                 { assignedBy: req.user._id }
@@ -1267,6 +1269,7 @@ export const getDashboardStats = async (req, res) => {
         
         // Base query from middleware
         let query = req.taskFilter ? { ...req.taskFilter } : {};
+        query.isArchived = { $ne: true };
 
         // Managers can refine their view
         if (department && department !== 'all') {
@@ -1533,6 +1536,7 @@ export const getEmployeeSummary = async (req, res) => {
             {
                 $match: {
                     ...taskMatch,
+                    isArchived: { $ne: true },
                     $or: [
                         { assignedTo: { $in: employeeIds } },
                         { assignedTeam: { $in: employeeIds } }
