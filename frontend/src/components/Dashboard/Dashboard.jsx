@@ -1148,17 +1148,16 @@ const Dashboard = () => {
       ],
     ];
     filteredEmployees.forEach((emp) => {
-      const s = getEmpStats(emp._id);
       rows.push([
-        emp.name,
-        emp.department,
-        emp.branch,
-        emp.role,
-        emp.email,
-        s.totalTasks,
-        s.completed,
-        s.inProgress,
-        s.pending,
+        emp.name || "",
+        emp.department || "",
+        emp.branch || "",
+        emp.role || "",
+        emp.email || "",
+        emp.totalTasks || 0,
+        emp.completed || 0,
+        emp.inProgress || 0,
+        emp.pending || 0,
       ]);
     });
     const a = document.createElement("a");

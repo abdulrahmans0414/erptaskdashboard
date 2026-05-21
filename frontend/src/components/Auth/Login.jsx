@@ -570,7 +570,7 @@ export default function AuthPage() {
   // RENDER
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="relative min-h-screen bg-[#090D1A] flex items-center justify-center p-4 overflow-hidden text-slate-100">
+    <div className="relative min-h-screen bg-[#090D1A] flex flex-col justify-center items-center py-8 px-4 overflow-y-auto text-slate-100">
       {/* Dynamic Background shapes */}
       <BackgroundShapes />
 
