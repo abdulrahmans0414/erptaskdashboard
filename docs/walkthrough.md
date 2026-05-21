@@ -10,6 +10,7 @@ Below is the chronological log of all updates committed and pushed to the online
 
 | Commit Hash | Commit Type | Core Description | Key Impact |
 | :--- | :--- | :--- | :--- |
+| **`[Pending]`**| `feat` | Persistent layout routing shell, Suspense fallback skeletons, and Inter typography standard. | Eliminated dashboard white routing flashes and standardized typography. |
 | **`90cfba9`** | `feat` | Global soft-delete pipeline, searchable comboboxes, and wide split-pane dual modals. | Applied premium dual-column views and safety cascading globally across User and Task modules. |
 | **`057266f`** | `feat` | Enterprise branch soft-delete pipeline and split-pane UI modal overhaul. | Refactored branch configuration views and introduced local soft-deletes. |
 | **`9085e60`** | `feat` | Add settings safeguards and enhance mobile responsiveness. | Added `isDirty` safeguards, blocked deletion of in-use depts/branches, and optimized mobile swipe tabs. |
@@ -206,9 +207,33 @@ Below is the chronological log of all updates committed and pushed to the online
 
 ---
 
+---
+
+### 🏛️ Phase 7: Persistent Layout Routing Shell & Premium Typography
+
+#### 1. Persistent Layout Shell & Outlet Integration (`App.jsx`, `Layout.jsx`)
+* **Problem**: Clicking a sidebar link caused a complete unmount and remount of `<Sidebar>` and `<Header>`, triggering a highly visible white page flash for several milliseconds and resetting local component states.
+* **Solution**:
+  - Restructured `AppRoutes` using React Router's nested child routing system. The entire authenticated area is now nested under a single persistent layout shell wrapper: `<Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>`.
+  - Replaced `{children}` in `Layout.jsx` with `<Outlet />` to let React Router inject child page components directly without unmounting the surrounding shell.
+
+#### 2. Suspense & Glassmorphic Skeleton Shimmer Fallbacks (`Layout.jsx`)
+* **Problem**: Dynamically loaded lazy components caused blank gaps during state transitions or initial downloads.
+* **Solution**:
+  - Wrapped the dynamic route `<Outlet />` inside a highly optimized React `<Suspense fallback={<DashboardSkeleton />}>` boundary.
+  - Implemented a premium glassmorphic shimmer `<DashboardSkeleton />` in `Layout.jsx` displaying beautifully structured, pulsing grid cards, task lists, and avatar lines to maintain absolute visual flow.
+
+#### 3. Standardized Sleek Typography & Anti-Aliased Rendering (`index.html`, `index.css`)
+* **Problem**: Raw browser default sans-serif font fallbacks and uneven header bold font-weights degraded the high-end SaaS feel.
+* **Solution**:
+  - Loaded Google Fonts for **Inter** (for clean corporate text) and **Plus Jakarta Sans** (for elegant headings) inside `index.html`.
+  - Standardized font hierarchies and forced sub-pixel antialiased rendering (`-webkit-font-smoothing: antialiased`) globally inside `index.css`.
+
+---
+
 ## 🏆 Production Validation Status
 
 * **Frontend Build**: Compiled using Vite (`npm run build`) successfully.
   * **Result**: **0 Errors, 0 Warnings**.
-  * **Asset Bundling**: CSS and Javascript bundles generated with maximum optimization, split chunks, and compressed payloads.
-* **Backend Dev Environment**: Fully operational with zero logs, route collision warnings, or CastErrors. NoSQL query validation limits have been audited and tested.
+  * **Asset Bundling**: CSS and Javascript bundles generated with maximum optimization, split chunks, and compressed HTML payload files.
+* **Backend Dev Environment**: Fully operational with zero logs, route collision warnings, or connection dropouts.

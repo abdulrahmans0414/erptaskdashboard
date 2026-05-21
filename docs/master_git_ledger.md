@@ -155,3 +155,19 @@ This ledger provides a detailed, commit-by-commit map of every single code modif
   - **Soft-Delete Engine**: Enforced unified `{ isDeleted: { type: Boolean, default: false }, deletedAt: Date }` schemas across collections. Hard deletions are forbidden. Deleting a user automatically nullifies single-assignee fields and pulls the ID from team lists atomically, while soft-deleting their Employee record.
   - **Wide Split-Pane Forms**: Restructured input screens. Details are partitioned: basic attributes on the left column, relational arrays (Affiliations, active task trackers, checklists, collaborating entities) on the right column.
   - **Dependent Cascades**: Branch comboboxes filter child departments dynamically, resetting invalid child selectors to prevent orphan configurations.
+
+---
+
+### 🎨 8. Persistent Layout Shell & Typography Refinement
+
+#### 🏷️ Commit `[Pending]`: Persistent Layout Routing Shell, Suspense Skeletons, and Typography Overhaul
+* **Target Files Modified**:
+  - [`frontend/src/App.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/App.jsx) (Restructured to nested layout child routes)
+  - [`frontend/src/components/Layout/Layout.jsx`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/components/Layout/Layout.jsx) (Outlet injection, Suspense wrapping, DashboardSkeleton)
+  - [`frontend/index.html`](file:///c:/Users/abdul/Desktop/erp_final/frontend/index.html) (Imported Inter & Plus Jakarta Sans Google Fonts)
+  - [`frontend/src/index.css`](file:///c:/Users/abdul/Desktop/erp_final/frontend/src/index.css) (Standardized typography and forced sub-pixel antialiasing)
+* **Architecture Detail**:
+  - **Persistent Shell (No Re-Mounting)**: Refactored route mapping to nest dynamic routes under a single shared layout route `<Route element={<Layout />}>`. Sidebar and Header stay mounted permanently, preventing unmounts and eliminating the white routing flash.
+  - **Suspense Fallbacks**: Wrapped dynamic `<Outlet />` inside React `<Suspense fallback={<DashboardSkeleton />}>` displaying a beautiful glassmorphic shimmer layout during lazy component resolution instead of blank screens.
+  - **Typography Overhaul**: Standardized text constraints using Inter for body text and Plus Jakarta Sans for headers, complete with `-webkit-font-smoothing` rendering to ensure a sleek corporate look.
+

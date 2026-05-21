@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useLocation, Outlet } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import Sidebar from "./Sidebar";
@@ -111,23 +111,71 @@ const Layout = ({ children }) => {
         {/* Semantic Content Container with Micro-Animation and Isolated Error Recovery */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 mt-14 overflow-x-hidden">
           <ErrorBoundary>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
-                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-                className="h-full w-full"
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
+            <Suspense fallback={<DashboardSkeleton />}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+                  transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                  className="h-full w-full"
+                >
+                  {children || <Outlet />}
+                </motion.div>
+              </AnimatePresence>
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>
     </div>
   );
 };
+
+/**
+ * Premium Glassmorphic Dashboard Skeleton Loader
+ * Designed to show high-end responsive shimmers instead of layout flashes.
+ */
+const DashboardSkeleton = () => (
+  <div className="w-full space-y-6 animate-pulse p-1">
+    {/* Top stats grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="h-28 bg-white/70 rounded-2xl border border-slate-100 p-5 flex flex-col justify-between shadow-sm">
+          <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+          <div className="h-8 bg-slate-300 rounded w-1/3"></div>
+        </div>
+      ))}
+    </div>
+
+    {/* Main dashboard splits */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
+        <div className="h-96 bg-white/70 rounded-3xl border border-slate-100 p-6 shadow-sm">
+          <div className="h-6 bg-slate-200 rounded w-1/4 mb-6"></div>
+          <div className="space-y-4">
+            <div className="h-12 bg-slate-200 rounded-xl w-full"></div>
+            <div className="h-12 bg-slate-200 rounded-xl w-full"></div>
+            <div className="h-12 bg-slate-200 rounded-xl w-full"></div>
+          </div>
+        </div>
+      </div>
+      <div className="h-96 bg-white/70 rounded-3xl border border-slate-100 p-6 shadow-sm">
+        <div className="h-6 bg-slate-200 rounded w-1/3 mb-6"></div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-full bg-slate-200 flex-shrink-0"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export default Layout;

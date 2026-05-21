@@ -84,17 +84,21 @@ function AppRoutes() {
     <Suspense fallback={<Spinner />}>
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-        <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Layout><EmployeeProfile /></Layout></ProtectedRoute>} />
-        <Route path="/employee/:id" element={<ManagerRoute><Layout><EmployeeProfile /></Layout></ManagerRoute>} />
         
-        {/* Managed & Admin Routes */}
-        <Route path="/admin/users" element={<ManagerRoute><Layout><UserManagement /></Layout></ManagerRoute>} />
-        <Route path="/admin/branches" element={<BranchHeadRoute><Layout><BranchManagement /></Layout></BranchHeadRoute>} />
-        <Route path="/admin/registrations" element={<AdminRoute><Layout><PendingRegistrations /></Layout></AdminRoute>} />
-        <Route path="/admin/settings" element={<AdminRoute><Layout><SystemSettings /></Layout></AdminRoute>} />
+        {/* Persistent Shared Layout Shell */}
+        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/profile" element={<EmployeeProfile />} />
+          <Route path="/employee/:id" element={<ManagerRoute><EmployeeProfile /></ManagerRoute>} />
+          
+          {/* Managed & Admin Routes */}
+          <Route path="/admin/users" element={<ManagerRoute><UserManagement /></ManagerRoute>} />
+          <Route path="/admin/branches" element={<BranchHeadRoute><BranchManagement /></BranchHeadRoute>} />
+          <Route path="/admin/registrations" element={<AdminRoute><PendingRegistrations /></AdminRoute>} />
+          <Route path="/admin/settings" element={<AdminRoute><SystemSettings /></AdminRoute>} />
+        </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
