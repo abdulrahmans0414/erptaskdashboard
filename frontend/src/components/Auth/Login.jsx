@@ -5,7 +5,6 @@ import {
   signup,
   verifyOtp,
   checkRegStatus,
-  login as loginApi,
 } from "../../services/api";
 import { useSettings } from "../../context/SettingsContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -117,43 +116,6 @@ const Toast = ({ message, type, onClose }) => {
     </div>
   );
 };
-
-const BackgroundShapes = () => (
-  <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
-    {/* Orb 1 */}
-    <motion.div
-      className="absolute w-[450px] h-[450px] rounded-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 blur-[100px]"
-      animate={{
-        x: [0, 60, -40, 0],
-        y: [0, -50, 60, 0],
-        scale: [1, 1.15, 0.9, 1],
-        borderRadius: ["40%", "50%", "45%", "40%"],
-      }}
-      transition={{
-        duration: 20,
-        repeat: Infinity,
-        ease: "easeInOut",
-      }}
-      style={{ top: "-10%", left: "-10%" }}
-    />
-    {/* Orb 2 */}
-    <motion.div
-      className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-500/8 to-cyan-500/8 blur-[120px]"
-      animate={{
-        x: [0, -70, 50, 0],
-        y: [0, 60, -50, 0],
-        scale: [1, 0.9, 1.1, 1],
-        borderRadius: ["50%", "42%", "48%", "50%"],
-      }}
-      transition={{
-        duration: 25,
-        repeat: Infinity,
-        ease: "easeInOut",
-      }}
-      style={{ bottom: "-15%", right: "-15%" }}
-    />
-  </div>
-);
 
 // ─── Form Components ───────────────────────────────────────
 const Input = ({ label, error, icon, ...props }) => (
@@ -297,91 +259,6 @@ const PasswordStrength = ({ password }) => {
     </div>
   );
 };
-
-const BenefitsSidebar = () => (
-  <div className="hidden md:flex md:w-5/12 flex-col justify-between p-8 bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl relative overflow-hidden">
-    {/* Dynamic background highlights specific to the sidebar */}
-    <div className="absolute inset-0 bg-gradient-to-b from-blue-900/10 via-indigo-900/5 to-transparent pointer-events-none" />
-    
-    <div className="relative z-10 space-y-8 text-left">
-      {/* Header/Logo Accent */}
-      <div>
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-950/80 rounded-xl border border-blue-800/40 mb-3 shadow-md shadow-blue-950/20">
-          <span className="text-xl">🛡️</span>
-        </div>
-        <h2 className="text-2xl font-extrabold text-white tracking-tight">
-          Scholars' Enterprise TaskGrid
-        </h2>
-        <p className="text-sm text-slate-400 mt-1">
-          Real-time branch control and activity audit architecture.
-        </p>
-      </div>
-
-      {/* Benefits List */}
-      <div className="space-y-6">
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-950/50 border border-blue-800/30 flex items-center justify-center text-lg flex-shrink-0">
-            📊
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-200">Real-time Dashboard Analytics</h4>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Monitor team productivity across IT, HR, Academic, and Operations with live statistics, priority flags, and dynamic date preset filters.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-xl bg-indigo-950/50 border border-indigo-800/30 flex items-center justify-center text-lg flex-shrink-0">
-            🏢
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-200">Multi-Tenant Branch Isolation</h4>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Hardware-like sandboxing and secure boundary isolation mapped strictly per geographical branch and administrative head scope.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-950/50 border border-purple-800/30 flex items-center justify-center text-lg flex-shrink-0">
-            ⚡
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-200">ACID-Compliant State Sync</h4>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Advanced database operations with ACID compliance, completely eliminating state illusion anomalies, local storage traps, and database race conditions.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-xl bg-emerald-950/50 border border-emerald-800/30 flex items-center justify-center text-lg flex-shrink-0">
-            🔐
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-200">SOC-2 Audited Workflows</h4>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Secure double-layered review protocols for branch tasks, paired with immutable administrative action tracking and instant SMTP notifications.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Footer statistics / trust signals */}
-    <div className="relative z-10 pt-6 border-t border-slate-800/60 flex items-center justify-between text-slate-500">
-      <div>
-        <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Security Standard</p>
-        <p className="text-xs text-slate-300 font-semibold mt-0.5">TLS 1.3 & AES-256</p>
-      </div>
-      <div>
-        <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Audit Status</p>
-        <p className="text-xs text-emerald-400 font-semibold mt-0.5">SOC-2 Type II Compliant</p>
-      </div>
-    </div>
-  </div>
-);
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN AUTH PAGE
@@ -572,7 +449,6 @@ export default function AuthPage() {
       const { confirmPassword, ...rest } = form;
       const payload = {
         ...rest,
-        // If requesting a high-privilege role, override role + send reason
         role:
           rest.requestHighPrivilege === "yes"
             ? rest.requestedPrivilegeRole
@@ -672,10 +548,8 @@ export default function AuthPage() {
   // RENDER
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="relative min-h-screen bg-[#090D1A] flex flex-col justify-center items-center py-8 px-4 overflow-y-auto text-slate-100">
-      {/* Dynamic Background shapes */}
-      <BackgroundShapes />
-
+    <div className="relative min-h-screen bg-[#090D1A] flex flex-col justify-center items-center py-12 px-4 overflow-y-auto text-slate-100">
+      
       {/* Toast */}
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
@@ -684,660 +558,608 @@ export default function AuthPage() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-5xl flex flex-col md:flex-row items-center md:items-stretch justify-center gap-6 md:gap-8 transition-all duration-300"
+        className="w-full transition-all duration-300 flex flex-col justify-center items-center"
       >
-        <BenefitsSidebar />
-
         <div className={`w-full transition-all duration-300 flex flex-col justify-center ${mode === 'register' ? 'max-w-2xl' : 'max-w-md'}`}>
-        {/* Brand */}
-        <div className="text-center mb-4 flex flex-col items-center">
-          <motion.div 
-            whileHover={{ scale: 1.05, rotate: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="inline-flex items-center justify-center w-14 h-14 bg-slate-900 rounded-2xl shadow-xl shadow-blue-950/20 mb-2 overflow-hidden border border-slate-800 cursor-pointer"
-          >
-            <img 
-              src="/spis-logo.jpeg" 
-              alt="Scholars Logo" 
-              className="w-full h-full object-contain p-1.5"
-              onError={(e) => {
-                e.target.onerror = null; 
-                e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = '<span class="text-2.5xl">🎓</span>';
-              }}
-            />
-          </motion.div>
-          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 tracking-tight">
-            Scholars' Group Of Institution
-          </h1>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1 font-extrabold">
-            Task & Activity Controller
-          </p>
-        </div>
-
-        {/* Main Card */}
-        <motion.div 
-          layout
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="bg-slate-900/60 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-800 p-5 md:p-6"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-100">
-              {mode === "login" && "Welcome Back 👋"}
-              {mode === "register" && "Create Account"}
-              {mode === "otp" && "Verify OTP"}
-              {mode === "status" && "Check Status"}
-            </h2>
-            {mode === "login" && (
-              <button
-                onClick={() => setMode("register")}
-                className="text-sm text-blue-400 hover:text-blue-300 font-semibold"
-              >
-                Register →
-              </button>
-            )}
+          {/* Brand */}
+          <div className="text-center mb-6 flex flex-col items-center">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center justify-center w-14 h-14 bg-slate-900 rounded-2xl shadow-xl shadow-blue-950/20 mb-2 overflow-hidden border border-slate-800 cursor-pointer"
+            >
+              <img 
+                src="/spis-logo.jpeg" 
+                alt="Scholars Logo" 
+                className="w-full h-full object-contain p-1.5"
+                onError={(e) => {
+                  e.target.onerror = null; 
+                  e.target.style.display = 'none';
+                  e.target.parentElement.innerHTML = '<span class="text-2.5xl">🎓</span>';
+                }}
+              />
+            </motion.div>
+            <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 tracking-tight">
+              Scholars' Group Of Institution
+            </h1>
+            <p className="text-[10px] uppercase tracking-widest text-slate-500 mt-1 font-extrabold">
+              Task & Activity Controller
+            </p>
           </div>
 
-          <AnimatePresence mode="wait">
-            {mode === "login" && (
-              <motion.div
-                key="login"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25 }}
-              >
-              <form onSubmit={handleLogin} className="space-y-4">
-                <Input
-                  label="Email or Employee ID"
-                  type="text"
-                  icon="👤"
-                  placeholder="you@company.com or EMP-123"
-                  value={loginData.email}
-                  onChange={(e) =>
-                    setLoginData((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                />
+          {/* Main Card */}
+          <div className="bg-slate-900/60 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-800 p-6 md:p-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-100">
+                {mode === "login" && "Welcome Back 👋"}
+                {mode === "register" && "Create Account"}
+                {mode === "otp" && "Verify OTP"}
+                {mode === "status" && "Check Status"}
+              </h2>
+              {mode === "login" && (
+                <button
+                  onClick={() => setMode("register")}
+                  className="text-sm text-blue-400 hover:text-blue-300 font-semibold"
+                >
+                  Register →
+                </button>
+              )}
+            </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
-                      🔒
-                    </span>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={loginData.password}
+            <AnimatePresence mode="wait">
+              {mode === "login" && (
+                <motion.div
+                  key="login"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <Input
+                      label="Email or Employee ID"
+                      type="text"
+                      icon="👤"
+                      placeholder="you@company.com or EMP-123"
+                      value={loginData.email}
                       onChange={(e) =>
-                        setLoginData((prev) => ({
-                          ...prev,
-                          password: e.target.value,
-                        }))
+                        setLoginData((prev) => ({ ...prev, email: e.target.value }))
                       }
-                      className="w-full pl-9 pr-10 py-2.5 border border-slate-800 bg-slate-950/60 text-slate-100 rounded-xl text-sm focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-600"
                     />
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                          🔒
+                        </span>
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          value={loginData.password}
+                          onChange={(e) =>
+                            setLoginData((prev) => ({
+                              ...prev,
+                              password: e.target.value,
+                            }))
+                          }
+                          className="w-full pl-9 pr-10 py-2.5 border border-slate-800 bg-slate-950/60 text-slate-100 rounded-xl text-sm focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                        >
+                          {showPassword ? "🙈" : "👁️"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <Button type="submit" loading={loading}>
+                      🔐 Sign In
+                    </Button>
+                  </form>
+
+                  {/* Demo Accounts */}
+                  {import.meta.env.DEV && (
+                    <div className="mt-6 pt-5 border-t border-slate-800">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">
+                        Quick Demo Access
+                      </p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {DEMO_ACCOUNTS.map((demo, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => fillDemoAccount(demo)}
+                            title={`Login as ${demo.label} (${demo.email})`}
+                            className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 hover:border-blue-500/50 hover:bg-blue-950/20 hover:shadow-sm transition-all group"
+                          >
+                            <div
+                              className={`w-8 h-8 bg-gradient-to-br ${demo.color} rounded-lg flex items-center justify-center text-sm mb-1 shadow group-hover:scale-105 transition-transform`}
+                            >
+                              {demo.icon}
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 truncate w-full text-center group-hover:text-blue-400">
+                              {demo.label}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bottom Links */}
+                  <div className="mt-6 space-y-2.5 text-center">
                     <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      onClick={() => setMode("otp")}
+                      className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-medium"
                     >
-                      {showPassword ? "🙈" : "👁️"}
+                      Already approved? Verify OTP →
+                    </button>
+                    <br />
+                    <button
+                      onClick={() => setMode("status")}
+                      className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-medium"
+                    >
+                      Check registration status
                     </button>
                   </div>
-                </div>
-
-                <Button type="submit" loading={loading}>
-                  🔐 Sign In
-                </Button>
-              </form>
-
-              {/* Demo Accounts */}
-              {import.meta.env.DEV && (
-                <div className="mt-4 pt-4 border-t border-slate-800">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
-                    Quick Demo Access
-                  </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {DEMO_ACCOUNTS.map((demo, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => fillDemoAccount(demo)}
-                        title={`Login as ${demo.label} (${demo.email})`}
-                        className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 hover:border-blue-500/50 hover:bg-blue-950/20 hover:shadow-sm transition-all group"
-                      >
-                        <div
-                          className={`w-8 h-8 bg-gradient-to-br ${demo.color} rounded-lg flex items-center justify-center text-sm mb-1 shadow group-hover:scale-105 transition-transform`}
-                        >
-                          {demo.icon}
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-400 truncate w-full text-center group-hover:text-blue-400">
-                          {demo.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                </motion.div>
               )}
 
-              {/* Bottom Links */}
-              <div className="mt-6 space-y-2 text-center">
-                <button
-                  onClick={() => setMode("otp")}
-                  className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-medium"
+              {/* ═══════ REGISTER MODE ═══════ */}
+              {mode === "register" && (
+                <motion.div
+                  key="register"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-4"
                 >
-                  Already approved? Verify OTP →
-                </button>
-                <br />
-                <button
-                  onClick={() => setMode("status")}
-                  className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-medium"
-                >
-                  Check registration status
-                </button>
-              </div>
-            </motion.div>
-          )}
+                  <form onSubmit={handleRegister} className="space-y-4">
+                    {/* Scrollable Form Container */}
+                    <div className="max-h-[55vh] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                      
+                      {/* Section: Personal Information */}
+                      <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
+                        <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                          <span>👤</span> Personal Details
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Input
+                            label="Full Name *"
+                            placeholder="Abdul Rahman"
+                            value={form.name}
+                            onChange={updateForm("name")}
+                            error={errors.name}
+                          />
+                          <Input
+                            label="Email Address *"
+                            type="email"
+                            icon="📧"
+                            placeholder="you@gmail.com"
+                            value={form.email}
+                            onChange={updateForm("email")}
+                            error={errors.email}
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Input
+                            label="Phone (10 digits)"
+                            type="tel"
+                            placeholder="7607255678"
+                            value={form.phone}
+                            onChange={updateForm("phone")}
+                            error={errors.phone}
+                          />
+                          <Input
+                            label="Employee ID *"
+                            placeholder="EMP-2024-001"
+                            value={form.employeeId}
+                            onChange={updateForm("employeeId")}
+                            error={errors.employeeId}
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            label="Designation"
+                            placeholder="e.g., Software Developer"
+                            value={form.designation}
+                            onChange={updateForm("designation")}
+                          />
+                        </div>
+                      </div>
 
-          {/* ═══════ REGISTER MODE ═══════ */}
-          {mode === "register" && (
-            <motion.div
-              key="register"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-4"
-            >
-              {/* Flow Info */}
-              <div className="bg-gradient-to-r from-blue-950/20 to-indigo-950/20 border border-blue-900/30 rounded-xl p-3.5">
-                <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-bold text-blue-300">
-                  <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
-                    1. Register Form
-                  </span>
-                  <span className="text-blue-600">→</span>
-                  <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
-                    2. Admin Review
-                  </span>
-                  <span className="text-blue-600">→</span>
-                  <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
-                    3. Get OTP via Email
-                  </span>
-                  <span className="text-blue-600">→</span>
-                  <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
-                    4. Verify & Access
-                  </span>
-                </div>
-              </div>
+                      {/* Section: Corporate Mapping */}
+                      <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
+                        <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                          <span>🏢</span> Corporate Mapping
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <Select
+                            label="Role *"
+                            value={form.role}
+                            onChange={updateForm("role")}
+                            options={ROLES}
+                          />
+                          <Select
+                            label="Department *"
+                            value={form.department}
+                            onChange={updateForm("department")}
+                            options={departments.map((d) => ({
+                              value: d,
+                              label: d,
+                            }))}
+                          />
+                          <Select
+                            label="Branch *"
+                            value={form.branch}
+                            onChange={updateForm("branch")}
+                            options={branches.map((b) => ({ value: b, label: b }))}
+                          />
+                        </div>
+                      </div>
 
-              <form onSubmit={handleRegister} className="space-y-4">
-                {/* Scrollable Form Container to prevent page overflow */}
-                <div className="max-h-[55vh] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-                  
-                  {/* Section: Personal Information */}
-                  <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
-                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                      <span>👤</span> Personal Details
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Input
-                        label="Full Name *"
-                        placeholder="Abdul Rahman"
-                        value={form.name}
-                        onChange={updateForm("name")}
-                        error={errors.name}
-                      />
-                      <Input
-                        label="Email Address *"
-                        type="email"
-                        icon="📧"
-                        placeholder="you@gmail.com"
-                        value={form.email}
-                        onChange={updateForm("email")}
-                        error={errors.email}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Input
-                        label="Phone (10 digits)"
-                        type="tel"
-                        placeholder="7607255678"
-                        value={form.phone}
-                        onChange={updateForm("phone")}
-                        error={errors.phone}
-                      />
-                      <Input
-                        label="Employee ID *"
-                        placeholder="EMP-2024-001"
-                        value={form.employeeId}
-                        onChange={updateForm("employeeId")}
-                        error={errors.employeeId}
-                      />
-                    </div>
-                    <div>
-                      <Input
-                        label="Designation"
-                        placeholder="e.g., Software Developer"
-                        value={form.designation}
-                        onChange={updateForm("designation")}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Section: Corporate Mapping */}
-                  <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
-                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                      <span>🏢</span> Corporate Mapping
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <Select
-                        label="Role *"
-                        value={form.role}
-                        onChange={updateForm("role")}
-                        options={ROLES}
-                      />
-                      <Select
-                        label="Department *"
-                        value={form.department}
-                        onChange={updateForm("department")}
-                        options={departments.map((d) => ({
-                          value: d,
-                          label: d,
-                        }))}
-                      />
-                      <Select
-                        label="Branch *"
-                        value={form.branch}
-                        onChange={updateForm("branch")}
-                        options={branches.map((b) => ({ value: b, label: b }))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Section: High privilege request flow */}
-                  <div className="bg-amber-950/15 border border-amber-900/30 rounded-2xl p-3.5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-semibold text-amber-400 flex items-center gap-1.5">
-                        <span>🔒</span> High-privilege Role Request (Optional)
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Select
-                        label="Request Branch/Dept Head?"
-                        value={form.requestHighPrivilege}
-                        onChange={updateForm("requestHighPrivilege")}
-                        options={[
-                          { value: "no", label: "No" },
-                          { value: "yes", label: "Yes (requires reason)" },
-                        ]}
-                      />
-                      {form.requestHighPrivilege === "yes" ? (
-                        <Select
-                          label="Requested Privilege Role"
-                          value={form.requestedPrivilegeRole}
-                          onChange={updateForm("requestedPrivilegeRole")}
-                          options={HIGH_PRIVILEGE_ROLES}
-                        />
-                      ) : (
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                            Requested Role
-                          </label>
-                          <div className="w-full px-3 py-2.5 border rounded-xl text-sm bg-slate-950/40 border-slate-900 text-slate-600">
-                            Select “Yes” to request privilege
+                      {/* Section: High privilege request flow */}
+                      <div className="bg-amber-950/15 border border-amber-900/30 rounded-2xl p-3.5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-semibold text-amber-400 flex items-center gap-1.5">
+                            <span>🔒</span> High-privilege Role Request (Optional)
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Select
+                            label="Request Branch/Dept Head?"
+                            value={form.requestHighPrivilege}
+                            onChange={updateForm("requestHighPrivilege")}
+                            options={[
+                              { value: "no", label: "No" },
+                              { value: "yes", label: "Yes (requires reason)" },
+                            ]}
+                          />
+                          {form.requestHighPrivilege === "yes" ? (
+                            <Select
+                              label="Requested Privilege Role"
+                              value={form.requestedPrivilegeRole}
+                              onChange={updateForm("requestedPrivilegeRole")}
+                              options={HIGH_PRIVILEGE_ROLES}
+                            />
+                          ) : (
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Requested Role
+                              </label>
+                              <div className="w-full px-3 py-2.5 border rounded-xl text-sm bg-slate-950/40 border-slate-900 text-slate-600">
+                                Select “Yes” to request privilege
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {form.requestHighPrivilege === "yes" && (
+                          <div className="animate-slide-down">
+                            <label className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                              <span>🔑</span> Strict Compliance Auditing: Reason for Elevating Privileges *
+                            </label>
+                            <textarea
+                              value={form.privilegeRequestReason}
+                              onChange={updateForm("privilegeRequestReason")}
+                              rows={2.5}
+                              className={`w-full mt-1.5 px-3 py-2 border rounded-xl text-sm transition-all duration-200
+                                ${
+                                  errors.privilegeRequestReason
+                                    ? "border-rose-500/50 bg-rose-950/20 text-rose-200 focus:ring-rose-500"
+                                    : "border-slate-800 bg-slate-950 text-slate-100 focus:ring-blue-500"
+                                }
+                                focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-600`}
+                              placeholder="Provide the enterprise justification and security clearance details."
+                            />
+                            {errors.privilegeRequestReason && (
+                              <p className="text-xs text-rose-400 font-medium mt-1">
+                                ⚠ {errors.privilegeRequestReason}
+                              </p>
+                            )}
                           </div>
+                        )}
+                      </div>
+
+                      {/* Section: Account Security */}
+                      <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
+                        <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                          <span>🔑</span> Security Credentials
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Input
+                              label="Password *"
+                              type="password"
+                              placeholder="Min 6 characters"
+                              value={form.password}
+                              onChange={updateForm("password")}
+                              error={errors.password}
+                            />
+                            <PasswordStrength password={form.password} />
+                          </div>
+                          <Input
+                            label="Confirm Password *"
+                            type="password"
+                            placeholder="Repeat password"
+                            value={form.confirmPassword}
+                            onChange={updateForm("confirmPassword")}
+                            error={errors.confirmPassword}
+                          />
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Form Action Button */}
+                    <Button type="submit" loading={loading} className="w-full py-3 mt-2">
+                      📝 Submit Registration Request
+                    </Button>
+                  </form>
+
+                  {/* Auxiliary Operations */}
+                  <div className="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setMode("otp")}
+                      className="p-3 bg-slate-950/40 border border-slate-800 rounded-xl hover:bg-slate-900/50 hover:border-slate-700 transition-all text-center"
+                    >
+                      <div className="text-xl mb-1">✉️</div>
+                      <div className="text-xs font-semibold text-slate-300">
+                        Verify OTP
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("status")}
+                      className="p-3 bg-slate-950/40 border border-slate-800 rounded-xl hover:bg-slate-900/50 hover:border-slate-700 transition-all text-center"
+                    >
+                      <div className="text-xl mb-1">🔍</div>
+                      <div className="text-xs font-semibold text-slate-300">
+                        Check Status
+                      </div>
+                    </button>
+                  </div>
+
+                  <p className="text-center text-xs text-slate-400 mt-2">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setMode("login")}
+                      className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
+                    >
+                      Sign in
+                    </button>
+                  </p>
+                </motion.div>
+              )}
+
+              {/* ═══════ OTP VERIFICATION MODE ═══════ */}
+              {mode === "otp" && (
+                <motion.div
+                  key="otp"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div className="bg-gradient-to-r from-emerald-950/20 to-teal-950/20 border border-emerald-900/30 rounded-xl p-4 mb-6">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📧</span>
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-400">
+                          Check Your Email
+                        </p>
+                        <p className="text-xs text-emerald-300/80 mt-1">
+                          We've sent a 6-digit OTP to your email. Check spam folder if not found.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleOtpVerify} className="space-y-5">
+                    <Input
+                      label="Your Email Address"
+                      type="email"
+                      icon="📧"
+                      placeholder="you@gmail.com"
+                      value={otpData.email}
+                      onChange={(e) =>
+                        setOtpData((prev) => ({ ...prev, email: e.target.value }))
+                      }
+                    />
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3 text-center">
+                        Enter 6-Digit OTP
+                      </label>
+                      <div
+                        className="flex gap-2 justify-center"
+                        onPaste={handleOtpPaste}
+                      >
+                        {otpData.code.map((digit, index) => (
+                          <input
+                            key={index}
+                            ref={(el) => (otpInputRefs.current[index] = el)}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleOtpChange(index, e.target.value)}
+                            onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                            className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-xl transition-all
+                              ${otpError ? "border-rose-500/50 bg-rose-950/20 text-rose-200" : digit ? "border-blue-500/50 bg-blue-950/20 text-blue-200" : "border-slate-800 bg-slate-950 text-slate-100"}
+                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                          />
+                        ))}
+                      </div>
+                      {otpError && (
+                        <p className="text-xs text-rose-400 text-center mt-2 font-medium">
+                          ⚠ {otpError}
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      variant="success"
+                      loading={loading}
+                      disabled={otpData.code.some((d) => !d)}
+                    >
+                      ✅ Verify & Activate Account
+                    </Button>
+                  </form>
+
+                  <div className="mt-6 text-center space-y-3">
+                    <p className="text-xs text-slate-400">
+                      Didn't receive OTP?{" "}
+                      <button
+                        onClick={() => setMode("status")}
+                        className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
+                      >
+                        Check status
+                      </button>
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      <button
+                        onClick={() => setMode("login")}
+                        className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
+                      >
+                        ← Back to Sign In
+                      </button>
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ═══════ STATUS CHECK MODE ═══════ */}
+              {mode === "status" && (
+                <motion.div
+                  key="status"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <form onSubmit={handleCheckStatus} className="space-y-4">
+                    <Input
+                      label="Your Email Address"
+                      type="email"
+                      icon="📧"
+                      placeholder="you@gmail.com"
+                      value={statusData.email}
+                      onChange={(e) =>
+                        setStatusData((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
+                      }
+                    />
+                    <Button type="submit" loading={loading} variant="outline">
+                      🔍 Check Status
+                    </Button>
+                  </form>
+
+                  {statusData.result && (
+                    <div className="mt-6 space-y-4 animate-fade-in">
+                      <div
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold
+                        ${
+                          statusData.result.status === "approved"
+                            ? "bg-emerald-950/45 text-emerald-400 border border-emerald-900/30"
+                            : statusData.result.status === "pending"
+                              ? "bg-amber-950/45 text-amber-400 border border-amber-900/30"
+                              : statusData.result.status === "otp_sent"
+                                ? "bg-blue-950/45 text-blue-400 border border-blue-900/30"
+                                : statusData.result.status === "rejected"
+                                  ? "bg-rose-950/45 text-rose-400 border border-rose-900/30"
+                                  : "bg-slate-800 text-slate-400"
+                        }`}
+                      >
+                        {statusData.result.status === "approved" &&
+                          "✅ Account Active"}
+                        {statusData.result.status === "pending" &&
+                          "⏳ Under Review"}
+                        {statusData.result.status === "otp_sent" && "📧 OTP Sent"}
+                        {statusData.result.status === "rejected" && "❌ Rejected"}
+                        {statusData.result.status === "not_found" && "🔍 Not Found"}
+                      </div>
+
+                      {statusData.result.status === "not_found" && (
+                        <div className="bg-blue-950/20 border border-blue-900/30 rounded-xl p-4 text-blue-300">
+                          <p className="text-sm">
+                            No registration found. Please register first.
+                          </p>
+                        </div>
+                      )}
+                      {statusData.result.status === "pending" && (
+                        <div className="bg-amber-950/20 border border-amber-900/30 rounded-xl p-4 text-amber-300">
+                          <p className="text-sm">
+                            Your request is under admin review. You'll receive an email when approved.
+                          </p>
+                        </div>
+                      )}
+                      {statusData.result.status === "otp_sent" && (
+                        <div className="space-y-3">
+                          <div className="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4 text-emerald-300">
+                            <p className="text-sm">
+                              Admin has approved! Check your email for OTP.
+                            </p>
+                          </div>
+                          <Button variant="success" onClick={() => setMode("otp")}>
+                            Go to OTP Verification →
+                          </Button>
+                        </div>
+                      )}
+                      {statusData.result.status === "approved" && (
+                        <div className="space-y-3">
+                          <div className="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4 text-emerald-300">
+                            <p className="text-sm">
+                              Account is active! You can sign in now.
+                            </p>
+                          </div>
+                          <Button onClick={() => setMode("login")}>
+                            Go to Sign In →
+                          </Button>
+                        </div>
+                      )}
+                      {statusData.result.status === "rejected" && (
+                        <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-4 text-rose-300">
+                          <p className="text-sm">
+                            {statusData.result.message ||
+                              "Registration was rejected. Please contact admin."}
+                          </p>
                         </div>
                       )}
                     </div>
-                    {form.requestHighPrivilege === "yes" && (
-                      <div className="animate-slide-down">
-                        <label className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                          <span>🔑</span> Strict Compliance Auditing: Reason for Elevating Privileges *
-                        </label>
-                        <textarea
-                          value={form.privilegeRequestReason}
-                          onChange={updateForm("privilegeRequestReason")}
-                          rows={2.5}
-                          className={`w-full mt-1.5 px-3 py-2 border rounded-xl text-sm transition-all duration-200
-                            ${
-                              errors.privilegeRequestReason
-                                ? "border-rose-500/50 bg-rose-950/20 text-rose-200 focus:ring-rose-500"
-                                : "border-slate-800 bg-slate-950 text-slate-100 focus:ring-blue-500"
-                            }
-                            focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-600`}
-                          placeholder="Provide the enterprise justification and security clearance details. Specify branch node/department domain scope, supervisor approval token or ticket references, and operational reason for high-privilege administrative access."
-                        />
-                        {errors.privilegeRequestReason && (
-                          <p className="text-xs text-rose-400 font-medium mt-1">
-                            ⚠ {errors.privilegeRequestReason}
-                          </p>
-                        )}
-                        <p className="text-[10px] text-amber-500/80 mt-1">
-                          Note: All privilege request submissions are signed and written to the immutable system audit trail for security compliance.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Section: Account Security */}
-                  <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
-                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                      <span>🔑</span> Security Credentials
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Input
-                          label="Password *"
-                          type="password"
-                          placeholder="Min 6 characters"
-                          value={form.password}
-                          onChange={updateForm("password")}
-                          error={errors.password}
-                        />
-                        <PasswordStrength password={form.password} />
-                      </div>
-                      <Input
-                        label="Confirm Password *"
-                        type="password"
-                        placeholder="Repeat password"
-                        value={form.confirmPassword}
-                        onChange={updateForm("confirmPassword")}
-                        error={errors.confirmPassword}
-                      />
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Form Action Button */}
-                <Button type="submit" loading={loading} className="w-full py-3 mt-2">
-                  📝 Submit Registration Request
-                </Button>
-              </form>
-
-              {/* Auxiliary Operations */}
-              <div className="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMode("otp")}
-                  className="p-3 bg-slate-950/40 border border-slate-800 rounded-xl hover:bg-slate-900/50 hover:border-slate-700 transition-all text-center"
-                >
-                  <div className="text-xl mb-1">✉️</div>
-                  <div className="text-xs font-semibold text-slate-300">
-                    Verify OTP
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    Already approved?
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("status")}
-                  className="p-3 bg-slate-950/40 border border-slate-800 rounded-xl hover:bg-slate-900/50 hover:border-slate-700 transition-all text-center"
-                >
-                  <div className="text-xl mb-1">🔍</div>
-                  <div className="text-xs font-semibold text-slate-300">
-                    Check Status
-                  </div>
-                  <div className="text-[10px] text-slate-500">Track request</div>
-                </button>
-              </div>
-
-              <p className="text-center text-xs text-slate-400 mt-2">
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => setMode("login")}
-                  className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
-                >
-                  Sign in
-                </button>
-              </p>
-            </motion.div>
-          )}
-
-          {/* ═══════ OTP VERIFICATION MODE ═══════ */}
-          {mode === "otp" && (
-            <motion.div
-              key="otp"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-            >
-              <div className="bg-gradient-to-r from-emerald-950/20 to-teal-950/20 border border-emerald-900/30 rounded-xl p-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">📧</span>
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-400">
-                      Check Your Email
-                    </p>
-                    <p className="text-xs text-emerald-300/80 mt-1">
-                      We've sent a 6-digit OTP to your email. Also check spam
-                      folder if not found.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <form onSubmit={handleOtpVerify} className="space-y-5">
-                <Input
-                  label="Your Email Address"
-                  type="email"
-                  icon="📧"
-                  placeholder="you@gmail.com"
-                  value={otpData.email}
-                  onChange={(e) =>
-                    setOtpData((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                />
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3 text-center">
-                    Enter 6-Digit OTP
-                  </label>
-                  <div
-                    className="flex gap-2 justify-center"
-                    onPaste={handleOtpPaste}
-                  >
-                    {otpData.code.map((digit, index) => (
-                      <input
-                        key={index}
-                        ref={(el) => (otpInputRefs.current[index] = el)}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                        className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-xl transition-all
-                          ${otpError ? "border-rose-500/50 bg-rose-950/20 text-rose-200" : digit ? "border-blue-500/50 bg-blue-950/20 text-blue-200" : "border-slate-800 bg-slate-950 text-slate-100"}
-                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                      />
-                    ))}
-                  </div>
-                  {otpError && (
-                    <p className="text-xs text-rose-400 text-center mt-2 font-medium">
-                      ⚠ {otpError}
-                    </p>
                   )}
-                </div>
 
-                <Button
-                  type="submit"
-                  variant="success"
-                  loading={loading}
-                  disabled={otpData.code.some((d) => !d)}
-                >
-                  ✅ Verify & Activate Account
-                </Button>
-              </form>
-
-              <div className="mt-6 text-center space-y-3">
-                <p className="text-xs text-slate-400">
-                  Didn't receive OTP?{" "}
-                  <button
-                    onClick={() => setMode("status")}
-                    className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
-                  >
-                    Check status
-                  </button>
-                </p>
-                <p className="text-xs text-slate-400">
-                  <button
-                    onClick={() => setMode("login")}
-                    className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
-                  >
-                    ← Back to Sign In
-                  </button>
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ═══════ STATUS CHECK MODE ═══════ */}
-          {mode === "status" && (
-            <motion.div
-              key="status"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-            >
-              <form onSubmit={handleCheckStatus} className="space-y-4">
-                <Input
-                  label="Your Email Address"
-                  type="email"
-                  icon="📧"
-                  placeholder="you@gmail.com"
-                  value={statusData.email}
-                  onChange={(e) =>
-                    setStatusData((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
-                  }
-                />
-                <Button type="submit" loading={loading} variant="outline">
-                  🔍 Check Status
-                </Button>
-              </form>
-
-              {statusData.result && (
-                <div className="mt-6 space-y-4 animate-fade-in">
-                  <div
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold
-                    ${
-                      statusData.result.status === "approved"
-                        ? "bg-emerald-950/45 text-emerald-400 border border-emerald-900/30"
-                        : statusData.result.status === "pending"
-                          ? "bg-amber-950/45 text-amber-400 border border-amber-900/30"
-                          : statusData.result.status === "otp_sent"
-                            ? "bg-blue-950/45 text-blue-400 border border-blue-900/30"
-                            : statusData.result.status === "rejected"
-                              ? "bg-rose-950/45 text-rose-400 border border-rose-900/30"
-                              : "bg-slate-800 text-slate-400"
-                    }`}
-                  >
-                    {statusData.result.status === "approved" &&
-                      "✅ Account Active"}
-                    {statusData.result.status === "pending" &&
-                      "⏳ Under Review"}
-                    {statusData.result.status === "otp_sent" && "📧 OTP Sent"}
-                    {statusData.result.status === "rejected" && "❌ Rejected"}
-                    {statusData.result.status === "not_found" && "🔍 Not Found"}
-                  </div>
-
-                  {statusData.result.status === "not_found" && (
-                    <div className="bg-blue-950/20 border border-blue-900/30 rounded-xl p-4 text-blue-300">
-                      <p className="text-sm">
-                        No registration found. Please register first.
-                      </p>
-                    </div>
-                  )}
-                  {statusData.result.status === "pending" && (
-                    <div className="bg-amber-950/20 border border-amber-900/30 rounded-xl p-4 text-amber-300">
-                      <p className="text-sm">
-                        Your request is under admin review. You'll receive an
-                        email when approved.
-                      </p>
-                    </div>
-                  )}
-                  {statusData.result.status === "otp_sent" && (
-                    <div className="space-y-3">
-                      <div className="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4 text-emerald-300">
-                        <p className="text-sm">
-                          Admin has approved! Check your email for OTP.
-                        </p>
-                      </div>
-                      <Button variant="success" onClick={() => setMode("otp")}>
-                        Go to OTP Verification →
-                      </Button>
-                    </div>
-                  )}
-                  {statusData.result.status === "approved" && (
-                    <div className="space-y-3">
-                      <div className="bg-emerald-950/20 border border-emerald-900/30 rounded-xl p-4 text-emerald-300">
-                        <p className="text-sm">
-                          Account is active! You can sign in now.
-                        </p>
-                      </div>
-                      <Button onClick={() => setMode("login")}>
-                        Go to Sign In →
-                      </Button>
-                    </div>
-                  )}
-                  {statusData.result.status === "rejected" && (
-                    <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-4 text-rose-300">
-                      <p className="text-sm">
-                        {statusData.result.message ||
-                          "Registration was rejected. Please contact admin."}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  <p className="text-center text-xs text-slate-400 mt-4">
+                    <button
+                      onClick={() => setMode("login")}
+                      className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
+                    >
+                      ← Back to Sign In
+                    </button>
+                  </p>
+                </motion.div>
               )}
-
-              <p className="text-center text-xs text-slate-400 mt-4">
-                <button
-                  onClick={() => setMode("login")}
-                  className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
-                >
-                  ← Back to Sign In
-                </button>
-              </p>
-            </motion.div>
-          )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Mobile benefits footer */}
-        <div className="grid grid-cols-2 gap-2 mt-4 md:hidden">
-          <div className="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl text-center">
-            <div className="text-sm mb-1">🛡️ SOC-2 Type II</div>
-            <div className="text-[9px] text-slate-400">Audited Security Log</div>
+            </AnimatePresence>
           </div>
-          <div className="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl text-center">
-            <div className="text-sm mb-1">⚡ ACID Sync</div>
-            <div className="text-[9px] text-slate-400">Persistent State Guards</div>
+
+          {/* Centered Footer Copyright */}
+          <div className="text-center mt-8">
+            <p className="text-xs text-slate-500 font-medium">
+              TaskGrid ERP v2.0 • © 2026 Scholars' Group Of Institution
+            </p>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="text-center mt-6 space-y-1">
-          <p className="text-xs text-slate-500 font-medium">
-            TaskGrid ERP v2.0 • © 2026 Scholars' Group Of Institution
-          </p>
-          <p className="text-[10px] text-slate-400/80 font-bold uppercase tracking-widest">
-            Developed By Abdul Rahman
-          </p>
-        </div>
-      </div>
-    </motion.div>
+      </motion.div>
     </div>
   );
 }
