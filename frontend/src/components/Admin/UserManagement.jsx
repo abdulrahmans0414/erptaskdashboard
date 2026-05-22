@@ -537,11 +537,11 @@ const UserManagement = () => {
         {/* Premium Light Cards Statistics Dashboard */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: "Total Accounts", value: userStats.total, color: "text-slate-800", icon: <FiUsers className="text-slate-400" /> },
-            { label: "Active Employees", value: userStats.active, color: "text-emerald-600", icon: <FiCheckCircle className="text-emerald-500/80" /> },
-            { label: "Company Divisions", value: departments.length, color: "text-blue-600", icon: <FiBriefcase className="text-blue-500/80" /> },
-            { label: "Active Branches", value: finalBranches.length, color: "text-indigo-650", icon: <FiMapPin className="text-indigo-500/80" /> },
-            { label: "Global Admins", value: userStats.admins, color: "text-purple-600", icon: <FiShield className="text-purple-500/80" /> },
+            { label: "Total Accounts", value: userStats.total, color: "text-slate-800", icon: <FiUsers className="text-slate-400" />, desc: "Total registered profiles across branches." },
+            { label: "Active Employees", value: userStats.active, color: "text-emerald-600", icon: <FiCheckCircle className="text-emerald-500/80" />, desc: "Users currently active and taking tasks." },
+            { label: "Company Divisions", value: departments.length, color: "text-blue-600", icon: <FiBriefcase className="text-blue-500/80" />, desc: "Configured corporate functional units." },
+            { label: "Active Branches", value: finalBranches.length, color: "text-indigo-650", icon: <FiMapPin className="text-indigo-500/80" />, desc: "Operating branch locations globally." },
+            { label: "Global Admins", value: userStats.admins, color: "text-purple-600", icon: <FiShield className="text-purple-500/80" />, desc: "Super-users with full system access." },
           ].map((s, idx) => (
             <div
               key={idx}
@@ -553,6 +553,9 @@ const UserManagement = () => {
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
               <p className={`text-2xl font-bold mt-1.5 tracking-tight ${s.color}`}>
                 {s.value}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-2.5 select-none font-medium leading-normal tracking-wide border-t border-slate-100/50 pt-1.5">
+                {s.desc}
               </p>
             </div>
           ))}
@@ -821,6 +824,9 @@ const UserManagement = () => {
                         className={inputClass}
                         placeholder="Employee full name"
                       />
+                      <p className="text-[10px] text-slate-500 mt-1 select-none">
+                        Enter the full first and last name of the employee (minimum 2 characters).
+                      </p>
                     </Field>
 
                     {/* Email Address */}
@@ -833,6 +839,9 @@ const UserManagement = () => {
                         className={inputClass}
                         placeholder="corporate@domain.com"
                       />
+                      <p className="text-[10px] text-slate-500 mt-1 select-none">
+                        A unique corporate email address. Used for security authentication and notifications.
+                      </p>
                     </Field>
 
                     {/* Employee ID */}
@@ -844,6 +853,9 @@ const UserManagement = () => {
                         onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                         className={inputClass}
                       />
+                      <p className="text-[10px] text-slate-500 mt-1 select-none">
+                        Unique corporate identifier assigned to the employee (alphanumeric).
+                      </p>
                     </Field>
                   </div>
 
@@ -915,6 +927,11 @@ const UserManagement = () => {
                           {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                         </button>
                       </div>
+                      <p className="text-[10px] text-slate-500 mt-1 select-none">
+                        {editingUser 
+                          ? "Leave blank to preserve existing password. To update, enter at least 6 characters." 
+                          : "Set a secure account password containing at least 6 characters."}
+                      </p>
                     </Field>
 
                     {/* Status Toggle */}

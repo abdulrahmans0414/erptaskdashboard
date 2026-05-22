@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const pendingRegistrationSchema = new mongoose.Schema({
     name:       { type: String, required: true, trim: true },
@@ -30,5 +31,17 @@ const pendingRegistrationSchema = new mongoose.Schema({
     reviewedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     reviewedAt:   Date
 }, { timestamps: true });
+
+// Pre-save hook to hash password with 12 salt rounds for GDPR privacy compliance
+pendingRegistrationSchema.pre('save', async function(next) {
+    if (!this.isModified('password')) return next();
+    try {
+        const salt = await bcrypt.genSalt(12);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
 
 export default mongoose.model('PendingRegistration', pendingRegistrationSchema);

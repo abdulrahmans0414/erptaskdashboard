@@ -23,6 +23,7 @@ import cookieParser from 'cookie-parser';
 import { initializeTokenCleanup, checkTokenBlacklist } from './middleware/tokenBlacklist.js';
 import { startEmailWorker } from './workers/emailWorker.js';
 import logger from './logger.js';
+import { sanitizeInput } from './middleware/sanitize.js';
 
 // Load .env FIRST before anything else
 dotenv.config();
@@ -129,6 +130,9 @@ app.use(cookieParser());
 // ==================== BODY PARSING ====================
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ==================== INPUT SANITIZATION ====================
+app.use(sanitizeInput);
 
 // ==================== RATE LIMITING (Login) ====================
 // Login rate limiter runs after body parser to inspect login email payloads securely

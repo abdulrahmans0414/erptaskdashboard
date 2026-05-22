@@ -10,6 +10,7 @@ import cron from 'node-cron';
 import EmailLog from '../models/EmailLog.js';
 import { cacheClear } from '../controllers/emailLogController.js';
 import eventBus, { EVENTS } from '../utils/eventBus.js';
+import logger from '../logger.js';
 
 let isSyncing = false;
 
@@ -18,13 +19,13 @@ export const startEmailWorker = () => {
     // Cron syntax: "*/10 * * * *"
     cron.schedule('*/10 * * * *', async () => {
         if (isSyncing) {
-            console.log(`[${new Date().toISOString()}] ⏳ Email Worker: Previous sync still running, skipping this tick.`);
+            logger.debug('Email Worker: Previous sync still running, skipping this tick.');
             return;
         }
 
         try {
             isSyncing = true;
-            console.log(`[${new Date().toISOString()}] 🔄 Email Worker: Starting background IMAP sync...`);
+            logger.debug('Email Worker: Starting background IMAP sync...');
 
             // Dynamically import the IMAP service to avoid loading it if not needed
             const { fetchGmailMails } = await import('../utils/imapService.js');
@@ -32,12 +33,12 @@ export const startEmailWorker = () => {
 
             // IMAP ITERATION SAFEGUARD
             if (!mails || !Array.isArray(mails)) {
-                console.log("No valid emails iterable array found");
+                logger.debug("No valid emails iterable array found");
                 return;
             }
 
             if (mails.length === 0) {
-                console.log(`[${new Date().toISOString()}] ✅ Email Worker: No new emails found.`);
+                logger.debug('Email Worker: No new emails found.');
                 return;
             }
 
@@ -70,18 +71,18 @@ export const startEmailWorker = () => {
                 cacheClear();
                 // Broadcast event to frontend via SSE so UI updates instantly
                 eventBus.emit('data_change', { type: EVENTS.EMAIL_LOG_UPDATED });
-                console.log(`[${new Date().toISOString()}] ✅ Email Worker: Successfully synced ${syncedCount} new email(s).`);
+                logger.info(`Email Worker: Successfully synced ${syncedCount} new email(s).`);
             } else {
-                console.log(`[${new Date().toISOString()}] ✅ Email Worker: Evaluated ${mails.length} emails, 0 new to insert.`);
+                logger.debug(`Email Worker: Evaluated ${mails.length} emails, 0 new to insert.`);
             }
 
         } catch (error) {
-            console.error(`[${new Date().toISOString()}] ❌ Email Worker Error: Failed to sync IMAP. Reason:`, error.message);
+            logger.error(`Email Worker Error: Failed to sync IMAP. Reason: ${error.message}`);
             // We intentionally swallow the error here so the Node process/server doesn't crash!
         } finally {
             isSyncing = false;
         }
     });
 
-    console.log(`[${new Date().toISOString()}] ⏰ Email Worker Initialized (Runs every 10 minutes)`);
+    logger.info('Email Worker Initialized (Runs every 10 minutes)');
 };
