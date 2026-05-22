@@ -21,7 +21,13 @@ import toast from "react-hot-toast";
 const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   const { user } = useAuth();
   const { settings } = useSettings();
-  const branches = useMemo(() => settings?.branches || ["Gaurabagh"], [settings]);
+
+  const [dbBranches, setDbBranches] = useState([]);
+  const branches = useMemo(() => {
+    return (dbBranches || []).length > 0
+      ? dbBranches.map((b) => b?.name).filter(Boolean)
+      : (settings?.branches || ["Gaurabagh"]);
+  }, [dbBranches, settings]);
   const departments = useMemo(() => settings?.departments || ["IT"], [settings]);
 
   const [formData, setFormData] = useState({
@@ -42,7 +48,6 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
   const [isTeamTask, setIsTeamTask] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState([]);
   const [collaboratingDepts, setCollaboratingDepts] = useState([]);
-  const [dbBranches, setDbBranches] = useState([]);
 
   const loadDbBranches = async () => {
     try {

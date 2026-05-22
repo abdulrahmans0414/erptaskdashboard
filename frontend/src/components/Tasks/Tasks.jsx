@@ -41,9 +41,13 @@ export default function Tasks() {
   const navigate = useNavigate();
   const { items: allTasks, pagination, loading, dashboardStats } = useSelector((s) => s.tasks);
 
-  const BRANCHES = settings?.branches || [
-    "Central Gaurabagh", "Vikas Nagar", "Hive", "Hifz Academy", "Kursi Road", "Muazzam Nagar", "Aziz Nagar", "Mailaraiganj"
-  ];
+  const BRANCHES = useMemo(() => {
+    return (dbBranches || []).length > 0
+      ? dbBranches.map((b) => b?.name).filter(Boolean)
+      : (settings?.branches || [
+          "Central Gaurabagh", "Vikas Nagar", "Hive", "Hifz Academy", "Kursi Road", "Muazzam Nagar", "Aziz Nagar", "Mailaraiganj"
+        ]);
+  }, [dbBranches, settings]);
   const DEPTS = settings?.departments || [
     "IT", "HR", "Graphic", "Academic", "Finance", "Marketing", "Legal", "Transport", "Operations", "Admin"
   ];

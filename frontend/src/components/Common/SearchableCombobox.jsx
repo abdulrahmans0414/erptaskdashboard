@@ -23,9 +23,20 @@ export const SearchableCombobox = ({
     const containerRef = useRef(null);
     const inputRef = useRef(null);
 
+    // Find the currently selected option to display its label in the input
+    const selectedOption = useMemo(() => {
+        return options.find((opt) => opt.value === value);
+    }, [options, value]);
+
     // Filtered options based on search query
     const filteredOptions = useMemo(() => {
         if (!searchQuery) return options;
+
+        // If the query matches the selected option's label exactly, show all options
+        if (selectedOption && searchQuery === selectedOption.label) {
+            return options;
+        }
+
         const normalized = searchQuery.toLowerCase().trim();
         return options.filter((opt) => {
             const nameMatch = opt.label?.toLowerCase().includes(normalized);
@@ -33,12 +44,7 @@ export const SearchableCombobox = ({
             const descMatch = opt.description?.toLowerCase().includes(normalized);
             return nameMatch || subMatch || descMatch;
         });
-    }, [options, searchQuery]);
-
-    // Find the currently selected option to display its label in the input
-    const selectedOption = useMemo(() => {
-        return options.find((opt) => opt.value === value);
-    }, [options, value]);
+    }, [options, searchQuery, selectedOption]);
 
     // Sync input displays with value selection
     useEffect(() => {

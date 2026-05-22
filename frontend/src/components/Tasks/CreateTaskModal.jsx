@@ -21,7 +21,13 @@ import toast from "react-hot-toast";
 const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const { user } = useAuth();
   const { settings } = useSettings();
-  const branches = useMemo(() => settings?.branches || ["Gaurabagh"], [settings]);
+
+  const [dbBranches, setDbBranches] = useState([]);
+  const branches = useMemo(() => {
+    return (dbBranches || []).length > 0
+      ? dbBranches.map((b) => b?.name).filter(Boolean)
+      : (settings?.branches || ["Gaurabagh"]);
+  }, [dbBranches, settings]);
   const departments = useMemo(() => settings?.departments || ["IT"], [settings]);
 
   const [formData, setFormData] = useState({
@@ -44,7 +50,6 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [collaboratingDepts, setCollaboratingDepts] = useState([]);
   const [taskFormFiles, setTaskFormFiles] = useState([]);
   const [fileInputKey, setFileInputKey] = useState(Date.now());
-  const [dbBranches, setDbBranches] = useState([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -112,6 +117,18 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const role = user?.role;
   const branchLocked = role === "branch-head" || role === "department-head";
   const deptLocked = role === "department-head";
+
+  // Sync default branch once database branches load asynchronously
+  useEffect(() => {
+    if (isOpen && branches.length > 0 && !branchLocked) {
+      if (!formData.branch || !branches.includes(formData.branch)) {
+        setFormData((prev) => ({
+          ...prev,
+          branch: branches[0]
+        }));
+      }
+    }
+  }, [branches, isOpen, branchLocked]);
 
   const departmentsForSelectedBranch = useMemo(() => {
     const b = formData.branch;

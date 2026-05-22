@@ -695,31 +695,33 @@ export default function AuthPage() {
               </form>
 
               {/* Demo Accounts */}
-              <div className="mt-4 pt-4 border-t border-slate-800">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
-                  Quick Demo Access
-                </p>
-                <div className="grid grid-cols-4 gap-2">
-                  {DEMO_ACCOUNTS.map((demo, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => fillDemoAccount(demo)}
-                      title={`Login as ${demo.label} (${demo.email})`}
-                      className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 hover:border-blue-500/50 hover:bg-blue-950/20 hover:shadow-sm transition-all group"
-                    >
-                      <div
-                        className={`w-8 h-8 bg-gradient-to-br ${demo.color} rounded-lg flex items-center justify-center text-sm mb-1 shadow group-hover:scale-105 transition-transform`}
+              {import.meta.env.DEV && (
+                <div className="mt-4 pt-4 border-t border-slate-800">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
+                    Quick Demo Access
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {DEMO_ACCOUNTS.map((demo, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => fillDemoAccount(demo)}
+                        title={`Login as ${demo.label} (${demo.email})`}
+                        className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 hover:border-blue-500/50 hover:bg-blue-950/20 hover:shadow-sm transition-all group"
                       >
-                        {demo.icon}
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-400 truncate w-full text-center group-hover:text-blue-400">
-                        {demo.label}
-                      </span>
-                    </button>
-                  ))}
+                        <div
+                          className={`w-8 h-8 bg-gradient-to-br ${demo.color} rounded-lg flex items-center justify-center text-sm mb-1 shadow group-hover:scale-105 transition-transform`}
+                        >
+                          {demo.icon}
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 truncate w-full text-center group-hover:text-blue-400">
+                          {demo.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Bottom Links */}
               <div className="mt-6 space-y-2 text-center">

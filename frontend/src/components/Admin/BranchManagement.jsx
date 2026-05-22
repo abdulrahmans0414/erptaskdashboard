@@ -225,7 +225,6 @@ const BranchManagement = () => {
   };
 
   useEffect(() => {
-    loadBranches();
     loadUsersList();
     loadDeletedBranches();
   }, []);
@@ -294,6 +293,13 @@ const BranchManagement = () => {
     }
   };
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingBranch(null);
+    setBannerError(null);
+    setFormData(EMPTY_FORM);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -301,34 +307,53 @@ const BranchManagement = () => {
     try {
       // Sync head name/email based on loaded combobox selection
       const payload = { ...formData };
+      
+      // Sanitize head and manager objectId fields to null on blank strings
       if (payload.head) {
         const headUser = (allUsers || []).find(u => u?._id === payload.head);
         if (headUser) {
           payload.headName = headUser.name;
           payload.headEmail = headUser.email;
         }
+      } else {
+        payload.head = null;
+        payload.headName = "";
+        payload.headEmail = "";
+      }
+
+      if (!payload.manager) {
+        payload.manager = null;
       }
 
       if (editingBranch) {
-        await updateBranch(editingBranch._id, payload);
-        showToast("Branch updated successfully");
+        const res = await updateBranch(editingBranch._id, payload);
+        if (res.data.success) {
+          showToast("Branch updated successfully");
+          handleCloseModal();
+          loadBranches(search);
+          loadUsersList();
+        } else {
+          const errMsg = res.data.message || "Failed to update branch";
+          setBannerError(errMsg);
+          showToast(errMsg, "error");
+        }
       } else {
-        await createBranch(payload);
-        showToast("Branch created successfully");
+        const res = await createBranch(payload);
+        if (res.data.success) {
+          showToast("Branch created successfully");
+          handleCloseModal();
+          loadBranches(search);
+          loadUsersList();
+        } else {
+          const errMsg = res.data.message || "Failed to create branch";
+          setBannerError(errMsg);
+          showToast(errMsg, "error");
+        }
       }
-      setShowModal(false);
-      setEditingBranch(null);
-      setFormData(EMPTY_FORM);
-      setBannerError(null);
-      loadBranches(search);
-      loadUsersList();
     } catch (error) {
       console.error("Error saving branch:", error);
       const errMsg = error.response?.data?.message || error.message || "Operation failed";
       setBannerError(errMsg);
-      // Scroll to modal top to display error banner clearly
-      const scrollableForm = document.getElementById("modal-scrollable-pane");
-      if (scrollableForm) scrollableForm.scrollTop = 0;
     } finally {
       setSubmitting(false);
     }
@@ -336,12 +361,16 @@ const BranchManagement = () => {
 
   const handleDelete = async (branch) => {
     try {
-      await deleteBranch(branch._id);
-      setConfirmDelete(null);
-      showToast("Branch moved to Recycle Bin");
-      loadBranches(search);
-      loadDeletedBranches();
-      loadUsersList();
+      const res = await deleteBranch(branch._id);
+      if (res.data.success) {
+        setConfirmDelete(null);
+        showToast("Branch moved to Recycle Bin");
+        loadBranches(search);
+        loadDeletedBranches();
+        loadUsersList();
+      } else {
+        showToast(res.data.message || "Error deleting branch", "error");
+      }
     } catch (error) {
       console.error("Error soft-deleting branch:", error);
       showToast("Error deleting branch", "error");
@@ -754,7 +783,7 @@ const BranchManagement = () => {
       <AnimatePresence>
         {showModal && (
           <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased">
-            <div className="fixed inset-0" onClick={() => setShowModal(false)} />
+            <div className="fixed inset-0" onClick={handleCloseModal} />
             <motion.div
               initial={{ scale: 0.97, y: 15, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -776,7 +805,7 @@ const BranchManagement = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={handleCloseModal}
                   className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition text-lg font-bold"
                 >
                   ×
@@ -983,7 +1012,7 @@ const BranchManagement = () => {
                 <div className="flex gap-3 px-8 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={handleCloseModal}
                     className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
                   >
                     Cancel

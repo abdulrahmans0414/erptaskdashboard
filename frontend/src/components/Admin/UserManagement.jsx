@@ -209,6 +209,7 @@ const UserManagement = () => {
   const [userStats, setUserStats] = useState({ total: 0, active: 0, admins: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -237,13 +238,19 @@ const UserManagement = () => {
   // Dynamic Banner Notification for validation inline errors
   const [bannerError, setBannerError] = useState("");
 
+  const handleCloseModal = useCallback(() => {
+    setShowModal(false);
+    setBannerError("");
+    setEditingUser(null);
+  }, []);
+
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const response = await getUsers({
         page,
         limit: 10,
-        search,
+        search: debouncedSearch,
         role: roleFilter,
         branch: branchFilter
       });
@@ -257,7 +264,7 @@ const UserManagement = () => {
       toast.error("Failed to load users");
     }
     setLoading(false);
-  }, [page, search, roleFilter, branchFilter]);
+  }, [page, debouncedSearch, roleFilter, branchFilter]);
 
   const loadDbBranches = useCallback(async () => {
     try {
@@ -284,22 +291,23 @@ const UserManagement = () => {
     const searchParam = params.get("search");
     if (searchParam) {
       setSearch(searchParam);
+      setDebouncedSearch(searchParam);
     }
   }, []);
 
-  // Debounced search for users
+  // Debounced search for users - updates debouncedSearch state separately
   useEffect(() => {
     if (search === "") {
+      setDebouncedSearch("");
       if (page !== 1) setPage(1);
-      else loadUsers();
       return;
     }
     const timer = setTimeout(() => {
+      setDebouncedSearch(search);
       if (page !== 1) setPage(1);
-      else loadUsers();
     }, 450);
     return () => clearTimeout(timer);
-  }, [search, loadUsers]);
+  }, [search]);
 
   // Fetch tasks assigned to the user when editing
   useEffect(() => {
@@ -377,15 +385,28 @@ const UserManagement = () => {
       if (editingUser) {
         const updateData = { ...formData };
         if (!updateData.password) delete updateData.password;
-        await updateUser(editingUser._id, updateData);
-        toast.success("✅ User updated successfully!");
+        const res = await updateUser(editingUser._id, updateData);
+        if (res.data.success) {
+          toast.success("✅ User updated successfully!");
+          handleCloseModal();
+          loadUsers();
+        } else {
+          const msg = res.data.message || "Failed to update user";
+          setBannerError(msg);
+          toast.error(msg);
+        }
       } else {
-        await createUser(formData);
-        toast.success("✅ User account created successfully!");
+        const res = await createUser(formData);
+        if (res.data.success) {
+          toast.success("✅ User account created successfully!");
+          handleCloseModal();
+          loadUsers();
+        } else {
+          const msg = res.data.message || "Failed to create user";
+          setBannerError(msg);
+          toast.error(msg);
+        }
       }
-      setShowModal(false);
-      setEditingUser(null);
-      loadUsers();
     } catch (error) {
       console.error("Error saving user:", error);
       const msg = error.response?.data?.message || error.message || "Save operation failed";
@@ -397,10 +418,14 @@ const UserManagement = () => {
 
   const handleDelete = useCallback(async (userToDelete) => {
     try {
-      await deleteUser(userToDelete._id);
-      setConfirmDelete(null);
-      toast.success(`🗑️ User ${userToDelete.name} soft-deleted. Accessible in Recycle Bin.`);
-      loadUsers();
+      const res = await deleteUser(userToDelete._id);
+      if (res.data.success) {
+        setConfirmDelete(null);
+        toast.success(`🗑️ User ${userToDelete.name} soft-deleted. Accessible in Recycle Bin.`);
+        loadUsers();
+      } else {
+        toast.error(res.data.message || "Error deleting user");
+      }
     } catch (error) {
       console.error("Error deleting user:", error);
       toast.error(error.response?.data?.message || "Error deleting user");
@@ -734,7 +759,7 @@ const UserManagement = () => {
       <AnimatePresence>
         {showModal && (
           <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased">
-            <div className="fixed inset-0" onClick={() => setShowModal(false)} />
+            <div className="fixed inset-0" onClick={handleCloseModal} />
             <motion.div
               initial={{ scale: 0.97, y: 15, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -754,7 +779,7 @@ const UserManagement = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={handleCloseModal}
                   className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition"
                 >
                   <FiX size={16} />
@@ -883,7 +908,7 @@ const UserManagement = () => {
                 <div className="flex gap-3 px-8 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={handleCloseModal}
                     className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
                   >
                     Cancel
