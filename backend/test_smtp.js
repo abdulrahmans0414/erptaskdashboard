@@ -8,7 +8,8 @@ const transporter = nodemailer.createTransport({
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-    }
+    },
+    family: 4
 });
 
 transporter.verify(function(error, success) {
@@ -32,7 +33,8 @@ transporter.verify(function(error, success) {
                 auth: {
                     user: s.emailConfig.user,
                     pass: s.emailConfig.pass
-                }
+                },
+                family: 4
             });
             dbTransporter.verify(function(err, succ) {
                 if (err) console.log("Error from DB credentials:", err);

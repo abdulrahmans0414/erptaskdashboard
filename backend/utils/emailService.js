@@ -35,7 +35,8 @@ const createTransporter = async () => {
         socketTimeout: 10000,
         tls: {
             rejectUnauthorized: false // Allow self-signed certs in dev
-        }
+        },
+        family: 4 // Force IPv4 to prevent connection issues on IPv6-unfriendly networks
     });
 };
 
@@ -70,7 +71,8 @@ const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
         connectionTimeout: 5000,
         greetingTimeout: 5000,
         socketTimeout: 10000,
-        tls: { rejectUnauthorized: false }
+        tls: { rejectUnauthorized: false },
+        family: 4 // Force IPv4 to prevent connection issues on IPv6-unfriendly networks
     });
 
     try {
