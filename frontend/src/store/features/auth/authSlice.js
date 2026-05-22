@@ -62,7 +62,8 @@ const authSlice = createSlice({
     initialState: {
         user: parseStoredUser(),
         token: localStorage.getItem('token') || null,
-        loading: false,
+        // Start as true if token exists so route guards wait for getCurrentUser to resolve
+        loading: !!localStorage.getItem('token') && !parseStoredUser(),
         error: null,
         isAuthenticated: !!localStorage.getItem('token'),
     },

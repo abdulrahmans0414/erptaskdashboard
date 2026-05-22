@@ -501,7 +501,7 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel, loading }) => {
 
 // ==================== MAIN DASHBOARD ====================
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
@@ -1219,6 +1219,11 @@ const Dashboard = () => {
       return `${customStart || "?"} to ${customEnd || "?"}`;
     return "All Time (Monthly)";
   };
+
+  // ==================== AUTH HYDRATION GUARD ====================
+  // If auth is still loading (token exists, currentUser not yet resolved from API),
+  // show skeleton immediately. Prevents reading user?.role as undefined on first paint.
+  if (authLoading && !user) return <DashboardSkeleton />;
 
   // ==================== ROLE CHECK ====================
   const isManagerRole = ["admin", "department-head", "branch-head"].includes(

@@ -80,7 +80,6 @@ export const useRealtimeSync = (isAuthenticated) => {
             es.addEventListener('connected', () => {
                 retryCount.current = 0;
                 stopFallbackPolling();
-                console.log('🔴 Realtime SSE connected');
             });
 
             es.addEventListener('invalidate_tasks', () => {

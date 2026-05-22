@@ -36,7 +36,6 @@ const TaskPerformance = () => {
       const response = await getDashboardStats();
       if (response.data.success) {
         setStats(response.data.data);
-        console.log("✅ Performance stats loaded");
       } else {
         setError(response.data.message || "Failed to load stats");
       }

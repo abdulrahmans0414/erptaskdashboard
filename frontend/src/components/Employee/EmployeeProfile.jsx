@@ -61,7 +61,8 @@ const StatCard = ({ label, value, accent, onClick, active }) => (
 const EmployeeProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser, refreshUser } = useAuth();
+  // Destructure loading (auth) separately to detect hydration state
+  const { user: currentUser, loading: authLoading, refreshUser } = useAuth();
   const { settings } = useSettings();
   const pollingRef = useRef(null);
 
@@ -91,7 +92,9 @@ const EmployeeProfile = () => {
   const [profileImage, setProfileImage] = useState(null);
   const [, setAvatarUploading] = useState(false);
 
-  // /profile route may not have id - fallback to current user
+  // /profile route may not have :id param — fall back to authenticated user's id.
+  // NOTE: currentUser may be null during Redux auth hydration, so effectiveId
+  // will be undefined until hydration completes. The useEffect below handles this.
   const effectiveId = id || currentUser?._id || currentUser?.id;
 
   const loadData = async () => {
@@ -197,8 +200,9 @@ const EmployeeProfile = () => {
   };
 
   useEffect(() => {
-    // effectiveId depends on currentUser loading from Redux async.
-    // If no id in URL (self profile), wait until currentUser is available.
+    // Guard: if viewing /profile (no URL id), wait for auth hydration to complete.
+    // If id comes from URL params, we can proceed immediately.
+    // Adding currentUser to deps ensures re-fire when auth resolves from null → user.
     if (!effectiveId) return;
 
     const initialize = async () => {
@@ -208,7 +212,6 @@ const EmployeeProfile = () => {
     initialize();
 
     // Realtime polling: refresh profile + tasks every 30 seconds
-    // Increased from 10s to reduce server load; real-time updates come via SSE
     if (pollingRef.current) clearInterval(pollingRef.current);
     pollingRef.current = setInterval(() => {
       if (!showEditModal) {
@@ -222,8 +225,12 @@ const EmployeeProfile = () => {
         pollingRef.current = null;
       }
     };
+    // Include currentUser in deps: when viewing /profile, effectiveId is derived
+    // from currentUser which may be null during first-mount auth hydration.
+    // Without currentUser here, the effect would fire once (returning early) and
+    // never re-fire even after currentUser resolves — causing a blank/frozen page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveId]);
+  }, [effectiveId, currentUser]);
 
   // Removed local showToast
 
@@ -397,7 +404,26 @@ const EmployeeProfile = () => {
     { key: "overdue", label: "Overdue", count: stats.overdue },
   ];
 
-  /* ---------------- Loading skeleton ---------------- */
+  /* ---------------- Auth hydration guard ---------------- */
+  // While auth is resolving (token exists but currentUser not yet fetched from API),
+  // show the skeleton immediately. Without this, reading currentUser?.role etc. on
+  // first paint causes "Cannot read properties of null" crashes.
+  if (authLoading && !currentUser && !id) {
+    return (
+      <div className="max-w-7xl mx-auto p-4 space-y-5">
+        <SkeletonCard className="h-40" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <SkeletonCard key={i} className="h-20" />
+          ))}
+        </div>
+        <SkeletonCard className="h-20" />
+        <SkeletonCard className="h-64" />
+      </div>
+    );
+  }
+
+  /* ---------------- Data loading skeleton ---------------- */
   if (loading && !employee) {
     return (
       <div className="max-w-7xl mx-auto p-4 space-y-5">
