@@ -10,7 +10,7 @@ import Branch from '../../models/Branch.js';
 // @route   GET /api/departments
 export const getDepartments = async (req, res) => {
     try {
-        const departments = await Department.find({ isActive: true }).sort({ name: 1 });
+        const departments = await Department.find({ isActive: true }).sort({ name: 1 }).lean();
         res.json({ success: true, data: departments });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

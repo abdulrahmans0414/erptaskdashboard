@@ -40,10 +40,6 @@ const ROLES = [
   { value: "hr", label: "HR Executive" },
   { value: "it", label: "IT Executive" },
   { value: "graphic", label: "Graphic Designer" },
-  { value: "coordinator", label: "Coordinator" },
-  { value: "mentor", label: "Mentor" },
-  { value: "teacher", label: "Teacher" },
-  { value: "student", label: "Student" },
 ];
 
 const HIGH_PRIVILEGE_ROLES = [

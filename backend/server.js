@@ -15,6 +15,7 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import realtimeRoutes from './routes/realtimeRoutes.js';
 import emailLogRoutes from './routes/emailLogRoutes.js';
 import User from './models/User.js';
+import Branch from './models/Branch.js';
 import { seedDatabase } from './seed.js';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
@@ -220,6 +221,55 @@ const PORT = parseInt(process.env.PORT, 10) || 5001;
 
 const startServer = async () => {
     await connectDB();
+
+    // Rebuild indexes to support soft-deleted heads uniquely
+    try {
+        const usersCollection = mongoose.connection.collection('users');
+        await usersCollection.dropIndex('role_1_branch_1');
+        logger.info('🧹 Automatically dropped legacy user index: role_1_branch_1');
+    } catch (e) {
+        // Index might not exist yet, ignore
+    }
+    try {
+        const usersCollection = mongoose.connection.collection('users');
+        await usersCollection.dropIndex('role_1_department_1_branch_1');
+        logger.info('🧹 Automatically dropped legacy user index: role_1_department_1_branch_1');
+    } catch (e) {
+        // Index might not exist yet, ignore
+    }
+    try {
+        await User.syncIndexes();
+        logger.info('✅ Rebuilt user collection schemas and indexes successfully');
+    } catch (e) {
+        logger.warn('⚠️ User indexes sync warn:', e.message);
+    }
+    try {
+        const branchesCollection = mongoose.connection.collection('branches');
+        await branchesCollection.dropIndex('name_1');
+        logger.info('🧹 Automatically dropped legacy branch index: name_1');
+    } catch (e) {}
+    try {
+        const branchesCollection = mongoose.connection.collection('branches');
+        await branchesCollection.dropIndex('code_1');
+        logger.info('🧹 Automatically dropped legacy branch index: code_1');
+    } catch (e) {}
+    try {
+        const branchesCollection = mongoose.connection.collection('branches');
+        await branchesCollection.dropIndex('city_1');
+        logger.info('🧹 Automatically dropped legacy branch index: city_1');
+    } catch (e) {}
+    try {
+        const branchesCollection = mongoose.connection.collection('branches');
+        await branchesCollection.dropIndex('location_1');
+        logger.info('🧹 Automatically dropped legacy branch index: location_1');
+    } catch (e) {}
+
+    try {
+        await Branch.syncIndexes();
+        logger.info('✅ Rebuilt branch collection schemas and indexes successfully');
+    } catch (e) {
+        logger.warn('⚠️ Branch indexes sync warn:', e.message);
+    }
 
     // Initialize token cleanup background job
     initializeTokenCleanup();

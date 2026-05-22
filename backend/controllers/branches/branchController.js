@@ -48,18 +48,18 @@ const syncBranchHeadUser = async (branch, session = null) => {
     // If duplicates already exist, keep the oldest and delete the rest (safe cleanup).
     if (existingList.length > 1) {
         const dupes = existingList.slice(1).map(u => u._id);
-        await User.deleteMany({ _id: { $in: dupes } }, { session });
+        await User.deleteMany({ _id: { $in: dupes } }, session ? { session } : {});
     }
 
     if (!existing) {
         if (!headEmail) return; // can't create login account without email
 
         // If email is already used by some other account, link it if role matches
-        const emailTaken = await User.findOne({ email: headEmail.toLowerCase().trim() }).session(session);
+        const emailTaken = await User.findOne({ email: headEmail.toLowerCase().trim() }).session(session).lean();
         if (emailTaken) {
             if (emailTaken.role === 'branch-head') {
                 branch.head = emailTaken._id;
-                await Branch.updateOne({ _id: branch._id }, { head: emailTaken._id }, { session });
+                await Branch.updateOne({ _id: branch._id }, { head: emailTaken._id }, session ? { session } : {});
             }
             return;
         }
@@ -75,7 +75,7 @@ const syncBranchHeadUser = async (branch, session = null) => {
         }], session ? { session } : {});
 
         branch.head = newUser[0]._id;
-        await Branch.updateOne({ _id: branch._id }, { head: newUser[0]._id }, { session });
+        await Branch.updateOne({ _id: branch._id }, { head: newUser[0]._id }, session ? { session } : {});
         return;
     }
 
@@ -84,17 +84,17 @@ const syncBranchHeadUser = async (branch, session = null) => {
     if (headEmail) {
         const normalized = headEmail.toLowerCase().trim();
         if (normalized !== existing.email) {
-            const emailTaken = await User.findOne({ email: normalized, _id: { $ne: existing._id } }).select('_id').session(session);
+            const emailTaken = await User.findOne({ email: normalized, _id: { $ne: existing._id } }).select('_id').session(session).lean();
             if (!emailTaken) existing.email = normalized;
         }
     }
     existing.department = 'Operations';
     existing.isActive = true;
-    await existing.save({ session });
+    await existing.save(session ? { session } : {});
 
     if (!branch.head || branch.head.toString() !== existing._id.toString()) {
         branch.head = existing._id;
-        await Branch.updateOne({ _id: branch._id }, { head: existing._id }, { session });
+        await Branch.updateOne({ _id: branch._id }, { head: existing._id }, session ? { session } : {});
     }
 };
 
@@ -103,17 +103,22 @@ export const getAllBranches = async (req, res) => {
         const search = req.query.search ? String(req.query.search).trim() : undefined;
         const query = { isDeleted: { $ne: true } };
         if (search) {
-            const re = new RegExp(search, 'i');
             query.$or = [
-                { name: re },
-                { code: re },
-                { city: re },
-                { location: re },
+                { name: search },
+                { code: search },
+                { city: search },
+                { location: search },
+                { name: { $regex: search, $options: 'i' } },
+                { code: { $regex: search, $options: 'i' } },
+                { city: { $regex: search, $options: 'i' } },
+                { location: { $regex: search, $options: 'i' } }
             ];
         }
         const branches = await Branch.find(query)
             .populate('manager', 'name email avatar')
-            .populate('head', 'name email avatar');
+            .populate('head', 'name email avatar')
+            .collation({ locale: 'en', strength: 2 })
+            .lean();
         res.json({ success: true, data: branches });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -124,7 +129,8 @@ export const getDeletedBranches = async (req, res) => {
     try {
         const branches = await Branch.find({ isDeleted: true })
             .populate('manager', 'name email avatar')
-            .populate('head', 'name email avatar');
+            .populate('head', 'name email avatar')
+            .lean();
         res.json({ success: true, data: branches });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -143,11 +149,11 @@ export const restoreBranch = async (req, res) => {
 
             branch.isDeleted = false;
             branch.deletedAt = undefined;
-            await branch.save({ session });
+            await branch.save(session ? { session } : {});
 
             // Restore cascading users and tasks
-            await User.updateMany({ branch: branch.name }, { isArchived: false }, { session });
-            await Task.updateMany({ branch: branch.name }, { isArchived: false }, { session });
+            await User.updateMany({ branch: branch.name }, { isArchived: false }, session ? { session } : {});
+            await Task.updateMany({ branch: branch.name }, { isArchived: false }, session ? { session } : {});
 
             return { success: true, data: branch };
         });
@@ -166,7 +172,8 @@ export const getBranchById = async (req, res) => {
     try {
         const branch = await Branch.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
             .populate('manager', 'name email avatar')
-            .populate('head', 'name email avatar');
+            .populate('head', 'name email avatar')
+            .lean();
         if (!branch) {
             return res.status(404).json({ success: false, message: 'Branch not found' });
         }
@@ -196,10 +203,10 @@ export const createBranch = async (req, res) => {
             if (req.body.head) {
                 const headUser = await User.findById(req.body.head).session(session);
                 if (headUser) {
-                    await User.updateMany({ branch: branch.name, role: 'branch-head', _id: { $ne: headUser._id } }, { role: 'employee' }, { session });
+                    await User.updateMany({ branch: branch.name, role: 'branch-head', _id: { $ne: headUser._id } }, { role: 'employee' }, session ? { session } : {});
                     headUser.role = 'branch-head';
                     headUser.branch = branch.name;
-                    await headUser.save({ session });
+                    await headUser.save(session ? { session } : {});
                 }
             }
 
@@ -207,7 +214,7 @@ export const createBranch = async (req, res) => {
                 const managerUser = await User.findById(req.body.manager).session(session);
                 if (managerUser) {
                     managerUser.branch = branch.name;
-                    await managerUser.save({ session });
+                    await managerUser.save(session ? { session } : {});
                 }
             }
 
@@ -216,13 +223,14 @@ export const createBranch = async (req, res) => {
             if (settings && !settings.branches.includes(branch.name)) {
                 settings.branches.push(branch.name);
                 settings.markModified('branches');
-                await settings.save({ session });
+                await settings.save(session ? { session } : {});
             }
 
             const updated = await Branch.findById(branch._id)
                 .populate('manager', 'name email avatar')
                 .populate('head', 'name email avatar')
-                .session(session);
+                .session(session)
+                .lean();
             
             return { success: true, data: updated };
         });
@@ -257,15 +265,15 @@ export const updateBranch = async (req, res) => {
                 }
 
                 // Cascade update branch reference across collections
-                await User.updateMany({ branch: oldName }, { branch: newName }, { session });
-                await Task.updateMany({ branch: oldName }, { branch: newName }, { session });
+                await User.updateMany({ branch: oldName }, { branch: newName }, session ? { session } : {});
+                await Task.updateMany({ branch: oldName }, { branch: newName }, session ? { session } : {});
                 await Task.updateMany(
                     { collaboratingBranches: oldName },
                     { $set: { "collaboratingBranches.$[elem]": newName } },
-                    { arrayFilters: [{ "elem": oldName }], session }
+                    { arrayFilters: [{ "elem": oldName }], ...(session ? { session } : {}) }
                 );
-                await PendingRegistration.updateMany({ branch: oldName }, { branch: newName }, { session });
-                await Employee.updateMany({ branch: oldName }, { branch: newName }, { session });
+                await PendingRegistration.updateMany({ branch: oldName }, { branch: newName }, session ? { session } : {});
+                await Employee.updateMany({ branch: oldName }, { branch: newName }, session ? { session } : {});
 
                 // Sync with Settings singleton branches and branchEmails map
                 const settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' }).session(session);
@@ -281,7 +289,7 @@ export const updateBranch = async (req, res) => {
                         settings.branchEmails.delete(oldName);
                         settings.markModified('branchEmails');
                     }
-                    await settings.save({ session });
+                    await settings.save(session ? { session } : {});
                 }
             }
 
@@ -314,11 +322,11 @@ export const updateBranch = async (req, res) => {
                     req.body.headEmail = headUser.email;
 
                     // Downgrade any existing head for this branch
-                    await User.updateMany({ branch: newName || oldName, role: 'branch-head', _id: { $ne: headUser._id } }, { role: 'employee' }, { session });
+                    await User.updateMany({ branch: newName || oldName, role: 'branch-head', _id: { $ne: headUser._id } }, { role: 'employee' }, session ? { session } : {});
                     
                     headUser.role = 'branch-head';
                     headUser.branch = newName || oldName;
-                    await headUser.save({ session });
+                    await headUser.save(session ? { session } : {});
                 }
             }
 
@@ -326,20 +334,21 @@ export const updateBranch = async (req, res) => {
                 const managerUser = await User.findById(req.body.manager).session(session);
                 if (managerUser) {
                     managerUser.branch = newName || oldName;
-                    await managerUser.save({ session });
+                    await managerUser.save(session ? { session } : {});
                 }
             }
 
             // Update branch allowed fields
             Object.assign(branch, req.body);
-            const updated = await branch.save({ session });
+            const updated = await branch.save(session ? { session } : {});
 
             await syncBranchHeadUser(updated, session);
 
             const populatedUpdated = await Branch.findById(updated._id)
                 .populate('manager', 'name email avatar')
                 .populate('head', 'name email avatar')
-                .session(session);
+                .session(session)
+                .lean();
 
             return { success: true, data: populatedUpdated };
         });
@@ -367,11 +376,11 @@ export const deleteBranch = async (req, res) => {
             // Soft-delete branch
             branch.isDeleted = true;
             branch.deletedAt = new Date();
-            await branch.save({ session });
+            await branch.save(session ? { session } : {});
 
             // Propagate archived state to associated users and tasks
-            await User.updateMany({ branch: branch.name }, { isArchived: true }, { session });
-            await Task.updateMany({ branch: branch.name }, { isArchived: true }, { session });
+            await User.updateMany({ branch: branch.name }, { isArchived: true }, session ? { session } : {});
+            await Task.updateMany({ branch: branch.name }, { isArchived: true }, session ? { session } : {});
 
             return { success: true };
         });
@@ -388,13 +397,13 @@ export const deleteBranch = async (req, res) => {
 
 export const getBranchStats = async (req, res) => {
     try {
-        const branch = await Branch.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
+        const branch = await Branch.findOne({ _id: req.params.id, isDeleted: { $ne: true } }).lean();
         if (!branch) {
             return res.status(404).json({ success: false, message: 'Branch not found' });
         }
         
-        const users = await User.find({ branch: branch.name, isArchived: { $ne: true } });
-        const tasks = await Task.find({ branch: branch.name, isArchived: { $ne: true } });
+        const users = await User.find({ branch: branch.name, isArchived: { $ne: true } }).lean();
+        const tasks = await Task.find({ branch: branch.name, isArchived: { $ne: true } }).lean();
         
         const stats = {
             branchName: branch.name,

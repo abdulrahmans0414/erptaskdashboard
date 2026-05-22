@@ -60,7 +60,13 @@ export const getAllUsers = async (req, res) => {
         // Additional filters
         if (department && department !== 'all') query.department = department;
         if (branch && branch !== 'all') query.branch = branch;
-        if (filterRole && filterRole !== 'all') query.role = filterRole;
+        if (filterRole && filterRole !== 'all') {
+            if (filterRole.includes(',')) {
+                query.role = { $in: filterRole.split(',').map(r => r.trim()).filter(Boolean) };
+            } else {
+                query.role = filterRole;
+            }
+        }
 
         const users = await User.find(query)
             .select('-password')
@@ -98,7 +104,7 @@ export const getAllUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
     try {
         const id = String(req.params.id);
-        const user = await User.findOne({ _id: id, isDeleted: { $ne: true } }).select('-password');
+        const user = await User.findOne({ _id: id, isDeleted: { $ne: true } }).select('-password').lean();
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -106,7 +112,7 @@ export const getUserById = async (req, res) => {
         // Verify user is accessible under requester's scoped access filter
         const filter = req.userFilter || {};
         if (Object.keys(filter).length > 0) {
-            const allowed = await User.findOne({ _id: id, ...filter }).select('_id');
+            const allowed = await User.findOne({ _id: id, ...filter }).select('_id').lean();
             if (!allowed) {
                 return res.status(403).json({ success: false, message: 'Access denied to this user profile' });
             }
@@ -121,13 +127,13 @@ export const getUserById = async (req, res) => {
 // @desc    Create new user (Admin only)
 export const createUser = async (req, res) => {
     try {
-        const { name, email, password, role, department, branch, phone, address, bloodGroup, dateOfJoining, customFields } = req.body;
+        const { name, email, password, role, department, branch, phone, designation, privilegeRequestReason, avatarPublicId, adminComments, dateOfJoining, customFields, employeeId } = req.body;
         
         if (!name || !email || !password) {
             return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
         }
 
-        const userExists = await User.findOne({ email });
+        const userExists = await User.findOne({ email }).lean();
         if (userExists) {
             return res.status(400).json({ success: false, message: 'User with this email already exists' });
         }
@@ -139,7 +145,7 @@ export const createUser = async (req, res) => {
         const targetBranch = await Branch.findOne({ 
             name: { $regex: new RegExp('^' + targetBranchName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
             isDeleted: { $ne: true }
-        });
+        }).lean();
 
         if (!targetBranch) {
             return res.status(400).json({ success: false, message: `Target branch "${targetBranchName}" does not exist or is deleted` });
@@ -150,7 +156,7 @@ export const createUser = async (req, res) => {
             return res.status(400).json({ 
                 success: false, 
                 message: `Department "${targetDeptName}" does not exist in branch "${targetBranch.name}". Mapped departments are: ${targetBranch.departments.join(', ')}` 
-            });
+                });
         }
         
         const user = await User.create({
@@ -161,10 +167,13 @@ export const createUser = async (req, res) => {
             department: targetDeptName,
             branch: targetBranch.name,
             phone: phone ? String(phone).trim() : null,
-            address: address ? String(address).trim() : null,
-            bloodGroup: bloodGroup ? String(bloodGroup).trim() : null,
+            designation: designation ? String(designation).trim() : '',
+            privilegeRequestReason: privilegeRequestReason ? String(privilegeRequestReason).trim() : '',
+            avatarPublicId: avatarPublicId ? String(avatarPublicId).trim() : null,
+            adminComments: adminComments ? String(adminComments).trim() : '',
             dateOfJoining: dateOfJoining || Date.now(),
             customFields: customFields || {},
+            employeeId: employeeId ? String(employeeId).trim() : undefined,
             isActive: true
         });
         
@@ -181,7 +190,7 @@ export const updateUser = async (req, res) => {
     try {
         const {
             name, email, role, department, branch, isActive, avatar, password,
-            phone, address, bloodGroup, dateOfJoining, customFields, employeeId
+            phone, designation, privilegeRequestReason, avatarPublicId, adminComments, dateOfJoining, customFields, employeeId
         } = req.body;
         const id = String(req.params.id);
 
@@ -228,7 +237,7 @@ export const updateUser = async (req, res) => {
                         await Task.updateMany(
                             { $or: [{ assignedTo: user._id }, { assignedTeam: user._id }] },
                             { branch: targetBranch.name },
-                            { session }
+                            session ? { session } : {}
                         );
                         user.branch = targetBranch.name;
                     }
@@ -252,8 +261,10 @@ export const updateUser = async (req, res) => {
                 if (isActive !== undefined) user.isActive = Boolean(isActive);
                 if (avatar) user.avatar = String(avatar);
                 if (phone !== undefined) user.phone = phone ? String(phone).trim() : null;
-                if (address !== undefined) user.address = address ? String(address).trim() : null;
-                if (bloodGroup !== undefined) user.bloodGroup = bloodGroup ? String(bloodGroup).trim() : null;
+                if (designation !== undefined) user.designation = designation ? String(designation).trim() : '';
+                if (privilegeRequestReason !== undefined) user.privilegeRequestReason = privilegeRequestReason ? String(privilegeRequestReason).trim() : '';
+                if (avatarPublicId !== undefined) user.avatarPublicId = avatarPublicId ? String(avatarPublicId).trim() : null;
+                if (adminComments !== undefined) user.adminComments = adminComments ? String(adminComments).trim() : '';
                 if (dateOfJoining) user.dateOfJoining = dateOfJoining;
                 if (customFields) user.customFields = customFields;
                 if (canEditAll && employeeId !== undefined) user.employeeId = employeeId ? String(employeeId).trim() : undefined;
@@ -262,8 +273,9 @@ export const updateUser = async (req, res) => {
                 if (name) user.name = String(name).trim();
                 if (email) user.email = String(email).trim().toLowerCase();
                 if (phone !== undefined) user.phone = phone ? String(phone).trim() : null;
-                if (address !== undefined) user.address = address ? String(address).trim() : null;
-                if (bloodGroup !== undefined) user.bloodGroup = bloodGroup ? String(bloodGroup).trim() : null;
+                if (designation !== undefined) user.designation = designation ? String(designation).trim() : '';
+                if (privilegeRequestReason !== undefined) user.privilegeRequestReason = privilegeRequestReason ? String(privilegeRequestReason).trim() : '';
+                if (avatarPublicId !== undefined) user.avatarPublicId = avatarPublicId ? String(avatarPublicId).trim() : null;
                 if (customFields) user.customFields = customFields;
                 if (dateOfJoining) user.dateOfJoining = dateOfJoining;
             } else {
@@ -277,7 +289,7 @@ export const updateUser = async (req, res) => {
                 }
             }
             
-            await user.save({ session });
+            await user.save(session ? { session } : {});
             
             const { password: _, ...userWithoutPassword } = user.toObject();
             return { success: true, data: userWithoutPassword };
@@ -314,27 +326,27 @@ export const deleteUser = async (req, res) => {
             user.isActive = false;
             user.isDeleted = true;
             user.deletedAt = new Date();
-            await user.save({ session });
+            await user.save(session ? { session } : {});
 
             // Cross-Component Cascade: Transition all active assigned tasks to 'Unassigned' state (assignedTo = null, status = 'pending')
             await Task.updateMany(
                 { assignedTo: user._id, isDeleted: { $ne: true } }, 
                 { assignedTo: null, status: 'pending' },
-                { session }
+                session ? { session } : {}
             );
             
             // Remove from task teams
             await Task.updateMany(
                 { assignedTeam: user._id, isDeleted: { $ne: true } }, 
                 { $pull: { assignedTeam: user._id } },
-                { session }
+                session ? { session } : {}
             );
 
             // Soft-delete linked Employee profile
             await Employee.updateMany(
                 { email: user.email }, 
                 { isActive: false, isDeleted: true, deletedAt: new Date() },
-                { session }
+                session ? { session } : {}
             );
 
             return { success: true };
@@ -354,7 +366,7 @@ export const deleteUser = async (req, res) => {
 // @desc    Get all deleted users (Admin only)
 export const getDeletedUsers = async (req, res) => {
     try {
-        const users = await User.find({ isDeleted: true }).select('-password').sort({ name: 1 });
+        const users = await User.find({ isDeleted: true }).select('-password').sort({ name: 1 }).lean();
         res.json({ success: true, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -375,13 +387,13 @@ export const restoreUser = async (req, res) => {
             user.isActive = true;
             user.isDeleted = false;
             user.deletedAt = undefined;
-            await user.save({ session });
+            await user.save(session ? { session } : {});
 
             // Restore Employee profile
             await Employee.updateMany(
                 { email: user.email }, 
                 { isActive: true, isDeleted: false, deletedAt: undefined },
-                { session }
+                session ? { session } : {}
             );
 
             return { success: true, data: user };
@@ -405,7 +417,7 @@ export const getUsersByDepartment = async (req, res) => {
         const branch = req.query.branch ? String(req.query.branch).trim() : undefined;
         const filter = { department, isActive: true, isDeleted: { $ne: true } };
         if (branch) filter.branch = branch;
-        const users = await User.find(filter).select('-password').sort({ name: 1 });
+        const users = await User.find(filter).select('-password').sort({ name: 1 }).lean();
         res.json({ success: true, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -416,7 +428,7 @@ export const getUsersByDepartment = async (req, res) => {
 export const getUsersByBranch = async (req, res) => {
     try {
         const branch = String(req.params.branch);
-        const users = await User.find({ branch, isActive: true, isDeleted: { $ne: true } }).select('-password').sort({ name: 1 });
+        const users = await User.find({ branch, isActive: true, isDeleted: { $ne: true } }).select('-password').sort({ name: 1 }).lean();
         res.json({ success: true, data: users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

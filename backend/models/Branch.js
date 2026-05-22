@@ -47,4 +47,9 @@ branchSchema.pre('save', function(next) {
     next();
 });
 
+branchSchema.index({ name: 1 }, { collation: { locale: 'en', strength: 2 } });
+branchSchema.index({ code: 1 }, { collation: { locale: 'en', strength: 2 } });
+branchSchema.index({ city: 1 }, { collation: { locale: 'en', strength: 2 } });
+branchSchema.index({ location: 1 }, { collation: { locale: 'en', strength: 2 } });
+
 export default mongoose.model('Branch', branchSchema);

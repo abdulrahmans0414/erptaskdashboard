@@ -11,10 +11,6 @@ const ROLE_COLORS = {
   graphic: "bg-pink-100 text-pink-700 border-pink-200",
   "department-head": "bg-orange-100 text-orange-700 border-orange-200",
   "branch-head": "bg-indigo-100 text-indigo-700 border-indigo-200",
-  coordinator: "bg-cyan-100 text-cyan-700 border-cyan-200",
-  mentor: "bg-green-100 text-green-700 border-green-200",
-  teacher: "bg-teal-100 text-teal-700 border-teal-200",
-  student: "bg-yellow-100 text-yellow-700 border-yellow-200",
 };
 
 import toast from "react-hot-toast";

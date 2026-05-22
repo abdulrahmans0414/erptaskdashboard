@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   getBranches,
@@ -6,6 +6,7 @@ import {
   updateBranch,
   deleteBranch,
   getUsers,
+  getUserById,
   updateUser,
   getDeletedBranches,
   restoreBranch,
@@ -45,16 +46,68 @@ const EMPTY_FORM = {
 };
 
 // Searchable Combobox Selector for Head/Manager
-const Combobox = ({ label, value, onChange, options, placeholder, icon }) => {
+const Combobox = ({ label, value, onChange, placeholder, icon }) => {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  
-  const selectedOption = (options || []).find((opt) => opt?._id === value);
-  const filteredOptions = (options || []).filter(
-    (opt) =>
-      opt?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      opt?.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  useEffect(() => {
+    if (!value) {
+      setSelectedUser(null);
+      return;
+    }
+    let active = true;
+    const fetchUser = async () => {
+      try {
+        const res = await getUserById(value);
+        if (res.data.success && active) {
+          setSelectedUser(res.data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching user in Combobox:", err);
+      }
+    };
+    fetchUser();
+    return () => {
+      active = false;
+    };
+  }, [value]);
+
+  useEffect(() => {
+    if (search === "") {
+      setDebouncedSearch("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    const fetchOptions = async () => {
+      setLoading(true);
+      try {
+        const res = await getUsers({ search: debouncedSearch, limit: 15 });
+        if (res.data.success && active) {
+          setOptions(res.data.data || []);
+        }
+      } catch (err) {
+        console.error("Error fetching user options:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchOptions();
+    return () => {
+      active = false;
+    };
+  }, [debouncedSearch, isOpen]);
 
   return (
     <div className="relative flex-1">
@@ -67,21 +120,21 @@ const Combobox = ({ label, value, onChange, options, placeholder, icon }) => {
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-slate-400 flex-shrink-0">{icon || "👤"}</span>
-          {selectedOption ? (
+          {selectedUser ? (
             <div className="flex items-center gap-2 min-w-0">
-              {selectedOption.avatar ? (
+              {selectedUser.avatar ? (
                 <img 
-                  src={selectedOption.avatar} 
+                  src={selectedUser.avatar} 
                   alt="" 
                   className="w-5 h-5 rounded-full object-cover border border-slate-200 flex-shrink-0" 
                 />
               ) : (
                 <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
-                  {(selectedOption.name || "UN").substring(0, 2).toUpperCase()}
+                  {(selectedUser.name || "UN").substring(0, 2).toUpperCase()}
                 </div>
               )}
               <span className="text-xs font-medium text-slate-800 truncate">
-                {selectedOption.name || "Unnamed User"}
+                {selectedUser.name || "Unnamed User"}
               </span>
             </div>
           ) : (
@@ -112,12 +165,16 @@ const Combobox = ({ label, value, onChange, options, placeholder, icon }) => {
                 autoFocus
               />
               <div className="overflow-y-auto max-h-40 custom-scrollbar space-y-0.5">
-                {filteredOptions.length === 0 ? (
+                {loading ? (
+                  <p className="text-xs text-slate-400 italic text-center py-3 select-none">
+                    Loading users...
+                  </p>
+                ) : options.length === 0 ? (
                   <p className="text-xs text-slate-400 italic text-center py-3 select-none">
                     No users found
                   </p>
                 ) : (
-                  filteredOptions.map((opt) => (
+                  options.map((opt) => (
                     <div
                       key={opt._id}
                       onClick={() => {
@@ -176,6 +233,24 @@ const BranchManagement = () => {
   const [branches, setBranches] = useState([]);
   const [deletedBranches, setDeletedBranches] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+
+  const usersByBranch = useMemo(() => {
+    const grouped = {};
+    for (const u of allUsers || []) {
+      if (u?.branch) {
+        const key = u.branch.trim().toLowerCase();
+        if (!grouped[key]) grouped[key] = [];
+        if (
+          u.role !== 'admin' &&
+          u.isActive !== false &&
+          u.isArchived !== true
+        ) {
+          grouped[key].push(u);
+        }
+      }
+    }
+    return grouped;
+  }, [allUsers]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);
@@ -683,14 +758,8 @@ const BranchManagement = () => {
 
                     {/* Real-time Employee Listing */}
                     {(() => {
-                      const branchUsers = (allUsers || []).filter(u => 
-                        typeof u?.branch === 'string' && 
-                        typeof branch?.name === 'string' &&
-                        u.branch.trim().toLowerCase() === branch.name.trim().toLowerCase() &&
-                        u?.role !== 'admin' &&
-                        u?.isActive !== false &&
-                        u?.isArchived !== true
-                      );
+                      const branchKey = (branch?.name || "").trim().toLowerCase();
+                      const branchUsers = usersByBranch[branchKey] || [];
                       return (
                         <div className="mt-4 pt-3 border-t border-slate-100">
                           <div className="flex justify-between items-center mb-2">
@@ -985,7 +1054,6 @@ const BranchManagement = () => {
                         label="Branch Head"
                         value={formData.head}
                         onChange={(val) => setFormData({ ...formData, head: val })}
-                        options={allUsers}
                         placeholder="Select head..."
                         icon="👤"
                       />
@@ -993,7 +1061,6 @@ const BranchManagement = () => {
                         label="Branch Manager"
                         value={formData.manager}
                         onChange={(val) => setFormData({ ...formData, manager: val })}
-                        options={allUsers}
                         placeholder="Select manager..."
                         icon="🧑‍💼"
                       />

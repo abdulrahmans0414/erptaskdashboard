@@ -10,7 +10,7 @@ const pendingRegistrationSchema = new mongoose.Schema({
     employeeId: { type: String, default: '' },
     role: {
         type: String,
-        enum: ['hr','it','graphic','employee','department-head','coordinator','mentor','teacher','student','branch-head'],
+        enum: ['hr','it','graphic','employee','department-head','branch-head'],
         default: 'employee'
     },
     // For high-privilege role requests (branch-head/department-head), user must provide a reason.

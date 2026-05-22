@@ -15,3 +15,4 @@
   - Searchable Comboboxes for Branch, Department, and Assignees with dependent filters
   - Performance memoization
 - `[x]` Step 7: Verify backend routes and run frontend Vite build to ensure zero errors or warnings
+- `[x]` Step 8: Purge legacy roles (`coordinator`, `mentor`, `teacher`, `student`) and harden transaction options for standalone MongoDB environments

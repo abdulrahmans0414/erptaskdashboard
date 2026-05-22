@@ -246,12 +246,16 @@ const EmployeeProfile = () => {
       const fd = new FormData();
       fd.append("avatar", file);
       const r = await uploadAvatar(effectiveId, fd);
-      const avatarPath = r.data?.data?.avatar;
-      if (avatarPath) {
-        setProfileImage(avatarPath);
-        setEmployee((prev) => (prev ? { ...prev, avatar: avatarPath } : prev));
+      if (r.data.success) {
+        const avatarPath = r.data?.data?.avatar;
+        if (avatarPath) {
+          setProfileImage(avatarPath);
+          setEmployee((prev) => (prev ? { ...prev, avatar: avatarPath } : prev));
+        }
+        toast.success("Profile image updated!");
+      } else {
+        toast.error(r.data.message || "Avatar upload failed");
       }
-      toast.success("Profile image updated!");
     } catch (err) {
       toast.error(err.response?.data?.message || "Avatar upload failed");
     } finally {
@@ -266,8 +270,6 @@ const EmployeeProfile = () => {
       name: employee.name || "",
       email: employee.email || "",
       phone: employee.phone || "",
-      address: employee.address || "",
-      bloodGroup: employee.bloodGroup || "",
       dateOfJoining: employee.dateOfJoining || "",
       department: employee.department || "IT",
       branch: employee.branch || "Gaurabagh",
@@ -485,83 +487,151 @@ const EmployeeProfile = () => {
           API_ORIGIN={API_ORIGIN}
         />
 
-        {/* ---------------- Stats Cards ---------------- */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
-          {[
-            { label: "Total", value: stats.total, key: "all" },
-            {
-              label: "Completed",
-              value: stats.completed,
-              accent: "text-emerald-600",
-              key: "completed",
-            },
-            {
-              label: "Progress",
-              value: stats.inProgress,
-              accent: "text-blue-600",
-              key: "in-progress",
-            },
-            {
-              label: "Pending",
-              value: stats.pending,
-              accent: "text-amber-600",
-              key: "pending",
-            },
-            {
-              label: "Submitted",
-              value: stats.submitted,
-              accent: "text-violet-600",
-              key: "submitted",
-            },
-            {
-              label: "Rejected",
-              value: stats.rejected,
-              accent: "text-rose-600",
-              key: "rejected",
-            },
-            {
-              label: "Overdue",
-              value: stats.overdue,
-              accent: "text-orange-600",
-              key: "overdue",
-            },
-          ].map((s) => (
-            <StatCard
-              key={s.key}
-              label={s.label}
-              value={s.value}
-              accent={s.accent}
-              active={selectedTab === "tasks" && taskFilter === s.key}
-              onClick={() => {
-                setTaskFilter(s.key);
-                setSelectedTab("tasks");
-              }}
-            />
-          ))}
-        </div>
+        {/* ---------------- Stats Cards or Corporate Info Grid ---------------- */}
+        {['admin', 'director'].includes(employee.role) ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between hover-lift">
+              <div>
+                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">System Status</span>
+                <p className="text-xl font-bold text-slate-800 mt-2">Active Administrator</p>
+              </div>
+              <span className="text-xs text-emerald-600 font-semibold mt-4 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Full Access Enabled
+              </span>
+            </div>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between hover-lift">
+              <div>
+                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Branch Scope</span>
+                <p className="text-xl font-bold text-slate-800 mt-2">{employee.branch || "All Branches"}</p>
+              </div>
+              <span className="text-xs text-slate-400 mt-4">Mapped Branch Assignment</span>
+            </div>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between hover-lift">
+              <div>
+                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Privilege Level</span>
+                <p className="text-xl font-bold text-indigo-650 mt-2">Enterprise Superuser</p>
+              </div>
+              <span className="text-xs text-slate-400 mt-4">Role Authorization: {employee.role}</span>
+            </div>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between hover-lift">
+              <div>
+                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Join Date</span>
+                <p className="text-xl font-bold text-slate-800 mt-2">
+                  {new Date(employee.dateOfJoining || employee.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+              <span className="text-xs text-slate-400 mt-4">Registered System Member</span>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
+            {[
+              { label: "Total", value: stats.total, key: "all" },
+              {
+                label: "Completed",
+                value: stats.completed,
+                accent: "text-emerald-600",
+                key: "completed",
+              },
+              {
+                label: "Progress",
+                value: stats.inProgress,
+                accent: "text-blue-600",
+                key: "in-progress",
+              },
+              {
+                label: "Pending",
+                value: stats.pending,
+                accent: "text-amber-600",
+                key: "pending",
+              },
+              {
+                label: "Submitted",
+                value: stats.submitted,
+                accent: "text-violet-600",
+                key: "submitted",
+              },
+              {
+                label: "Rejected",
+                value: stats.rejected,
+                accent: "text-rose-600",
+                key: "rejected",
+              },
+              {
+                label: "Overdue",
+                value: stats.overdue,
+                accent: "text-orange-600",
+                key: "overdue",
+              },
+            ].map((s) => (
+              <StatCard
+                key={s.key}
+                label={s.label}
+                value={s.value}
+                accent={s.accent}
+                active={selectedTab === "tasks" && taskFilter === s.key}
+                onClick={() => {
+                  setTaskFilter(s.key);
+                  setSelectedTab("tasks");
+                }}
+              />
+            ))}
+          </div>
+        )}
 
-        {/* ---------------- Completion Rate Bar ---------------- */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-          <div className="flex justify-between items-center mb-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">
-                Overall Completion Rate
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {stats.completed} of {stats.total} tasks completed
+        {/* ---------------- Completion Rate Bar or Activity Timeline ---------------- */}
+        {['admin', 'director'].includes(employee.role) ? (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <span>📋</span> Administrative Activity Timeline
+            </h4>
+            <div className="relative border-l border-slate-200 ml-3.5 pl-6 space-y-5">
+              <div className="relative">
+                <span className="absolute -left-[30px] top-0.5 w-3 h-3 rounded-full bg-blue-600 ring-4 ring-blue-50 border border-white" />
+                <p className="text-xs font-semibold text-slate-700">Account Initialized</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Profile registered under role: <span className="capitalize font-medium text-slate-650">{employee.role}</span>
+                </p>
+              </div>
+              <div className="relative">
+                <span className="absolute -left-[30px] top-0.5 w-3 h-3 rounded-full bg-purple-600 ring-4 ring-purple-50 border border-white" />
+                <p className="text-xs font-semibold text-slate-700">Scope Mapping Complete</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Assigned to <span className="font-medium text-slate-650">{employee.department || "IT"}</span> department at branch <span className="font-medium text-slate-650">{employee.branch || "Gaurabagh"}</span>
+                </p>
+              </div>
+              <div className="relative">
+                <span className="absolute -left-[30px] top-0.5 w-3 h-3 rounded-full bg-slate-600 ring-4 ring-slate-100 border border-white" />
+                <p className="text-xs font-semibold text-slate-700">Administrator Remarks</p>
+                <p className="text-[11px] text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 mt-1.5 italic">
+                  "{employee.adminComments || "No administrator notes have been recorded for this profile."}"
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-700">
+                  Overall Completion Rate
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {stats.completed} of {stats.total} tasks completed
+                </p>
+              </div>
+              <p className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-green-600 bg-clip-text text-transparent">
+                {stats.rate}%
               </p>
             </div>
-            <p className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-green-600 bg-clip-text text-transparent">
-              {stats.rate}%
-            </p>
+            <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-600 rounded-full transition-all duration-1000 ease-out shadow-sm"
+                style={{ width: `${stats.rate}%` }}
+              />
+            </div>
           </div>
-          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-600 rounded-full transition-all duration-1000 ease-out shadow-sm"
-              style={{ width: `${stats.rate}%` }}
-            />
-          </div>
-        </div>
+        )}
 
         {/* ---------------- Tabs ---------------- */}
         <div className="bg-white rounded-xl p-1.5 shadow-sm border border-slate-200 flex gap-1 overflow-x-auto">

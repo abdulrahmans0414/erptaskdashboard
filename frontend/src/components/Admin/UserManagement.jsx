@@ -46,10 +46,6 @@ const ROLE_LABELS = {
   graphic: "Graphic Designer",
   employee: "Employee",
   "branch-head": "Branch Head",
-  coordinator: "Coordinator",
-  mentor: "Mentor",
-  teacher: "Teacher",
-  student: "Student",
 };
 
 const ROLE_BADGE = {
@@ -59,10 +55,6 @@ const ROLE_BADGE = {
   hr: "bg-purple-50 text-purple-700 border-purple-100",
   it: "bg-blue-50 text-blue-700 border-blue-100",
   graphic: "bg-pink-50 text-pink-700 border-pink-100",
-  coordinator: "bg-cyan-50 text-cyan-700 border-cyan-100",
-  mentor: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  teacher: "bg-teal-50 text-teal-700 border-teal-100",
-  student: "bg-yellow-50 text-yellow-700 border-yellow-100",
   employee: "bg-slate-50 text-slate-700 border-slate-100",
 };
 
@@ -101,8 +93,54 @@ const Field = React.memo(({ label, children, required }) => (
 
 Field.displayName = "Field";
 
+const DEFAULT_BRANCH_MANAGERS = {
+  "Central Gaurabagh": "Abdul Samad Kavi",
+  "Vikas Nagar": "Aman",
+  "Hive": "Zeeshan",
+  "Hifz Academy": "Shan",
+  "Kursi Road": "Amir",
+  "Muazzam Nagar": "Adil",
+  "Aziz Nagar": "Taj",
+  "Mailaraiganj": "Zakaria",
+};
+
+const getManagerOfBranch = (user, dbBranches) => {
+  const nameLower = user.name?.toLowerCase() || "";
+  const isGlobalHead = user.email === "abdul.habib@company.com" || 
+                       nameLower.includes("abdul habeeb") || 
+                       nameLower.includes("abdul habeed") || 
+                       nameLower.includes("abdul habib");
+
+  if (isGlobalHead) {
+    return {
+      name: "Abdul Habeeb",
+      label: "Branch Head (Global Head of all Branches)"
+    };
+  }
+
+  if (user.role === "branch-head" || user.role === "branch-manager") {
+    return {
+      name: "Abdul Habeeb",
+      label: "Global Branch Head"
+    };
+  }
+
+  const userBranch = user.branch || "Central Gaurabagh";
+  const branchObj = (dbBranches || []).find(
+    (b) => b?.name?.toLowerCase() === userBranch.toLowerCase()
+  );
+  const managerName = branchObj?.headName || DEFAULT_BRANCH_MANAGERS[userBranch] || "N/A";
+
+  return {
+    name: managerName,
+    label: `Branch Manager (${userBranch})`
+  };
+};
+
 // Memoized Table Row to prevent unnecessary list lag during updates
-const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => {
+const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete, dbBranches }) => {
+  const managerInfo = getManagerOfBranch(user, dbBranches);
+
   return (
     <motion.tr
       initial={{ opacity: 0, y: 10 }}
@@ -122,11 +160,11 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
             <p className="text-xs text-slate-500 truncate flex items-center gap-1">
               <FiMail className="opacity-70" /> {user.email}
             </p>
+            <p className="text-[10px] text-slate-400 font-medium">
+              ID: {user.employeeId || "—"}
+            </p>
           </div>
         </div>
-      </td>
-      <td className="py-3.5 px-5 text-sm font-semibold text-slate-600">
-        {user.employeeId || "—"}
       </td>
       <td className="py-3.5 px-5">
         <span
@@ -135,17 +173,15 @@ const UserTableRow = React.memo(({ user, index, isAdmin, onEdit, onDelete }) => 
           {user.department || "—"}
         </span>
       </td>
-      <td className="py-3.5 px-5 text-sm text-slate-600 whitespace-nowrap">
-        <span className="flex items-center gap-1.5 text-slate-600">
-          <FiMapPin className="text-slate-400 text-xs" /> {user.branch || "Gaurabagh"}
-        </span>
-      </td>
-      <td className="py-3.5 px-5">
-        <span
-          className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${ROLE_BADGE[user.role] || "bg-slate-50 text-slate-600 border-slate-200"}`}
-        >
-          {ROLE_LABELS[user.role] || user.role}
-        </span>
+      <td className="py-3.5 px-5 text-sm text-slate-650 whitespace-nowrap">
+        <div className="flex flex-col">
+          <span className="font-semibold text-slate-800 flex items-center gap-1">
+            👤 {managerInfo.name}
+          </span>
+          <span className="text-[10px] text-slate-400 font-medium mt-0.5">
+            {managerInfo.label}
+          </span>
+        </div>
       </td>
       <td className="py-3.5 px-5">
         <span
@@ -206,10 +242,6 @@ const UserManagement = () => {
     "graphic",
     "employee",
     "branch-head",
-    "coordinator",
-    "mentor",
-    "teacher",
-    "student",
   ], []);
 
   const [users, setUsers] = useState([]);
@@ -219,6 +251,7 @@ const UserManagement = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("all"); // 'all' | 'regional' | 'dept-heads' | 'workforce'
   const [branchFilter, setBranchFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [dbBranches, setDbBranches] = useState([]);
@@ -255,11 +288,20 @@ const UserManagement = () => {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
+      let roleQuery = roleFilter;
+      if (activeTab === "regional") {
+        roleQuery = "admin,branch-head,branch-manager";
+      } else if (activeTab === "dept-heads") {
+        roleQuery = "department-head";
+      } else if (activeTab === "workforce") {
+        roleQuery = "hr,it,graphic,employee";
+      }
+
       const response = await getUsers({
         page,
         limit: 10,
         search: debouncedSearch,
-        role: roleFilter,
+        role: roleQuery,
         branch: branchFilter
       });
       if (response.data.success) {
@@ -272,7 +314,7 @@ const UserManagement = () => {
       toast.error("Failed to load users");
     }
     setLoading(false);
-  }, [page, debouncedSearch, roleFilter, branchFilter]);
+  }, [page, debouncedSearch, roleFilter, branchFilter, activeTab]);
 
   const loadDbBranches = useCallback(async () => {
     try {
@@ -313,7 +355,7 @@ const UserManagement = () => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       if (page !== 1) setPage(1);
-    }, 450);
+    }, 400);
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -561,6 +603,40 @@ const UserManagement = () => {
           ))}
         </div>
 
+        {/* Management Segregation Tabs */}
+        <div className="flex border-b border-slate-200 overflow-x-auto no-scrollbar gap-1 p-1 bg-slate-100/60 rounded-2xl">
+          {[
+            { id: "all", label: "All Accounts", icon: "👥" },
+            { id: "regional", label: "Regional Leadership", icon: "👑" },
+            { id: "dept-heads", label: "Department Heads", icon: "👔" },
+            { id: "workforce", label: "General Workforce", icon: "⚙️" },
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setPage(1);
+                }}
+                className={`relative flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
+                  isActive ? "text-blue-600 font-bold z-10" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeUserTab"
+                    className="absolute inset-0 bg-white rounded-xl shadow-sm border border-slate-200/50 -z-10"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Premium Filter Controls Grid */}
         <div className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row gap-3 shadow-sm">
           <div className="relative flex-1">
@@ -576,18 +652,20 @@ const UserManagement = () => {
           </div>
           
           <div className="flex gap-2">
-            <select
-              value={roleFilter}
-              onChange={(e) => setPage(1) || setRoleFilter(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
-            >
-              <option value="all">All Roles</option>
-              {(roles || []).map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
+            {activeTab === "all" && (
+              <select
+                value={roleFilter}
+                onChange={(e) => setPage(1) || setRoleFilter(e.target.value)}
+                className="bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
+              >
+                <option value="all">All Roles</option>
+                {(roles || []).map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            )}
             
             <select
               value={branchFilter}
@@ -624,31 +702,26 @@ const UserManagement = () => {
           </div>
         ) : (
           <>
+            {/* Desktop Table View */}
             <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b border-slate-100 text-slate-500">
                     <tr>
                       <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
-                        User Profile / Contact
-                      </th>
-                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
-                        ID
+                        Employee / ID
                       </th>
                       <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
                         Department
                       </th>
                       <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
-                        Branch
-                      </th>
-                      <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
-                        Designated Role
+                        Manager of Branch
                       </th>
                       <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
                         Status
                       </th>
                       <th className="text-xs font-bold uppercase tracking-wider py-4 px-5 text-right">
-                        Administrative Action
+                        Actions
                       </th>
                     </tr>
                   </thead>
@@ -661,13 +734,14 @@ const UserManagement = () => {
                         isAdmin={isAdmin}
                         onEdit={handleEditClick}
                         onDelete={setConfirmDelete}
+                        dbBranches={dbBranches}
                       />
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Advanced Pagination UI */}
+              {/* Advanced Pagination UI (Desktop only, rendered at bottom of table) */}
               {pagination.pages > 1 && (
                 <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between px-6">
                   <p className="text-xs text-slate-500">
@@ -706,61 +780,88 @@ const UserManagement = () => {
               )}
             </div>
 
+            {/* Mobile Vertical List View */}
             <div className="md:hidden space-y-3.5">
-              {(users || []).map((item, index) => (
-                <div
-                  key={item._id}
-                  className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover:shadow-md transition-all duration-300 space-y-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center font-bold text-sm uppercase">
-                      {item.name?.charAt(0)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-slate-800 truncate">{item.name}</p>
-                      <p className="text-xs text-slate-500 truncate">{item.email}</p>
-                    </div>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                        item.isActive !== false
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                          : "bg-rose-50 text-rose-700 border-rose-100"
-                      }`}
-                    >
-                      {item.isActive !== false ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 text-[11px]">
-                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${ROLE_BADGE[item.role] || "bg-slate-50 text-slate-600"}`}>
-                      {ROLE_LABELS[item.role] || item.role}
-                    </span>
-                    <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${DEPT_BADGE[item.department] || "bg-slate-50 text-slate-600"}`}>
-                      {item.department || "IT"}
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-lg border border-slate-100 bg-slate-50 text-slate-600">
-                      📍 {item.branch || "Gaurabagh"}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2 border-t border-slate-100 pt-3">
-                    <button
-                      onClick={() => handleEditClick(item)}
-                      className="flex-1 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold transition border border-blue-100"
-                    >
-                      ✏️ Edit
-                    </button>
-                    {isAdmin && (
-                      <button
-                        onClick={() => setConfirmDelete(item)}
-                        className="flex-1 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition border border-red-100"
+              {(users || []).map((item, index) => {
+                const managerInfo = getManagerOfBranch(item, dbBranches);
+                return (
+                  <div
+                    key={item._id}
+                    className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover:shadow-md transition-all duration-300 space-y-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center font-bold text-sm uppercase">
+                        {item.name?.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-slate-800 truncate">{item.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{item.email}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">ID: {item.employeeId || "—"}</p>
+                      </div>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                          item.isActive !== false
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                            : "bg-rose-50 text-rose-700 border-rose-100"
+                        }`}
                       >
-                        🗑️ Delete
+                        {item.isActive !== false ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 text-[11px]">
+                      <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${DEPT_BADGE[item.department] || "bg-slate-50 text-slate-600"}`}>
+                        {item.department || "IT"}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-lg border border-slate-100 bg-slate-50 text-slate-655 flex flex-col font-medium">
+                        <span className="text-[9px] text-slate-400 uppercase tracking-wide">Manager of Branch</span>
+                        <span className="text-slate-855 font-semibold">👤 {managerInfo.name}</span>
+                        <span className="text-slate-400 text-[8px]">{managerInfo.label}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2 border-t border-slate-100 pt-3">
+                      <button
+                        onClick={() => handleEditClick(item)}
+                        className="flex-1 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold transition border border-blue-100"
+                      >
+                        ✏️ Edit
                       </button>
-                    )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => setConfirmDelete(item)}
+                          className="flex-1 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-655 text-xs font-bold transition border border-red-100"
+                        >
+                          🗑️ Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
+                );
+              })}
+
+              {/* Mobile Pagination */}
+              {pagination.pages > 1 && (
+                <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm mt-3">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white text-slate-600 transition"
+                  >
+                    ◀ Prev
+                  </button>
+                  <span className="text-xs text-slate-500 font-medium">
+                    Page {page} / {pagination.pages}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                    disabled={page === pagination.pages}
+                    className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white text-slate-600 transition"
+                  >
+                    Next ▶
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           </>
         )}
@@ -968,6 +1069,52 @@ const UserManagement = () => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[100] overflow-y-auto antialiased">
+            <div className="fixed inset-0" onClick={() => setConfirmDelete(null)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 p-6 space-y-4"
+            >
+              <div className="flex items-center gap-3 text-rose-600">
+                <div className="h-10 w-10 rounded-full bg-rose-50 flex items-center justify-center text-lg">
+                  <FiAlertTriangle />
+                </div>
+                <h3 className="text-base font-bold text-slate-800">
+                  Delete Employee Account
+                </h3>
+              </div>
+              <div className="text-slate-650 text-sm leading-relaxed">
+                <p>Are you sure you want to delete <strong>{confirmDelete.name}</strong>?</p>
+                <p className="mt-1.5 text-slate-400 text-xs">
+                  This action will soft-delete their profile, nullify task assignments, and transition active tasks to 'Unassigned'.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold transition text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(confirmDelete)}
+                  className="flex-1 py-2.5 rounded-xl bg-red-650 hover:bg-red-700 text-white font-bold transition text-xs"
+                >
+                  Confirm Delete
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

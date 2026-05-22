@@ -38,7 +38,6 @@ const EditProfileModal = ({
                             { label: "Full Name", key: "name", type: "text", required: true },
                             { label: "Email Address", key: "email", type: "email", required: true },
                             { label: "Phone Number", key: "phone", type: "text" },
-                            { label: "Blood Group", key: "bloodGroup", type: "text" },
                         ].map((f) => (
                             <div key={f.key}>
                                 <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
@@ -71,23 +70,11 @@ const EditProfileModal = ({
                         />
                     </div>
 
-                    <div>
-                        <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
-                            Home Address
-                        </label>
-                        <textarea
-                            value={editForm.address || ""}
-                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                            className="w-full px-2.5 py-2 border border-slate-200/80 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-sm text-slate-800 h-auto"
-                            rows="2"
-                        />
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {[
                             { label: "Department", key: "department", options: settings?.departments || [], protected: true },
                             { label: "Branch", key: "branch", options: settings?.branches || [], protected: true },
-                            { label: "Role", key: "role", options: ['admin', 'department-head', 'branch-head', 'hr', 'it', 'graphic', 'employee', 'coordinator', 'mentor', 'teacher', 'student'], protected: true },
+                            { label: "Role", key: "role", options: ['admin', 'department-head', 'branch-head', 'hr', 'it', 'graphic', 'employee'], protected: true },
                             { label: "Date of Joining", key: "dateOfJoining", type: "date", protected: true },
                         ].map((f) => (
                             <div key={f.key}>

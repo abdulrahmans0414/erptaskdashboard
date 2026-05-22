@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'hr', 'it', 'graphic', 'employee', 'department-head', 'coordinator', 'mentor', 'teacher', 'student', 'branch-head'],
+        enum: ['admin', 'hr', 'it', 'graphic', 'employee', 'department-head', 'branch-head'],
         default: 'employee'
     },
     department: {
@@ -49,19 +49,16 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
-    address: {
-        type: String,
-        default: null
-    },
-    bloodGroup: {
-        type: String,
-        default: null
-    },
+
     designation: {
         type: String,
         default: ''
     },
     privilegeRequestReason: {
+        type: String,
+        default: ''
+    },
+    adminComments: {
         type: String,
         default: ''
     },
@@ -134,11 +131,11 @@ userSchema.index({ isActive: 1 });
 // - At most one Department Head per (department, branch)
 userSchema.index(
     { role: 1, branch: 1 },
-    { unique: true, partialFilterExpression: { role: 'branch-head' } }
+    { unique: true, partialFilterExpression: { role: 'branch-head', isDeleted: false } }
 );
 userSchema.index(
     { role: 1, department: 1, branch: 1 },
-    { unique: true, partialFilterExpression: { role: 'department-head' } }
+    { unique: true, partialFilterExpression: { role: 'department-head', isDeleted: false } }
 );
 
 userSchema.index({ name: 'text', email: 'text', employeeId: 'text' });

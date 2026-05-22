@@ -141,7 +141,7 @@ export const createTask = async (req, res) => {
                 department: taskData.department,
                 branch: taskData.branch,
                 isDeleted: { $ne: true }
-            }).select('_id');
+            }).select('_id').lean();
             if (deptHead) taskData.departmentManager = deptHead._id;
         }
 
@@ -152,7 +152,7 @@ export const createTask = async (req, res) => {
                 role: 'branch-head',
                 branch: taskData.branch,
                 isDeleted: { $ne: true }
-            }).select('_id');
+            }).select('_id').lean();
             if (bHead) taskData.branchHead = bHead._id;
         }
 
@@ -169,7 +169,7 @@ export const createTask = async (req, res) => {
             );
             for (const memberId of assignedTeamArr) {
                 try {
-                    const member = await User.findById(memberId).select('email name');
+                    const member = await User.findById(memberId).select('email name').lean();
                     if (member && member.email) {
                         sendEmailNotification(
                             member.email,
@@ -202,7 +202,7 @@ export const createTask = async (req, res) => {
                 task._id
             );
             try {
-                const assignee = await User.findById(taskData.assignedTo).select('email name');
+                const assignee = await User.findById(taskData.assignedTo).select('email name').lean();
                 if (assignee && assignee.email) {
                     sendEmailNotification(
                         assignee.email,
@@ -227,7 +227,7 @@ export const createTask = async (req, res) => {
             }
         }
         
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.status(201).json({ success: true, data: populatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
@@ -436,7 +436,7 @@ export const updateTask = async (req, res) => {
         
         await task.save();
         
-        const updatedTask = await deepPopulateTask(Task.findById(task._id));
+        const updatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.json({ success: true, data: updatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
@@ -491,7 +491,7 @@ export const restoreTask = async (req, res) => {
         task.deletedAt = undefined;
         await task.save();
 
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.json({ success: true, message: 'Task restored successfully', data: populatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
@@ -544,7 +544,7 @@ export const startTask = async (req, res) => {
         await task.save();
 
         if (task.assignedBy) {
-            const assigner = await User.findById(task.assignedBy).select('email name');
+            const assigner = await User.findById(task.assignedBy).select('email name').lean();
             if (assigner) {
                 await createNotification(
                     assigner._id,
@@ -571,7 +571,7 @@ export const startTask = async (req, res) => {
             }
         }
         
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.json({ success: true, data: populatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
@@ -630,7 +630,7 @@ export const submitTaskWithTime = async (req, res) => {
             await task.save();
             eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
             
-            const populatedTask = await deepPopulateTask(Task.findById(task._id));
+            const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
             return res.json({ 
                 success: true, 
                 data: populatedTask,
@@ -696,7 +696,7 @@ export const submitTaskWithTime = async (req, res) => {
                     department: task.department,
                     branch: task.branch,
                     isDeleted: { $ne: true }
-                }).select('_id'))?._id;
+                }).select('_id').lean())?._id;
         } else if (req.user.role === 'department-head') {
             reviewerId = task.branchHead
                 ? task.branchHead
@@ -704,13 +704,13 @@ export const submitTaskWithTime = async (req, res) => {
                     role: 'branch-head',
                     branch: task.branch,
                     isDeleted: { $ne: true }
-                }).select('_id'))?._id;
+                }).select('_id').lean())?._id;
         } else if (task.assignedBy && task.assignedBy.toString() !== req.user._id.toString()) {
             reviewerId = task.assignedBy;
         }
 
         if (reviewerId) {
-            const reviewer = await User.findById(reviewerId).select('email name');
+            const reviewer = await User.findById(reviewerId).select('email name').lean();
             if (reviewer) {
                 await createNotification(
                     reviewer._id,
@@ -750,7 +750,7 @@ export const submitTaskWithTime = async (req, res) => {
             task._id
         );
         
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.json({ 
             success: true, 
             data: populatedTask,
@@ -853,11 +853,11 @@ export const reviewTask = async (req, res) => {
         await task.save();
 
         // Send review notifications
-        const assignee = await User.findById(task.assignedTo).select('email name');
+        const assignee = await User.findById(task.assignedTo).select('email name').lean();
         if (isDeptReviewer && status === 'approved') {
             const branchHead = task.branchHead
-                ? await User.findById(task.branchHead).select('email name')
-                : await User.findOne({ role: 'branch-head', branch: task.branch, isDeleted: { $ne: true } }).select('email name');
+                ? await User.findById(task.branchHead).select('email name').lean()
+                : await User.findOne({ role: 'branch-head', branch: task.branch, isDeleted: { $ne: true } }).select('email name').lean();
 
             if (branchHead) {
                 await createNotification(
@@ -912,7 +912,7 @@ export const reviewTask = async (req, res) => {
             }
         }
 
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
         res.json({
             success: true,
@@ -948,7 +948,7 @@ export const addComment = async (req, res) => {
         
         await task.save();
         
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.json({ success: true, data: populatedTask, message: 'Comment added successfully' });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
@@ -1005,7 +1005,7 @@ export const updateTeamProgress = async (req, res) => {
             await task.save();
         }
         
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.json({ success: true, data: populatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {
@@ -1203,7 +1203,7 @@ export const reassignTask = async (req, res) => {
             );
             for (const memberId of assignedTeam) {
                 try {
-                    const member = await User.findById(memberId).select('email name');
+                    const member = await User.findById(memberId).select('email name').lean();
                     if (member && member.email) {
                         sendEmailNotification(
                             member.email,
@@ -1235,7 +1235,7 @@ export const reassignTask = async (req, res) => {
                 task._id
             );
             try {
-                const assignee = await User.findById(task.assignedTo).select('email name');
+                const assignee = await User.findById(task.assignedTo).select('email name').lean();
                 if (assignee && assignee.email) {
                     sendEmailNotification(
                         assignee.email,
@@ -1259,7 +1259,7 @@ export const reassignTask = async (req, res) => {
             }
         }
 
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.json({ success: true, message: 'Task reassigned successfully', data: populatedTask });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -1439,7 +1439,7 @@ export const updateTaskStatus = async (req, res) => {
         
         await task.save();
         
-        const populatedTask = await deepPopulateTask(Task.findById(task._id));
+        const populatedTask = await deepPopulateTask(Task.findById(task._id)).lean();
         res.json({ success: true, data: populatedTask });
         eventBus.emit('data_change', { type: EVENTS.TASK_UPDATED });
     } catch (error) {

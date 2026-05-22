@@ -338,6 +338,24 @@ Below is the chronological log of all updates committed and pushed to the online
 
 ---
 
+### 🛡️ Phase 14: Legacy Role Purge & Transaction Hardening
+
+#### 1. System-Wide Legacy Role Purge
+* **Problem**: The system had multiple legacy roles (`coordinator`, `mentor`, `teacher`, `student`) that were no longer utilized, causing cluttered UI dropdowns, extra color badge assignments, and oversized role schemas.
+* **Solution**:
+  - Purged all legacy roles from the Mongoose schema validation enums in `User.js` and `PendingRegistration.js`.
+  - Streamlined frontend constants `ROLE_LABELS`, `ROLE_BADGE`, and the `roles` array in `UserManagement.jsx`, `Login.jsx`, `EditProfileModal.jsx`, and `PendingRegistrations.jsx`.
+
+#### 2. Mongoose Transaction Options Safety Fallback
+* **Problem**: Running on local standalone MongoDB environments throws validation errors when passing `{ session: null }` inside Mongoose write options during soft-deletes and cascaded user/branch updates.
+* **Solution**: Refactored transaction option arguments in `userController.js` and `branchController.js` to conditionally pass session options (`session ? { session } : {}`), allowing full compatibility with both local development setups and cloud production replica sets.
+
+#### 3. Soft-Deleted Unique Index Exclusions
+* **Problem**: Unique constraints on high-privilege branch-heads and department-heads prevented assignment of new heads if the previous active heads were soft-deleted.
+* **Solution**: Added `isDeleted: false` to the index `partialFilterExpression` maps in `User.js`, and added automatic drop-and-sync routines during server initialization inside `server.js` to automatically rebuild active indices.
+
+---
+
 ## 🏆 Production Validation Status
 
 * **Frontend Build**: Compiled using Vite (`pnpm run build`) successfully.
