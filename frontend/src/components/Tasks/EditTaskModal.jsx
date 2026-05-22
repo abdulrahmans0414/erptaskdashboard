@@ -182,10 +182,16 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
       ? { title: formData.title, description: formData.description, department: formData.department, branch: formData.branch, dueDate: formData.dueDate, priority: formData.priority, isTeamTask: true, assignedTeam: selectedTeam, collaboratingDepartments: collaboratingDepts }
       : { title: formData.title, description: formData.description, department: formData.department, branch: formData.branch, assignedTo: formData.assignedTo, dueDate: formData.dueDate, priority: formData.priority, isTeamTask: false };
     try {
-      await updateTask(task._id, taskData);
-      toast.success("Task updated successfully!");
-      if (onUpdated) onUpdated();
-      onClose();
+      const response = await updateTask(task._id, taskData);
+      if (response.data.success) {
+        toast.success("Task updated successfully!");
+        if (onUpdated) onUpdated();
+        onClose();
+      } else {
+        const msg = response.data.message || "Failed to update task";
+        toast.error(msg);
+        setError(msg);
+      }
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to update task";
       toast.error(msg);

@@ -205,6 +205,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       ? { title: formData.title, description: formData.description, department: formData.department, branch: formData.branch, dueDate: formData.dueDate, priority: formData.priority, isTeamTask: true, assignedTeam: selectedTeam, collaboratingDepartments: collaboratingDepts }
       : { title: formData.title, description: formData.description, department: formData.department, branch: formData.branch, assignedTo: formData.assignedTo, dueDate: formData.dueDate, priority: formData.priority, isTeamTask: false };
     try {
+      let response;
       if (taskFormFiles.length > 0) {
         const fd = new FormData();
         Object.entries(taskData).forEach(([k, v]) => {
@@ -213,14 +214,20 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           else fd.append(k, String(v));
         });
         taskFormFiles.forEach((f) => fd.append("taskFormFiles", f));
-        await createTask(fd);
+        response = await createTask(fd);
       } else {
-        await createTask(taskData);
+        response = await createTask(taskData);
       }
-      toast.success("Task assigned successfully!");
-      if (onTaskCreated) onTaskCreated();
-      resetForm();
-      onClose();
+      if (response.data.success) {
+        toast.success("Task assigned successfully!");
+        if (onTaskCreated) onTaskCreated();
+        resetForm();
+        onClose();
+      } else {
+        const msg = response.data.message || "Failed to assign task";
+        toast.error(msg);
+        setError(msg);
+      }
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to assign task";
       toast.error(msg);

@@ -85,6 +85,8 @@ export default function PendingRegistrations() {
         setReviewing(null);
         setAdminNote("");
         load();
+      } else {
+        showToast(r.data.message || "Action failed", "error");
       }
     } catch (err) {
       showToast(err.response?.data?.message || "Action failed", "error");

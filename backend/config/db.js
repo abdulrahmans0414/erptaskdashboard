@@ -9,11 +9,11 @@ const connectDB = async () => {
       throw new Error('MONGODB_URI environment variable is not set');
     }
 
+    const isLocal = process.env.MONGODB_URI.includes('127.0.0.1') || process.env.MONGODB_URI.includes('localhost');
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 30000, // Increased timeout for production
       socketTimeoutMS: 45000,
-      ssl: true,
-      tls: true,
+      ...(isLocal ? {} : { ssl: true, tls: true }),
       maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE, 10) || 100, // Connection pooling upgraded for high concurrency
       minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE, 10) || 10,
       maxIdleTimeMS: 30000,

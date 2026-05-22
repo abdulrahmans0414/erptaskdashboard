@@ -92,7 +92,7 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
 
       const result = await submitTaskWithAttachments(task._id, formData);
 
-      if (result?.data?.success !== false) {
+      if (result?.data?.success) {
         setLoading(false);
         toast.success("✅ Task submitted successfully!", {
           duration: 4000,

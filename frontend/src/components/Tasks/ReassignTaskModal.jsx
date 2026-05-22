@@ -38,26 +38,32 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
     setLoading(true);
     setError("");
     try {
-      await reassignTask(task._id, {
+      const response = await reassignTask(task._id, {
         assignedTo: selectedUser,
         reason: reason || "Task reassigned",
       });
       
-      setLoading(false);
-      toast.success("✅ Task reassigned successfully!", {
-        duration: 4000,
-        style: { fontWeight: "600" }
-      });
-      
-      if (onUpdated) onUpdated();
-      onClose();
-      
-      // Wipe internal state
-      setSelectedUser("");
-      setSearch("");
-      setReason("");
-      
-      return;
+      if (response.data.success) {
+        setLoading(false);
+        toast.success("✅ Task reassigned successfully!", {
+          duration: 4000,
+          style: { fontWeight: "600" }
+        });
+        
+        if (onUpdated) onUpdated();
+        onClose();
+        
+        // Wipe internal state
+        setSelectedUser("");
+        setSearch("");
+        setReason("");
+        
+        return;
+      } else {
+        const msg = response.data.message || "Failed to reassign";
+        toast.error(msg);
+        setError(msg);
+      }
     } catch (e) {
       const msg = e.response?.data?.message || "Failed to reassign";
       toast.error(msg);
