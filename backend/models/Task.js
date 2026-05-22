@@ -45,13 +45,17 @@ const attemptSchema = new mongoose.Schema({
     submissionAttachments: [{
         filename: String,
         fileUrl: String,
-        fileType: String
+        fileType: String,
+        publicId: String,
+        fileSize: Number
     }],
     adminFeedback: String,
     adminFeedbackAttachments: [{
         filename: String,
         fileUrl: String,
-        fileType: String
+        fileType: String,
+        publicId: String,
+        fileSize: Number
     }],
     status: { type: String, enum: ['in-progress', 'submitted', 'rejected', 'approved'], default: 'in-progress' },
     comments: [commentSchema]  // Step-by-step comments
@@ -81,7 +85,8 @@ department: {
         filename: String,
         fileUrl: String,
         fileType: String,
-        fileSize: Number
+        fileSize: Number,
+        publicId: String
     }],
     
     // Assignment
@@ -164,6 +169,7 @@ department: {
     // Time logs & Submission
     timeLogs: [timeLogSchema],
     submissionNote: String,
+    adminComments: { type: String, default: '' },
     isArchived: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date }

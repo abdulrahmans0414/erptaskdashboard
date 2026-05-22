@@ -305,8 +305,8 @@ export default function AuthPage() {
   const { settings } = useSettings();
   const navigate = useNavigate();
   
-  const departments = settings?.departments || [];
-  const branches = settings?.branches || [];
+  const departments = settings?.departments || DEPARTMENTS;
+  const branches = settings?.branches || BRANCHES;
 
   const otpInputRefs = useRef([]);
 
@@ -336,7 +336,16 @@ export default function AuthPage() {
     privilegeRequestReason: "",
   });
   const [errors, setErrors] = useState({});
-  const [registerStep, setRegisterStep] = useState(1);
+
+  // Sync defaults when settings load
+  useEffect(() => {
+    if (settings?.departments?.length > 0 && !form.department) {
+      setForm((prev) => ({ ...prev, department: settings.departments[0] }));
+    }
+    if (settings?.branches?.length > 0 && !form.branch) {
+      setForm((prev) => ({ ...prev, branch: settings.branches[0] }));
+    }
+  }, [settings]);
 
   // OTP
   const [otpData, setOtpData] = useState({
@@ -396,46 +405,42 @@ export default function AuthPage() {
   };
 
   // ─── Validation ─────────────────────────────────────────────
-  const validateStep = (step) => {
+  const validateForm = () => {
     const newErrors = {};
 
-    if (step === 1) {
-      if (!form.name.trim()) newErrors.name = "Full name is required";
-      if (!form.email.trim()) newErrors.email = "Email is required";
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-        newErrors.email = "Enter a valid email address";
-      if (!form.phone.trim()) newErrors.phone = "Phone number is required";
-      if (!form.employeeId.trim())
-        newErrors.employeeId = "Employee ID is required";
+    if (!form.name.trim()) newErrors.name = "Full name is required";
+    if (!form.email.trim()) newErrors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      newErrors.email = "Enter a valid email address";
+    
+    if (form.phone.trim()) {
+      if (!/^\d{10}$/.test(form.phone.trim())) {
+        newErrors.phone = "Phone must be exactly 10 digits";
+      }
+    }
+    
+    if (!form.employeeId.trim())
+      newErrors.employeeId = "Employee ID is required";
 
-      if (form.requestHighPrivilege === "yes") {
-        if (!form.privilegeRequestReason.trim()) {
-          newErrors.privilegeRequestReason =
-            "Reason is required for Branch/Department Head request";
-        } else if (form.privilegeRequestReason.trim().length < 10) {
-          newErrors.privilegeRequestReason =
-            "Please add a little more detail (min 10 chars)";
-        }
+    if (form.requestHighPrivilege === "yes") {
+      if (!form.privilegeRequestReason.trim()) {
+        newErrors.privilegeRequestReason =
+          "Reason is required for Branch/Department Head request";
+      } else if (form.privilegeRequestReason.trim().length < 10) {
+        newErrors.privilegeRequestReason =
+          "Please add a little more detail (min 10 chars)";
       }
     }
 
-    if (step === 2) {
-      if (!form.password) newErrors.password = "Password is required";
-      else if (form.password.length < 6)
-        newErrors.password = "At least 6 characters required";
-      if (form.password !== form.confirmPassword)
-        newErrors.confirmPassword = "Passwords don't match";
-    }
+    if (!form.password) newErrors.password = "Password is required";
+    else if (form.password.length < 6)
+      newErrors.password = "At least 6 characters required";
+    if (form.password !== form.confirmPassword)
+      newErrors.confirmPassword = "Passwords don't match";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
-  const nextStep = () => {
-    if (validateStep(1)) setRegisterStep(2);
-  };
-
-  const prevStep = () => setRegisterStep(1);
 
   // ─── Handlers ──────────────────────────────────────────────
   const handleLogin = async (e) => {
@@ -462,7 +467,7 @@ export default function AuthPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!validateStep(2)) return;
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
@@ -494,13 +499,12 @@ export default function AuthPage() {
           employeeId: "",
           designation: "",
           role: "employee",
-          department: "IT",
-          branch: "Gaurabagh",
+          department: settings?.departments?.[0] || DEPARTMENTS[0],
+          branch: settings?.branches?.[0] || BRANCHES[0],
           requestHighPrivilege: "no",
           requestedPrivilegeRole: "department-head",
           privilegeRequestReason: "",
         });
-        setRegisterStep(1);
         setOtpData((prev) => ({ ...prev, email: form.email }));
       }
     } catch (err) {
@@ -744,34 +748,13 @@ export default function AuthPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.25 }}
+              className="space-y-4"
             >
-              {/* Steps Indicator */}
-              <div className="flex items-center gap-2 mb-6">
-                {[1, 2].map((step) => (
-                  <div key={step} className="flex items-center gap-2 flex-1">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                        registerStep >= step
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-                          : "bg-slate-800 text-slate-500"
-                      }`}
-                    >
-                      {registerStep > step ? "✓" : step}
-                    </div>
-                    <div className="flex-1 h-1 rounded-full bg-slate-800 last:hidden">
-                      {registerStep > step && (
-                        <div className="h-full bg-blue-600 rounded-full" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
               {/* Flow Info */}
-              <div className="bg-gradient-to-r from-blue-950/20 to-indigo-950/20 border border-blue-900/30 rounded-xl p-4 mb-6">
-                <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-blue-300">
+              <div className="bg-gradient-to-r from-blue-950/20 to-indigo-950/20 border border-blue-900/30 rounded-xl p-3.5">
+                <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-bold text-blue-300">
                   <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
-                    1. Register
+                    1. Register Form
                   </span>
                   <span className="text-blue-600">→</span>
                   <span className="bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-900/30">
@@ -788,13 +771,16 @@ export default function AuthPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleRegister}>
-                {registerStep === 1 && (
-                  <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-sm font-bold text-slate-300">
-                      📋 Personal Information
+              <form onSubmit={handleRegister} className="space-y-4">
+                {/* Scrollable Form Container to prevent page overflow */}
+                <div className="max-h-[55vh] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                  
+                  {/* Section: Personal Information */}
+                  <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
+                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <span>👤</span> Personal Details
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <Input
                         label="Full Name *"
                         placeholder="Abdul Rahman"
@@ -812,11 +798,11 @@ export default function AuthPage() {
                         error={errors.email}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <Input
-                        label="Phone *"
+                        label="Phone (10 digits)"
                         type="tel"
-                        placeholder="+91 7607255678"
+                        placeholder="7607255678"
                         value={form.phone}
                         onChange={updateForm("phone")}
                         error={errors.phone}
@@ -829,21 +815,28 @@ export default function AuthPage() {
                         error={errors.employeeId}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div>
                       <Input
                         label="Designation"
                         placeholder="e.g., Software Developer"
                         value={form.designation}
                         onChange={updateForm("designation")}
                       />
+                    </div>
+                  </div>
+
+                  {/* Section: Corporate Mapping */}
+                  <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
+                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <span>🏢</span> Corporate Mapping
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <Select
                         label="Role *"
                         value={form.role}
                         onChange={updateForm("role")}
                         options={ROLES}
                       />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
                       <Select
                         label="Department *"
                         value={form.department}
@@ -854,129 +847,123 @@ export default function AuthPage() {
                         }))}
                       />
                       <Select
-                        label="Branch"
+                        label="Branch *"
                         value={form.branch}
                         onChange={updateForm("branch")}
                         options={branches.map((b) => ({ value: b, label: b }))}
                       />
                     </div>
+                  </div>
 
-                    {/* High privilege request flow */}
-                    <div className="bg-amber-950/15 border border-amber-900/30 rounded-xl p-3">
-                      <p className="text-[11px] font-semibold text-amber-400 mb-2">
-                        🔒 High-privilege roles (Request-only)
+                  {/* Section: High privilege request flow */}
+                  <div className="bg-amber-950/15 border border-amber-900/30 rounded-2xl p-3.5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-semibold text-amber-400 flex items-center gap-1.5">
+                        <span>🔒</span> High-privilege Role Request (Optional)
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Select
+                        label="Request Branch/Dept Head?"
+                        value={form.requestHighPrivilege}
+                        onChange={updateForm("requestHighPrivilege")}
+                        options={[
+                          { value: "no", label: "No" },
+                          { value: "yes", label: "Yes (requires reason)" },
+                        ]}
+                      />
+                      {form.requestHighPrivilege === "yes" ? (
                         <Select
-                          label="Request Branch/Dept Head?"
-                          value={form.requestHighPrivilege}
-                          onChange={updateForm("requestHighPrivilege")}
-                          options={[
-                            { value: "no", label: "No" },
-                            { value: "yes", label: "Yes (requires reason)" },
-                          ]}
+                          label="Requested Privilege Role"
+                          value={form.requestedPrivilegeRole}
+                          onChange={updateForm("requestedPrivilegeRole")}
+                          options={HIGH_PRIVILEGE_ROLES}
                         />
-                        {form.requestHighPrivilege === "yes" ? (
-                          <Select
-                            label="Requested Role"
-                            value={form.requestedPrivilegeRole}
-                            onChange={updateForm("requestedPrivilegeRole")}
-                            options={HIGH_PRIVILEGE_ROLES}
-                          />
-                        ) : (
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                              Requested Role
-                            </label>
-                            <div className="w-full px-3 py-2.5 border rounded-xl text-sm bg-slate-950/60 border-slate-800 text-slate-500">
-                              Select “Yes” to request
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      {form.requestHighPrivilege === "yes" && (
-                        <div className="mt-3">
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            Reason *
+                      ) : (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Requested Role
                           </label>
-                          <textarea
-                            value={form.privilegeRequestReason}
-                            onChange={updateForm("privilegeRequestReason")}
-                            rows={3}
-                            className={`w-full mt-1 px-3 py-2.5 border rounded-xl text-sm transition-all duration-200
-                              ${
-                                errors.privilegeRequestReason
-                                  ? "border-rose-500/50 bg-rose-950/20 text-rose-200 focus:ring-rose-500"
-                                  : "border-slate-800 bg-slate-950 text-slate-100 focus:ring-blue-500"
-                              }
-                              focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-600`}
-                            placeholder="Why do you need this access? Mention branch/department, responsibilities, and approving person if any."
-                          />
-                          {errors.privilegeRequestReason && (
-                            <p className="text-xs text-rose-400 font-medium mt-1">
-                              ⚠ {errors.privilegeRequestReason}
-                            </p>
-                          )}
-                          <p className="text-[10px] text-amber-500/80 mt-1">
-                            Note: Admin will verify before approval.
-                          </p>
+                          <div className="w-full px-3 py-2.5 border rounded-xl text-sm bg-slate-950/40 border-slate-900 text-slate-600">
+                            Select “Yes” to request privilege
+                          </div>
                         </div>
                       )}
                     </div>
-
-                    <Button type="button" onClick={nextStep}>
-                      Continue → Step 2: Set Password
-                    </Button>
+                    {form.requestHighPrivilege === "yes" && (
+                      <div className="animate-slide-down">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          Reason for Privilege Request *
+                        </label>
+                        <textarea
+                          value={form.privilegeRequestReason}
+                          onChange={updateForm("privilegeRequestReason")}
+                          rows={2.5}
+                          className={`w-full mt-1.5 px-3 py-2 border rounded-xl text-sm transition-all duration-200
+                            ${
+                              errors.privilegeRequestReason
+                                ? "border-rose-500/50 bg-rose-950/20 text-rose-200 focus:ring-rose-500"
+                                : "border-slate-800 bg-slate-950 text-slate-100 focus:ring-blue-500"
+                            }
+                            focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-600`}
+                          placeholder="Please provide a clear reason for requesting this head role. E.g., branch assignment details, authorization, etc."
+                        />
+                        {errors.privilegeRequestReason && (
+                          <p className="text-xs text-rose-400 font-medium mt-1">
+                            ⚠ {errors.privilegeRequestReason}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-amber-500/80 mt-1">
+                          Note: System admin reviews and activates high-privilege designations.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {registerStep === 2 && (
-                  <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-sm font-bold text-slate-300">
-                      🔐 Account Security
+                  {/* Section: Account Security */}
+                  <div className="space-y-3 bg-slate-950/30 p-3 rounded-2xl border border-slate-800/60">
+                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <span>🔑</span> Security Credentials
                     </h3>
-                    <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Input
+                          label="Password *"
+                          type="password"
+                          placeholder="Min 6 characters"
+                          value={form.password}
+                          onChange={updateForm("password")}
+                          error={errors.password}
+                        />
+                        <PasswordStrength password={form.password} />
+                      </div>
                       <Input
-                        label="Password *"
+                        label="Confirm Password *"
                         type="password"
-                        placeholder="Min 6 characters"
-                        value={form.password}
-                        onChange={updateForm("password")}
-                        error={errors.password}
+                        placeholder="Repeat password"
+                        value={form.confirmPassword}
+                        onChange={updateForm("confirmPassword")}
+                        error={errors.confirmPassword}
                       />
-                      <PasswordStrength password={form.password} />
-                    </div>
-                    <Input
-                      label="Confirm Password *"
-                      type="password"
-                      placeholder="Repeat password"
-                      value={form.confirmPassword}
-                      onChange={updateForm("confirmPassword")}
-                      error={errors.confirmPassword}
-                    />
-
-                    <div className="flex gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={prevStep}
-                      >
-                        ← Back
-                      </Button>
-                      <Button type="submit" loading={loading}>
-                        📝 Submit Registration
-                      </Button>
                     </div>
                   </div>
-                )}
+
+                </div>
+
+                {/* Form Action Button */}
+                <Button type="submit" loading={loading} className="w-full py-3 mt-2">
+                  📝 Submit Registration Request
+                </Button>
               </form>
 
-              <div className="mt-6 pt-4 border-t border-slate-800 grid grid-cols-2 gap-3">
+              {/* Auxiliary Operations */}
+              <div className="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-3">
                 <button
+                  type="button"
                   onClick={() => setMode("otp")}
-                  className="p-3 border border-slate-800 rounded-xl hover:bg-slate-900/50 transition-colors text-center"
+                  className="p-3 bg-slate-950/40 border border-slate-800 rounded-xl hover:bg-slate-900/50 hover:border-slate-700 transition-all text-center"
                 >
-                  <div className="text-2xl mb-1">✉️</div>
+                  <div className="text-xl mb-1">✉️</div>
                   <div className="text-xs font-semibold text-slate-300">
                     Verify OTP
                   </div>
@@ -985,10 +972,11 @@ export default function AuthPage() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setMode("status")}
-                  className="p-3 border border-slate-800 rounded-xl hover:bg-slate-900/50 transition-colors text-center"
+                  className="p-3 bg-slate-950/40 border border-slate-800 rounded-xl hover:bg-slate-900/50 hover:border-slate-700 transition-all text-center"
                 >
-                  <div className="text-2xl mb-1">🔍</div>
+                  <div className="text-xl mb-1">🔍</div>
                   <div className="text-xs font-semibold text-slate-300">
                     Check Status
                   </div>
@@ -996,9 +984,10 @@ export default function AuthPage() {
                 </button>
               </div>
 
-              <p className="text-center text-xs text-slate-400 mt-4">
+              <p className="text-center text-xs text-slate-400 mt-2">
                 Already have an account?{" "}
                 <button
+                  type="button"
                   onClick={() => setMode("login")}
                   className="text-blue-400 hover:text-blue-300 hover:underline font-semibold"
                 >

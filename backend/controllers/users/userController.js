@@ -1,9 +1,36 @@
+import mongoose from 'mongoose';
 import User from '../../models/User.js';
 import Task from '../../models/Task.js';
 import Employee from '../../models/Employee.js';
 import Branch from '../../models/Branch.js';
 import eventBus, { EVENTS } from '../../utils/eventBus.js';
 import { deleteFromCloudinary } from '../../middleware/uploadMiddleware.js';
+
+// Resilient transaction executor to support both standard replica sets (production) and standalone MongoDB instances (local dev fallback)
+const runInTransaction = async (workFn) => {
+    const session = await mongoose.startSession();
+    try {
+        session.startTransaction();
+        const result = await workFn(session);
+        await session.commitTransaction();
+        return result;
+    } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        const isStandaloneErr = error.codeName === 'CommandNotSupportedOnStandalone' || 
+                                error.code === 20 || 
+                                error.message.includes('Transaction numbers are only allowed') ||
+                                error.message.includes('sessions are not supported');
+        if (isStandaloneErr) {
+            console.warn('MongoDB transaction not supported in this environment (standalone). Falling back to non-transactional execution.');
+            return await workFn(null);
+        }
+        throw error;
+    } finally {
+        session.endSession();
+    }
+};
 
 // @desc    Get all users (with pagination, search, and data isolation)
 export const getAllUsers = async (req, res) => {
@@ -157,100 +184,110 @@ export const updateUser = async (req, res) => {
             phone, address, bloodGroup, dateOfJoining, customFields, employeeId
         } = req.body;
         const id = String(req.params.id);
-        const user = await User.findOne({ _id: id, isDeleted: { $ne: true } });
-        
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
-        }
 
-        const isSelf = req.user._id.toString() === id;
-        const canEditAll = ['admin', 'it'].includes(req.user.role);
-        
-        // Dynamic access scoping
-        const isBranchHead = req.user.role === 'branch-head' && user.branch === req.user.branch;
-        const isDeptHead = req.user.role === 'department-head' && user.branch === req.user.branch && user.department === req.user.department;
-        const canEditScoped = isBranchHead || isDeptHead;
-
-        if (canEditAll || canEditScoped) {
-            // Cross-Component branch/department validation if either changes
-            if (branch || department) {
-                const targetBranchName = branch ? String(branch).trim() : user.branch;
-                const targetDeptName = department ? String(department).trim() : user.department;
-
-                const targetBranch = await Branch.findOne({ 
-                    name: { $regex: new RegExp('^' + targetBranchName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
-                    isDeleted: { $ne: true }
-                });
-
-                if (!targetBranch) {
-                    return res.status(400).json({ success: false, message: `Branch "${targetBranchName}" does not exist` });
-                }
-
-                const deptExists = targetBranch.departments.some(d => d.toLowerCase() === targetDeptName.toLowerCase());
-                if (!deptExists) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `Department "${targetDeptName}" is not mapped or active in branch "${targetBranch.name}". Mapped departments are: ${targetBranch.departments.join(', ')}` 
-                    });
-                }
-
-                // If branch actually changes, cascade update tasks
-                if (targetBranch.name !== user.branch) {
-                    user.branch = targetBranch.name;
-                    await Task.updateMany(
-                        { $or: [{ assignedTo: user._id }, { assignedTeam: user._id }] },
-                        { branch: targetBranch.name }
-                    );
-                }
-                user.department = targetDeptName;
+        const result = await runInTransaction(async (session) => {
+            const user = await User.findOne({ _id: id, isDeleted: { $ne: true } }).session(session);
+            if (!user) {
+                return { status: 404, success: false, message: 'User not found' };
             }
 
-            if (name) user.name = String(name).trim();
-            if (email) user.email = String(email).trim().toLowerCase();
+            const isSelf = req.user._id.toString() === id;
+            const canEditAll = ['admin', 'it'].includes(req.user.role);
             
-            // Validate role update to prevent security escalation
-            if (role) {
-                if (canEditScoped && role !== user.role) {
-                    const elevatedRoles = ['admin', 'it', 'branch-head'];
-                    if (elevatedRoles.includes(role)) {
-                        return res.status(403).json({ success: false, message: 'You are not authorized to elevate users to high-privilege roles' });
+            // Dynamic access scoping
+            const isBranchHead = req.user.role === 'branch-head' && user.branch === req.user.branch;
+            const isDeptHead = req.user.role === 'department-head' && user.branch === req.user.branch && user.department === req.user.department;
+            const canEditScoped = isBranchHead || isDeptHead;
+
+            if (canEditAll || canEditScoped) {
+                // Cross-Component branch/department validation if either changes
+                if (branch || department) {
+                    const targetBranchName = branch ? String(branch).trim() : user.branch;
+                    const targetDeptName = department ? String(department).trim() : user.department;
+
+                    const targetBranch = await Branch.findOne({ 
+                        name: { $regex: new RegExp('^' + targetBranchName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+                        isDeleted: { $ne: true }
+                    }).session(session);
+
+                    if (!targetBranch) {
+                        return { status: 400, success: false, message: `Branch "${targetBranchName}" does not exist` };
                     }
+
+                    const deptExists = targetBranch.departments.some(d => d.toLowerCase() === targetDeptName.toLowerCase());
+                    if (!deptExists) {
+                        return { 
+                            status: 400,
+                            success: false, 
+                            message: `Department "${targetDeptName}" is not mapped or active in branch "${targetBranch.name}". Mapped departments are: ${targetBranch.departments.join(', ')}` 
+                        };
+                    }
+
+                    // If branch actually changes, cascade update tasks
+                    if (targetBranch.name !== user.branch) {
+                        await Task.updateMany(
+                            { $or: [{ assignedTo: user._id }, { assignedTeam: user._id }] },
+                            { branch: targetBranch.name },
+                            { session }
+                        );
+                        user.branch = targetBranch.name;
+                    }
+                    user.department = targetDeptName;
                 }
-                user.role = String(role).trim();
+
+                if (name) user.name = String(name).trim();
+                if (email) user.email = String(email).trim().toLowerCase();
+                
+                // Validate role update to prevent security escalation
+                if (role) {
+                    if (canEditScoped && role !== user.role) {
+                        const elevatedRoles = ['admin', 'it', 'branch-head'];
+                        if (elevatedRoles.includes(role)) {
+                            return { status: 403, success: false, message: 'You are not authorized to elevate users to high-privilege roles' };
+                        }
+                    }
+                    user.role = String(role).trim();
+                }
+                
+                if (isActive !== undefined) user.isActive = Boolean(isActive);
+                if (avatar) user.avatar = String(avatar);
+                if (phone !== undefined) user.phone = phone ? String(phone).trim() : null;
+                if (address !== undefined) user.address = address ? String(address).trim() : null;
+                if (bloodGroup !== undefined) user.bloodGroup = bloodGroup ? String(bloodGroup).trim() : null;
+                if (dateOfJoining) user.dateOfJoining = dateOfJoining;
+                if (customFields) user.customFields = customFields;
+                if (canEditAll && employeeId !== undefined) user.employeeId = employeeId ? String(employeeId).trim() : undefined;
+            } else if (isSelf) {
+                // Self-service updates
+                if (name) user.name = String(name).trim();
+                if (email) user.email = String(email).trim().toLowerCase();
+                if (phone !== undefined) user.phone = phone ? String(phone).trim() : null;
+                if (address !== undefined) user.address = address ? String(address).trim() : null;
+                if (bloodGroup !== undefined) user.bloodGroup = bloodGroup ? String(bloodGroup).trim() : null;
+                if (customFields) user.customFields = customFields;
+                if (dateOfJoining) user.dateOfJoining = dateOfJoining;
+            } else {
+                return { status: 403, success: false, message: 'Only admins, authorized heads, or profile owners may update users' };
+            }
+
+            // Allow password updates
+            if (password && String(password).trim()) {
+                if (isSelf || canEditAll || canEditScoped) {
+                    user.password = String(password); // hashed by pre-save schema hook
+                }
             }
             
-            if (isActive !== undefined) user.isActive = Boolean(isActive);
-            if (avatar) user.avatar = String(avatar);
-            if (phone !== undefined) user.phone = phone ? String(phone).trim() : null;
-            if (address !== undefined) user.address = address ? String(address).trim() : null;
-            if (bloodGroup !== undefined) user.bloodGroup = bloodGroup ? String(bloodGroup).trim() : null;
-            if (dateOfJoining) user.dateOfJoining = dateOfJoining;
-            if (customFields) user.customFields = customFields;
-            if (canEditAll && employeeId !== undefined) user.employeeId = employeeId ? String(employeeId).trim() : undefined;
-        } else if (isSelf) {
-            // Self-service updates
-            if (name) user.name = String(name).trim();
-            if (email) user.email = String(email).trim().toLowerCase();
-            if (phone !== undefined) user.phone = phone ? String(phone).trim() : null;
-            if (address !== undefined) user.address = address ? String(address).trim() : null;
-            if (bloodGroup !== undefined) user.bloodGroup = bloodGroup ? String(bloodGroup).trim() : null;
-            if (customFields) user.customFields = customFields;
-            if (dateOfJoining) user.dateOfJoining = dateOfJoining;
-        } else {
-            return res.status(403).json({ success: false, message: 'Only admins, authorized heads, or profile owners may update users' });
+            await user.save({ session });
+            
+            const { password: _, ...userWithoutPassword } = user.toObject();
+            return { success: true, data: userWithoutPassword };
+        });
+
+        if (!result.success) {
+            return res.status(result.status || 400).json({ success: false, message: result.message });
         }
 
-        // Allow password updates
-        if (password && String(password).trim()) {
-            if (isSelf || canEditAll || canEditScoped) {
-                user.password = String(password); // hashed by pre-save schema hook
-            }
-        }
-        
-        await user.save();
-        
-        const { password: _, ...userWithoutPassword } = user.toObject();
-        res.json({ success: true, data: userWithoutPassword });
+        res.json({ success: true, data: result.data });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
@@ -261,40 +298,52 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
     try {
         const id = String(req.params.id);
-        const user = await User.findOne({ _id: id, isDeleted: { $ne: true } });
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
+
+        const result = await runInTransaction(async (session) => {
+            const user = await User.findOne({ _id: id, isDeleted: { $ne: true } }).session(session);
+            if (!user) {
+                return { status: 404, success: false, message: 'User not found' };
+            }
+
+            // Prevent deleting self
+            if (user._id.toString() === req.user._id.toString()) {
+                return { status: 400, success: false, message: 'You cannot delete your own account' };
+            }
+
+            // Soft-delete the user
+            user.isActive = false;
+            user.isDeleted = true;
+            user.deletedAt = new Date();
+            await user.save({ session });
+
+            // Cross-Component Cascade: Transition all active assigned tasks to 'Unassigned' state (assignedTo = null, status = 'pending')
+            await Task.updateMany(
+                { assignedTo: user._id, isDeleted: { $ne: true } }, 
+                { assignedTo: null, status: 'pending' },
+                { session }
+            );
+            
+            // Remove from task teams
+            await Task.updateMany(
+                { assignedTeam: user._id, isDeleted: { $ne: true } }, 
+                { $pull: { assignedTeam: user._id } },
+                { session }
+            );
+
+            // Soft-delete linked Employee profile
+            await Employee.updateMany(
+                { email: user.email }, 
+                { isActive: false, isDeleted: true, deletedAt: new Date() },
+                { session }
+            );
+
+            return { success: true };
+        });
+
+        if (!result.success) {
+            return res.status(result.status || 400).json({ success: false, message: result.message });
         }
 
-        // Prevent deleting self
-        if (user._id.toString() === req.user._id.toString()) {
-            return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
-        }
-
-        // Soft-delete the user
-        user.isActive = false;
-        user.isDeleted = true;
-        user.deletedAt = new Date();
-        await user.save();
-
-        // Cross-Component Cascade: Transition all active assigned tasks to 'Unassigned' state (assignedTo = null, status = 'pending')
-        await Task.updateMany(
-            { assignedTo: user._id, isDeleted: { $ne: true } }, 
-            { assignedTo: null, status: 'pending' }
-        );
-        
-        // Remove from task teams
-        await Task.updateMany(
-            { assignedTeam: user._id, isDeleted: { $ne: true } }, 
-            { $pull: { assignedTeam: user._id } }
-        );
-
-        // Soft-delete linked Employee profile
-        await Employee.updateMany(
-            { email: user.email }, 
-            { isActive: false, isDeleted: true, deletedAt: new Date() }
-        );
-        
         res.json({ success: true, message: 'User soft-deleted successfully and tasks cascaded to Unassigned state' });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
@@ -316,23 +365,33 @@ export const getDeletedUsers = async (req, res) => {
 export const restoreUser = async (req, res) => {
     try {
         const id = String(req.params.id);
-        const user = await User.findById(id);
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
+
+        const result = await runInTransaction(async (session) => {
+            const user = await User.findById(id).session(session);
+            if (!user) {
+                return { status: 404, success: false, message: 'User not found' };
+            }
+
+            user.isActive = true;
+            user.isDeleted = false;
+            user.deletedAt = undefined;
+            await user.save({ session });
+
+            // Restore Employee profile
+            await Employee.updateMany(
+                { email: user.email }, 
+                { isActive: true, isDeleted: false, deletedAt: undefined },
+                { session }
+            );
+
+            return { success: true, data: user };
+        });
+
+        if (!result.success) {
+            return res.status(result.status || 400).json({ success: false, message: result.message });
         }
 
-        user.isActive = true;
-        user.isDeleted = false;
-        user.deletedAt = undefined;
-        await user.save();
-
-        // Restore Employee profile
-        await Employee.updateMany(
-            { email: user.email }, 
-            { isActive: true, isDeleted: false, deletedAt: undefined }
-        );
-
-        res.json({ success: true, message: 'User restored successfully', data: user });
+        res.json({ success: true, message: 'User restored successfully', data: result.data });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });

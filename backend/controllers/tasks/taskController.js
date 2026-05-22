@@ -131,42 +131,32 @@ export const createTask = async (req, res) => {
             taskData.collaboratingDepartments = collaboratingDeptsArr;
         }
         
-        const task = await Task.create(taskData);
-
-        // Auto-assign reviewers
-        try {
-            const creatorRole = req.user.role;
-            const reviewerUpdates = {};
-
-            if (creatorRole === 'department-head') {
-                reviewerUpdates.departmentManager = req.user._id;
-            } else {
-                const deptHead = await User.findOne({
-                    role: 'department-head',
-                    department: task.department,
-                    branch: task.branch,
-                    isDeleted: { $ne: true }
-                }).select('_id');
-                if (deptHead) reviewerUpdates.departmentManager = deptHead._id;
-            }
-
-            if (creatorRole === 'branch-head') {
-                reviewerUpdates.branchHead = req.user._id;
-            } else {
-                const branchHead = await User.findOne({
-                    role: 'branch-head',
-                    branch: task.branch,
-                    isDeleted: { $ne: true }
-                }).select('_id');
-                if (branchHead) reviewerUpdates.branchHead = branchHead._id;
-            }
-
-            if (Object.keys(reviewerUpdates).length > 0) {
-                await Task.findByIdAndUpdate(task._id, reviewerUpdates);
-            }
-        } catch (e) {
-            console.warn('Reviewer auto-assign failed:', e?.message || e);
+        // Resolve reviewers synchronously prior to task document insertion (ACID/operational safety)
+        const creatorRole = req.user.role;
+        if (creatorRole === 'department-head') {
+            taskData.departmentManager = req.user._id;
+        } else {
+            const deptHead = await User.findOne({
+                role: 'department-head',
+                department: taskData.department,
+                branch: taskData.branch,
+                isDeleted: { $ne: true }
+            }).select('_id');
+            if (deptHead) taskData.departmentManager = deptHead._id;
         }
+
+        if (creatorRole === 'branch-head') {
+            taskData.branchHead = req.user._id;
+        } else {
+            const bHead = await User.findOne({
+                role: 'branch-head',
+                branch: taskData.branch,
+                isDeleted: { $ne: true }
+            }).select('_id');
+            if (bHead) taskData.branchHead = bHead._id;
+        }
+
+        const task = await Task.create(taskData);
         
         // Notifications & Emails
         if (taskData.isTeamTask && assignedTeamArr.length > 0) {
@@ -1023,8 +1013,28 @@ export const getDashboardStats = async (req, res) => {
         let query = req.taskFilter ? { ...req.taskFilter } : {};
         query.isDeleted = { $ne: true };
 
-        if (department && department !== 'all') query.department = department;
-        if (branch && branch !== 'all') query.branch = branch;
+        const { role, branch: userBranch, department: userDept } = req.user;
+
+        // Enforce BOLA prevention: restrict query scopes to the user's authentic scope
+        if (role !== 'admin' && role !== 'it') {
+            if (branch && branch !== 'all' && branch !== userBranch) {
+                return res.status(403).json({ success: false, message: 'Unauthorized branch statistics request scope' });
+            }
+            query.branch = userBranch;
+
+            if (role === 'department-head' || role === 'hr' || role === 'employee') {
+                const requiredDept = role === 'hr' ? 'HR' : userDept;
+                if (department && department !== 'all' && department !== requiredDept) {
+                    return res.status(403).json({ success: false, message: 'Unauthorized department statistics request scope' });
+                }
+                query.department = requiredDept;
+            } else if (department && department !== 'all') {
+                query.department = department;
+            }
+        } else {
+            if (department && department !== 'all') query.department = department;
+            if (branch && branch !== 'all') query.branch = branch;
+        }
         
         let dateQuery = {};
         if (timeFilter && timeFilter !== 'all') {
@@ -1439,8 +1449,27 @@ export const getTimeReport = async (req, res) => {
                 query.createdAt.$lte = d;
             }
         }
-        if (department && department !== 'all') {
-            query.department = department;
+
+        const { role, branch: userBranch, department: userDept } = req.user;
+
+        if (role !== 'admin' && role !== 'it') {
+            query.branch = userBranch;
+            if (role === 'department-head' || role === 'hr') {
+                const requiredDept = role === 'hr' ? 'HR' : userDept;
+                if (department && department !== 'all' && department !== requiredDept) {
+                    return res.status(403).json({ success: false, message: 'Unauthorized department report scope' });
+                }
+                query.department = requiredDept;
+            } else if (department && department !== 'all') {
+                query.department = department;
+            }
+        } else {
+            if (department && department !== 'all') {
+                query.department = department;
+            }
+            if (req.query.branch && req.query.branch !== 'all') {
+                query.branch = String(req.query.branch).trim();
+            }
         }
         
         const tasks = await deepPopulateTask(Task.find(query).sort({ createdAt: -1 })).lean();

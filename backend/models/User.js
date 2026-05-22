@@ -57,6 +57,14 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    designation: {
+        type: String,
+        default: ''
+    },
+    privilegeRequestReason: {
+        type: String,
+        default: ''
+    },
     customFields: {
         type: Map,
         of: String,

@@ -76,11 +76,11 @@ const Combobox = ({ label, value, onChange, options, placeholder, icon }) => {
                 />
               ) : (
                 <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
-                  {selectedOption.name?.substring(0, 2).toUpperCase()}
+                  {(selectedOption.name || "UN").substring(0, 2).toUpperCase()}
                 </div>
               )}
               <span className="text-xs font-medium text-slate-800 truncate">
-                {selectedOption.name}
+                {selectedOption.name || "Unnamed User"}
               </span>
             </div>
           ) : (
@@ -138,11 +138,11 @@ const Combobox = ({ label, value, onChange, options, placeholder, icon }) => {
                         />
                       ) : (
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                          {opt.name?.substring(0, 2).toUpperCase()}
+                          {(opt.name || "UN").substring(0, 2).toUpperCase()}
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="font-semibold truncate leading-tight">{opt.name}</p>
+                        <p className="font-semibold truncate leading-tight">{opt.name || "Unnamed User"}</p>
                         <p className="text-[10px] text-slate-400 truncate mt-0.5">{opt.email}</p>
                       </div>
                     </div>
@@ -175,11 +175,6 @@ const BranchManagement = () => {
   const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [mobileStep, setMobileStep] = useState(1);
-  
-  // Tab control in split-pane
-  const [activeTab, setActiveTab] = useState("depts"); // depts | staff
-  const [staffSearch, setStaffSearch] = useState("");
   
   // Banner notifications error state
   const [bannerError, setBannerError] = useState(null);
@@ -378,8 +373,6 @@ const BranchManagement = () => {
       departments: [],
     });
     setBannerError(null);
-    setActiveTab("depts");
-    setMobileStep(1);
     setShowModal(true);
   };
 
@@ -402,28 +395,9 @@ const BranchManagement = () => {
       manager: branch.manager?._id || branch.manager || "",
     });
     setBannerError(null);
-    setActiveTab("depts");
-    setMobileStep(1);
     setShowModal(true);
   };
 
-  // Active members filtered locally (operates on already-fetched modal user list, not branch list)
-  // Get active members assigned to the editing branch
-  const activeMembers = (allUsers || []).filter(u => 
-    u?.branch && 
-    editingBranch?.name && 
-    u.branch.trim().toLowerCase() === editingBranch.name.trim().toLowerCase() &&
-    u?.role !== 'admin' &&
-    u?.isActive !== false &&
-    u?.isArchived !== true
-  );
-
-  const filteredMembers = (activeMembers || []).filter(emp => 
-    !staffSearch ||
-    emp?.name?.toLowerCase().includes(staffSearch.toLowerCase()) ||
-    emp?.email?.toLowerCase().includes(staffSearch.toLowerCase()) ||
-    emp?.department?.toLowerCase().includes(staffSearch.toLowerCase())
-  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
@@ -659,7 +633,7 @@ const BranchManagement = () => {
                             </p>
                           )}
                           {managerName && (
-                            <p className="flex gap-2 items-center text-slate-700" title="Operations Manager">
+                            <p className="flex gap-2 items-center text-slate-700" title="Branch Manager">
                               <span className="text-slate-400">🧑‍💼</span>
                               <span className="truncate font-semibold text-slate-750">
                                 Manager: {managerName}
@@ -779,436 +753,248 @@ const BranchManagement = () => {
       {/* High-Fidelity Split-Pane Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 bg-slate-900/60 lg:flex lg:items-center lg:justify-center lg:p-4 z-50">
-            <div className="fixed inset-0 lg:block hidden" onClick={() => setShowModal(false)} />
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased">
+            <div className="fixed inset-0" onClick={() => setShowModal(false)} />
             <motion.div
               initial={{ scale: 0.97, y: 15, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.97, y: 15, opacity: 0 }}
               transition={{ type: "spring", duration: 0.45 }}
-              className="bg-white w-full h-full fixed inset-0 z-50 flex flex-col overflow-y-auto lg:relative lg:inset-auto lg:h-auto lg:max-h-[85vh] lg:w-full lg:max-w-5xl lg:rounded-3xl lg:shadow-2xl lg:overflow-hidden lg:border lg:border-slate-100 lg:z-50"
+              className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 z-50 flex flex-col max-h-[92vh]"
             >
               {/* Modal Header */}
-              <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 sticky top-0 bg-white z-10 flex-shrink-0">
+              <div className="flex justify-between items-center px-8 py-5 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
                 <div>
-                  <h2 className="text-xl font-extrabold text-slate-900">
-                    {editingBranch ? "Edit Branch Configuration" : "Add New Branch"}
+                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    {editingBranch ? "🏢 Edit Branch Details" : "🏢 Add New Branch"}
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    <span className="lg:hidden font-bold text-blue-600 block mb-1">
-                      Step {mobileStep} of 2: {mobileStep === 1 ? "Core Details" : "Allowed Departments / Staff"}
-                    </span>
                     {editingBranch
-                      ? `Configure mapping settings for branch card: ${editingBranch.name}`
+                      ? `Configure settings for branch: ${editingBranch.name}`
                       : "Initialize new business branch structures and assign active departments."}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="h-9 w-9 grid place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-2xl transition"
+                  className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition text-lg font-bold"
                 >
                   ×
                 </button>
               </div>
 
-              {/* Form Content in Dual Columns */}
-              <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
-                <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                  
-                  {/* Left Column - Standard inputs (Scrollable) */}
-                  <div 
-                    id="modal-scrollable-pane"
-                    className={`w-full lg:w-5/12 overflow-y-auto px-8 py-7 border-r border-slate-100 space-y-7 custom-scrollbar bg-slate-50/30 lg:block ${mobileStep === 1 ? "block" : "hidden"}`}
-                  >
-                    {/* Elegant Absolute Banner Notification */}
-                    <AnimatePresence>
-                      {bannerError && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="bg-red-50 border-l-4 border-red-500 rounded-xl p-3.5 text-xs text-red-800 leading-relaxed flex gap-3 items-start shadow-sm"
+              {/* Single-Column Scrollable Form */}
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="overflow-y-auto flex-1 px-8 py-6 space-y-5">
+                  {/* Absolute Banner Notification */}
+                  <AnimatePresence>
+                    {bannerError && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-red-50 border-l-4 border-red-500 rounded-xl p-3.5 text-xs text-red-800 leading-relaxed flex gap-3 items-start shadow-sm"
+                      >
+                        <span className="text-base select-none">❌</span>
+                        <div className="flex-1">
+                          <strong className="font-bold block">Save Error Raised</strong>
+                          <span className="mt-0.5 block opacity-90">{bannerError}</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setBannerError(null)}
+                          className="text-red-400 hover:text-red-700 font-bold ml-1 text-base leading-none"
                         >
-                          <span className="text-base select-none">❌</span>
-                          <div className="flex-1">
-                            <strong className="font-bold block">Save Error Raised</strong>
-                            <span className="mt-0.5 block opacity-90">{bannerError}</span>
-                          </div>
-                          <button 
-                            type="button" 
-                            onClick={() => setBannerError(null)}
-                            className="text-red-400 hover:text-red-700 font-bold ml-1"
-                          >
-                            ×
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                          ×
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5.5">
-                      <Field label="Branch Name" required>
-                        <input
-                          type="text"
-                          required
-                          value={formData.name}
-                          onChange={(e) =>
-                            setFormData({ ...formData, name: e.target.value })
-                          }
-                          className={inputClass}
-                          placeholder="e.g. Gaurabagh"
-                        />
-                      </Field>
-                      <Field label="Branch Code" required>
-                        <input
-                          type="text"
-                          required
-                          value={formData.code}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              code: e.target.value.toUpperCase(),
-                            })
-                          }
-                          className={inputClass}
-                          placeholder="e.g. GB"
-                          maxLength={5}
-                        />
-                      </Field>
-                    </div>
-
-                    <Field label="Location Landmark">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Branch Name" required>
                       <input
                         type="text"
-                        value={formData.location}
+                        required
+                        value={formData.name}
                         onChange={(e) =>
-                          setFormData({ ...formData, location: e.target.value })
+                          setFormData({ ...formData, name: e.target.value })
                         }
                         className={inputClass}
-                        placeholder="Street landmark, area"
+                        placeholder="e.g. Gaurabagh"
                       />
                     </Field>
-
-                    <Field label="Complete Address">
-                      <textarea
-                        value={formData.address}
-                        onChange={(e) =>
-                          setFormData({ ...formData, address: e.target.value })
-                        }
-                        className={`${inputClass} resize-none`}
-                        rows="2"
-                        placeholder="Detailed company address..."
-                      />
-                    </Field>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5.5">
-                      <Field label="City">
-                        <input
-                          type="text"
-                          value={formData.city}
-                          onChange={(e) =>
-                            setFormData({ ...formData, city: e.target.value })
-                          }
-                          className={inputClass}
-                        />
-                      </Field>
-                      <Field label="State">
-                        <input
-                          type="text"
-                          value={formData.state}
-                          onChange={(e) =>
-                            setFormData({ ...formData, state: e.target.value })
-                          }
-                          className={inputClass}
-                        />
-                      </Field>
-                      <Field label="Pincode">
-                        <input
-                          type="text"
-                          value={formData.pincode}
-                          onChange={(e) =>
-                            setFormData({ ...formData, pincode: e.target.value })
-                          }
-                          className={inputClass}
-                        />
-                      </Field>
-                      <Field label="Phone">
-                        <input
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) =>
-                            setFormData({ ...formData, phone: e.target.value })
-                          }
-                          className={inputClass}
-                          placeholder="Landline / support"
-                        />
-                      </Field>
-                    </div>
-
-                    <Field label="Email Address">
+                    <Field label="Branch Code" required>
                       <input
-                        type="email"
-                        value={formData.email}
+                        type="text"
+                        required
+                        value={formData.code}
                         onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
+                          setFormData({
+                            ...formData,
+                            code: e.target.value.toUpperCase(),
+                          })
                         }
                         className={inputClass}
-                        placeholder="branch@company.com"
+                        placeholder="e.g. GB"
+                        maxLength={5}
                       />
                     </Field>
-
-                    {/* Advanced Combobox Dropdown selectors displaying avatars */}
-                    <div className="flex flex-col sm:flex-row gap-5.5 pt-2">
-                      <Combobox
-                        label="Branch Head / Representative"
-                        value={formData.head}
-                        onChange={(val) => setFormData({ ...formData, head: val })}
-                        options={allUsers}
-                        placeholder="Select branch head..."
-                        icon="👤"
-                      />
-                      <Combobox
-                        label="Operations Manager"
-                        value={formData.manager}
-                        onChange={(val) => setFormData({ ...formData, manager: val })}
-                        options={allUsers}
-                        placeholder="Select manager..."
-                        icon="🧑‍💼"
-                      />
-                    </div>
                   </div>
 
-                  {/* Right Column - Tabbed Details (Mapping & Members) */}
-                  <div className={`w-full lg:w-7/12 flex flex-col bg-white lg:flex ${mobileStep === 2 ? "flex flex-col flex-1" : "hidden"}`}>
-                    
-                    {/* Tab controls */}
-                    <div className="flex border-b border-slate-100 bg-slate-50/50 p-2 gap-1.5 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("depts")}
-                        className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 relative ${
-                          activeTab === "depts" 
-                            ? "bg-white text-blue-600 shadow-sm border border-slate-200/50" 
-                            : "text-slate-500 hover:text-slate-800"
-                        }`}
-                      >
-                        <span>📂</span> Allowed Departments
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("staff")}
-                        className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 relative ${
-                          activeTab === "staff" 
-                            ? "bg-white text-blue-600 shadow-sm border border-slate-200/50" 
-                            : "text-slate-500 hover:text-slate-800"
-                        }`}
-                      >
-                        <span>👥</span> Active Members ({editingBranch ? activeMembers.length : 0})
-                      </button>
-                    </div>
+                  <Field label="Location Landmark">
+                    <input
+                      type="text"
+                      value={formData.location}
+                      onChange={(e) =>
+                        setFormData({ ...formData, location: e.target.value })
+                      }
+                      className={inputClass}
+                      placeholder="Street landmark, area"
+                    />
+                  </Field>
 
-                    {/* Tab Content Panes */}
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                      {activeTab === "depts" && (
-                        <motion.div 
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="space-y-4"
-                        >
-                          <div className="bg-blue-50/40 rounded-xl p-3 border border-blue-100/50">
-                            <p className="text-[11px] text-blue-700 leading-relaxed">
-                              💡 <strong>Allowed Matrix:</strong> Check the departments allowed to operate inside this branch. Unchecking a department with active staff or pending tasks will trigger a backend mapping error block to prevent data corruption.
-                            </p>
-                          </div>
+                  <Field label="Complete Address">
+                    <textarea
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      className={`${inputClass} resize-none h-18 py-2`}
+                      placeholder="Detailed company address..."
+                    />
+                  </Field>
 
-                          <div className="grid grid-cols-2 gap-2.5">
-                            {(allDepts || []).map((dept) => {
-                              const checked = (formData.departments || [])?.includes(dept);
-                              return (
-                                <label
-                                  key={dept}
-                                  className={`flex items-center gap-2.5 px-3.5 py-3 rounded-2xl border text-xs font-semibold cursor-pointer transition select-none ${
-                                    checked
-                                      ? "bg-blue-50/50 border-blue-200 text-blue-700 font-bold shadow-sm"
-                                      : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50"
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={(e) => {
-                                      const nextDepts = e.target.checked
-                                        ? [...(formData.departments || []), dept]
-                                        : (formData.departments || []).filter((d) => d !== dept);
-                                      setFormData({ ...formData, departments: nextDepts });
-                                    }}
-                                    className="w-4.5 h-4.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500/20"
-                                  />
-                                  {dept}
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </motion.div>
-                      )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="City">
+                      <input
+                        type="text"
+                        value={formData.city}
+                        onChange={(e) =>
+                          setFormData({ ...formData, city: e.target.value })
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
+                    <Field label="State">
+                      <input
+                        type="text"
+                        value={formData.state}
+                        onChange={(e) =>
+                          setFormData({ ...formData, state: e.target.value })
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
+                  </div>
 
-                      {activeTab === "staff" && (
-                        <motion.div 
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="space-y-4"
-                        >
-                          {!editingBranch ? (
-                            <div className="text-center py-12 space-y-2">
-                              <span className="text-5xl block">🆕</span>
-                              <p className="font-bold text-slate-700 text-sm">New Branch Initialization</p>
-                              <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                                No employees can be active inside a branch that hasn't been created yet. Save this form first.
-                              </p>
-                            </div>
-                          ) : (
-                            <>
-                              {/* Search bar inside Tab 2 */}
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
-                                  🔍
-                                </span>
-                                <input
-                                  type="text"
-                                  value={staffSearch}
-                                  onChange={(e) => setStaffSearch(e.target.value)}
-                                  placeholder="Search employees by name, email, or role..."
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
-                                />
-                              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Pincode">
+                      <input
+                        type="text"
+                        value={formData.pincode}
+                        onChange={(e) =>
+                          setFormData({ ...formData, pincode: e.target.value })
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
+                    <Field label="Phone">
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
+                        className={inputClass}
+                        placeholder="Landline / support"
+                      />
+                    </Field>
+                  </div>
 
-                              {filteredMembers.length === 0 ? (
-                                <div className="text-center py-12">
-                                  <p className="text-xs text-slate-400 italic">
-                                    {staffSearch ? "No members match this search query." : "No active members currently mapped in this branch."}
-                                  </p>
-                                </div>
-                              ) : (
-                                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
-                                  {filteredMembers.map((emp) => {
-                                    const initials = emp.name ? emp.name.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
-                                    return (
-                                      <div 
-                                        key={emp._id} 
-                                        className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100/60 rounded-2xl border border-slate-200/40 transition"
-                                      >
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                          {emp.avatar ? (
-                                            <img src={emp.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-200 flex-shrink-0" />
-                                          ) : (
-                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                                              {initials}
-                                            </div>
-                                          )}
-                                          <div className="min-w-0">
-                                            <p className="text-xs font-bold text-slate-800 truncate leading-tight">{emp.name}</p>
-                                            <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                              <span className="px-1.5 py-0.2 rounded bg-slate-200/70 text-slate-700 text-[8px] uppercase tracking-wide font-bold">{emp.department}</span>
-                                              <span className="truncate capitalize font-medium">{emp?.role?.replace('-', ' ') || ""}</span>
-                                            </p>
-                                          </div>
-                                        </div>
-                                        
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setShowModal(false); // Close edit branch modal
-                                            handleOpenTransferModal(emp); // Open transfer dialog
-                                          }}
-                                          className="bg-white border border-slate-200/80 hover:bg-blue-50 text-slate-500 hover:text-blue-600 font-semibold text-[10px] px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 shadow-sm"
-                                        >
-                                          <span>Transfer</span> 🔄
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </motion.div>
-                      )}
+                  <Field label="Email Address">
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      className={inputClass}
+                      placeholder="branch@company.com"
+                    />
+                  </Field>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Combobox
+                      label="Branch Head"
+                      value={formData.head}
+                      onChange={(val) => setFormData({ ...formData, head: val })}
+                      options={allUsers}
+                      placeholder="Select head..."
+                      icon="👤"
+                    />
+                    <Combobox
+                      label="Branch Manager"
+                      value={formData.manager}
+                      onChange={(val) => setFormData({ ...formData, manager: val })}
+                      options={allUsers}
+                      placeholder="Select manager..."
+                      icon="🧑‍💼"
+                    />
+                  </div>
+
+                  {/* Mapped Departments checklist stacked vertically */}
+                  <div className="pt-4 border-t border-slate-200">
+                    <label className="text-slate-700 font-bold text-xs ml-1 block mb-3">
+                      📂 Allowed Departments for Mapped Operations
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(allDepts || []).map((dept) => {
+                        const checked = (formData.departments || [])?.includes(dept);
+                        return (
+                          <label
+                            key={dept}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition select-none ${
+                              checked
+                                ? "bg-blue-50/50 border-blue-200 text-blue-700 font-bold shadow-sm"
+                                : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const nextDepts = e.target.checked
+                                  ? [...(formData.departments || []), dept]
+                                  : (formData.departments || []).filter((d) => d !== dept);
+                                setFormData({ ...formData, departments: nextDepts });
+                              }}
+                              className="w-4.5 h-4.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500/20"
+                            />
+                            {dept}
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
 
-                {/* Unified actions bottom bar */}
-                <div className="flex gap-2.5 p-6 border-t border-slate-100 bg-slate-50/30 flex-shrink-0">
-                  {/* Mobile navigation controls */}
-                  <div className="flex w-full gap-2.5 lg:hidden">
-                    {mobileStep === 1 ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setShowModal(false)}
-                          className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition border border-slate-200/40"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!formData.name || !formData.code) {
-                              showToast("Please fill in Branch Name and Branch Code", "error");
-                              return;
-                            }
-                            setMobileStep(2);
-                          }}
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-blue-200"
-                        >
-                          Next ➔
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setMobileStep(1)}
-                          className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition border border-slate-200/40"
-                        >
-                          ➔ Back
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={submitting}
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-blue-200"
-                        >
-                          {submitting
-                            ? "Saving Changes..."
-                            : editingBranch
-                              ? "Update Branch"
-                              : "Save Branch"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Desktop navigation controls */}
-                  <div className="hidden lg:flex w-full gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowModal(false)}
-                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold py-2.5 rounded-xl text-xs transition border border-slate-200/40"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-blue-200"
-                    >
-                      {submitting
-                        ? "Saving Changes..."
-                        : editingBranch
-                          ? "Update Branch Card"
-                          : "Save Branch Card"}
-                    </button>
-                  </div>
+                {/* Unified Footer Actions */}
+                <div className="flex gap-3 px-8 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm transition-all disabled:opacity-50 text-sm"
+                  >
+                    {submitting ? "Saving..." : editingBranch ? "Save Changes" : "Create Branch"}
+                  </button>
                 </div>
               </form>
             </motion.div>

@@ -15,8 +15,6 @@ export const signup = async (req, res) => {
 
         if (!name || !email || !password || !department)
             return res.status(400).json({ success: false, message: 'Name, email, password and department are required' });
-        if (!phone)
-            return res.status(400).json({ success: false, message: 'Phone is required' });
         if (!employeeId)
             return res.status(400).json({ success: false, message: 'Employee ID is required' });
         if (password.length < 6)
@@ -162,6 +160,8 @@ export const reviewRegistration = async (req, res) => {
                 branch: pending.branch,
                 employeeId: pending.employeeId,
                 phone: pending.phone,
+                designation: pending.designation || '',
+                privilegeRequestReason: pending.privilegeRequestReason || '',
                 isActive: true
             });
 
@@ -226,6 +226,8 @@ export const verifyOtp = async (req, res) => {
             branch: pending.branch,
             employeeId: pending.employeeId,
             phone: pending.phone,
+            designation: pending.designation || '',
+            privilegeRequestReason: pending.privilegeRequestReason || '',
             isActive: true
         });
 

@@ -36,7 +36,7 @@ export const registrationSchema = z.object({
         name: z.string().trim().min(1, 'Full name is required').max(100, 'Name must be under 100 characters'),
         email: z.string().trim().email('Invalid email format'),
         password: z.string().min(6, 'Password must be at least 6 characters'),
-        phone: z.string().trim().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
+        phone: z.string().trim().regex(/^\d{10}$/, 'Phone must be exactly 10 digits').optional().or(z.literal('')),
         branch: z.string().trim().min(1, 'Branch is required'),
         department: z.string().trim().min(1, 'Department is required'),
         employeeId: z.string().trim().min(1, 'Employee ID is required'),
