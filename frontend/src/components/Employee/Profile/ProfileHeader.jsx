@@ -60,7 +60,7 @@ const ProfileHeader = ({
 
                 <div className="flex-1 min-w-0 text-center sm:text-left">
                     <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
-                        <h1 className="text-2xl sm:text-3xl font-bold truncate">
+                        <h1 className="text-2xl sm:text-3xl font-bold truncate text-white">
                             {employee.name}
                         </h1>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-sm capitalize">

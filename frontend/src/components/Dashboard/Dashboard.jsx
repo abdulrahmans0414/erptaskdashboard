@@ -1248,7 +1248,7 @@ const Dashboard = () => {
         <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 md:p-8 text-white shadow-xl shadow-blue-500/20">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">
+              <h1 className="text-2xl md:text-3xl font-bold text-white">
                 Welcome back, {user?.name?.split(" ")[0]}! 👋
               </h1>
               <p className="text-blue-100 mt-2 capitalize">
@@ -1383,7 +1383,7 @@ const Dashboard = () => {
       <div className="bg-gradient-to-br from-slate-800 to-gray-900 rounded-2xl p-6 text-white shadow-xl animate-fadeIn">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold">📊 Dashboard</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-white">📊 Dashboard</h1>
             <p className="text-slate-300 text-sm mt-1">
               {user?.name} •{" "}
               <span className="capitalize">

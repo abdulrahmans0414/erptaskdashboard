@@ -143,6 +143,33 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
     subLabel: u.role,
   })), [filteredUsers]);
 
+  const handleDatePreset = (preset) => {
+    const today = new Date();
+    let targetDate = today;
+    if (preset === "today") {
+      targetDate = today;
+    } else if (preset === "tomorrow") {
+      const tomorrow = new Date();
+      tomorrow.setDate(today.getDate() + 1);
+      targetDate = tomorrow;
+    } else if (preset === "week") {
+      const oneWeek = new Date();
+      oneWeek.setDate(today.getDate() + 7);
+      targetDate = oneWeek;
+    }
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(targetDate.getDate()).padStart(2, "0");
+    setFormData((prev) => ({ ...prev, dueDate: `${yyyy}-${mm}-${dd}` }));
+  };
+
+  const PRIORITIES = [
+    { value: "low", label: "🟢 Low", color: "bg-emerald-50 border-emerald-300 text-emerald-700 ring-2 ring-emerald-500/10" },
+    { value: "medium", label: "🟡 Medium", color: "bg-amber-50 border-amber-300 text-amber-700 ring-2 ring-amber-500/10" },
+    { value: "high", label: "🟠 High", color: "bg-orange-50 border-orange-300 text-orange-700 ring-2 ring-orange-500/10" },
+    { value: "urgent", label: "🔴 Urgent", color: "bg-rose-50 border-rose-300 text-rose-700 ring-2 ring-rose-500/10" },
+  ];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) return setError("Task title is required.");
@@ -216,23 +243,53 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                     rows="3" placeholder="Describe the task and any important details..." />
                 </div>
 
-                {/* Due Date */}
+                {/* Due Date & Presets */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-slate-600">Due Date <span className="text-red-500">*</span></label>
                   <input type="date" required value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer" />
+                  
+                  {/* 1-Click Due Date Presets */}
+                  <div className="flex gap-2 mt-1">
+                    {[
+                      { value: "today", label: "☀️ Today" },
+                      { value: "tomorrow", label: "🌅 Tomorrow" },
+                      { value: "week", label: "📅 1 Week" },
+                    ].map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => handleDatePreset(preset.value)}
+                        className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-blue-50/50 hover:border-blue-200 rounded-xl text-[11px] font-semibold text-slate-600 hover:text-blue-700 transition active:scale-95 shadow-sm"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Priority */}
+                {/* Priority Selection via Chips */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-slate-600">Priority</label>
-                  <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer">
-                    <option value="low">🟢 Low</option>
-                    <option value="medium">🟡 Medium</option>
-                    <option value="high">🟠 High</option>
-                    <option value="urgent">🔴 Urgent</option>
-                  </select>
+                  <div className="flex flex-wrap gap-2">
+                    {PRIORITIES.map((p) => {
+                      const isSelected = formData.priority === p.value;
+                      return (
+                        <button
+                          key={p.value}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, priority: p.value })}
+                          className={`flex-1 min-w-[70px] px-3 py-2 rounded-xl border text-xs font-semibold text-center transition-all ${
+                            isSelected
+                              ? `${p.color} border-slate-350 shadow-sm font-bold scale-[1.02]`
+                              : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50 focus:ring-2 focus:ring-blue-500/20"
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Branch */}

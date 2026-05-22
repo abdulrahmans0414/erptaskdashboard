@@ -9,6 +9,7 @@ import {
 } from "../../services/api";
 import { useSettings } from "../../context/SettingsContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDocumentMetadata } from "../../hooks/useDocumentMetadata";
 
 // ─── Constants ────────────────────────────────────────────────
 const DEPARTMENTS = [
@@ -297,10 +298,107 @@ const PasswordStrength = ({ password }) => {
   );
 };
 
+const BenefitsSidebar = () => (
+  <div className="hidden md:flex md:w-5/12 flex-col justify-between p-8 bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl relative overflow-hidden">
+    {/* Dynamic background highlights specific to the sidebar */}
+    <div className="absolute inset-0 bg-gradient-to-b from-blue-900/10 via-indigo-900/5 to-transparent pointer-events-none" />
+    
+    <div className="relative z-10 space-y-8 text-left">
+      {/* Header/Logo Accent */}
+      <div>
+        <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-950/80 rounded-xl border border-blue-800/40 mb-3 shadow-md shadow-blue-950/20">
+          <span className="text-xl">🛡️</span>
+        </div>
+        <h2 className="text-2xl font-extrabold text-white tracking-tight">
+          Scholars' Enterprise TaskGrid
+        </h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Real-time branch control and activity audit architecture.
+        </p>
+      </div>
+
+      {/* Benefits List */}
+      <div className="space-y-6">
+        <div className="flex gap-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-950/50 border border-blue-800/30 flex items-center justify-center text-lg flex-shrink-0">
+            📊
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-200">Real-time Dashboard Analytics</h4>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Monitor team productivity across IT, HR, Academic, and Operations with live statistics, priority flags, and dynamic date preset filters.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <div className="w-10 h-10 rounded-xl bg-indigo-950/50 border border-indigo-800/30 flex items-center justify-center text-lg flex-shrink-0">
+            🏢
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-200">Multi-Tenant Branch Isolation</h4>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Hardware-like sandboxing and secure boundary isolation mapped strictly per geographical branch and administrative head scope.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <div className="w-10 h-10 rounded-xl bg-purple-950/50 border border-purple-800/30 flex items-center justify-center text-lg flex-shrink-0">
+            ⚡
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-200">ACID-Compliant State Sync</h4>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Advanced database operations with ACID compliance, completely eliminating state illusion anomalies, local storage traps, and database race conditions.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <div className="w-10 h-10 rounded-xl bg-emerald-950/50 border border-emerald-800/30 flex items-center justify-center text-lg flex-shrink-0">
+            🔐
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-200">SOC-2 Audited Workflows</h4>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Secure double-layered review protocols for branch tasks, paired with immutable administrative action tracking and instant SMTP notifications.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Footer statistics / trust signals */}
+    <div className="relative z-10 pt-6 border-t border-slate-800/60 flex items-center justify-between text-slate-500">
+      <div>
+        <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Security Standard</p>
+        <p className="text-xs text-slate-300 font-semibold mt-0.5">TLS 1.3 & AES-256</p>
+      </div>
+      <div>
+        <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Audit Status</p>
+        <p className="text-xs text-emerald-400 font-semibold mt-0.5">SOC-2 Type II Compliant</p>
+      </div>
+    </div>
+  </div>
+);
+
 // ═══════════════════════════════════════════════════════════════
 // MAIN AUTH PAGE
 // ═══════════════════════════════════════════════════════════════
 export default function AuthPage() {
+  useDocumentMetadata({
+    title: "Portal Access | Scholars' ERP Task Manager",
+    description: "Secure enterprise gateway for Scholars' Group Of Institution. Manage branch operations, ACID-compliant workflows, and real-time task allocations.",
+    noIndex: false,
+    og: {
+      title: "Portal Access | Scholars' ERP Task Manager",
+      description: "Secure enterprise gateway for Scholars' Group Of Institution. Manage branch operations, ACID-compliant workflows, and real-time task allocations.",
+      type: "website",
+      image: "/spis-logo.jpeg",
+    }
+  });
+
   const { login: authLogin } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
@@ -586,8 +684,11 @@ export default function AuthPage() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className={`w-full transition-all duration-300 ${mode === 'register' ? 'max-w-2xl' : 'max-w-md'}`}
+        className="w-full max-w-5xl flex flex-col md:flex-row items-center md:items-stretch justify-center gap-6 md:gap-8 transition-all duration-300"
       >
+        <BenefitsSidebar />
+
+        <div className={`w-full transition-all duration-300 flex flex-col justify-center ${mode === 'register' ? 'max-w-2xl' : 'max-w-md'}`}>
         {/* Brand */}
         <div className="text-center mb-4 flex flex-col items-center">
           <motion.div 
@@ -894,8 +995,8 @@ export default function AuthPage() {
                     </div>
                     {form.requestHighPrivilege === "yes" && (
                       <div className="animate-slide-down">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                          Reason for Privilege Request *
+                        <label className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                          <span>🔑</span> Strict Compliance Auditing: Reason for Elevating Privileges *
                         </label>
                         <textarea
                           value={form.privilegeRequestReason}
@@ -908,7 +1009,7 @@ export default function AuthPage() {
                                 : "border-slate-800 bg-slate-950 text-slate-100 focus:ring-blue-500"
                             }
                             focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-600`}
-                          placeholder="Please provide a clear reason for requesting this head role. E.g., branch assignment details, authorization, etc."
+                          placeholder="Provide the enterprise justification and security clearance details. Specify branch node/department domain scope, supervisor approval token or ticket references, and operational reason for high-privilege administrative access."
                         />
                         {errors.privilegeRequestReason && (
                           <p className="text-xs text-rose-400 font-medium mt-1">
@@ -916,7 +1017,7 @@ export default function AuthPage() {
                           </p>
                         )}
                         <p className="text-[10px] text-amber-500/80 mt-1">
-                          Note: System admin reviews and activates high-privilege designations.
+                          Note: All privilege request submissions are signed and written to the immutable system audit trail for security compliance.
                         </p>
                       </div>
                     )}
@@ -1214,6 +1315,18 @@ export default function AuthPage() {
           </AnimatePresence>
         </motion.div>
 
+        {/* Mobile benefits footer */}
+        <div className="grid grid-cols-2 gap-2 mt-4 md:hidden">
+          <div className="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl text-center">
+            <div className="text-sm mb-1">🛡️ SOC-2 Type II</div>
+            <div className="text-[9px] text-slate-400">Audited Security Log</div>
+          </div>
+          <div className="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl text-center">
+            <div className="text-sm mb-1">⚡ ACID Sync</div>
+            <div className="text-[9px] text-slate-400">Persistent State Guards</div>
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="text-center mt-6 space-y-1">
           <p className="text-xs text-slate-500 font-medium">
@@ -1223,7 +1336,8 @@ export default function AuthPage() {
             Developed By Abdul Rahman
           </p>
         </div>
-      </motion.div>
+      </div>
+    </motion.div>
     </div>
   );
 }

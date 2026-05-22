@@ -791,6 +791,52 @@ function ReassignModal({ task, onClose, onDone }) {
   );
 }
 
+// ── DELETE CONFIRMATION MODAL ──────────────────────────────────────
+function DeleteConfirmModal({ task, onClose, onDone }) {
+  const [loading, setLoading] = useState(false);
+
+  const handle = async () => {
+    setLoading(true);
+    try {
+      await deleteTask(task._id);
+      toast.success("Task deleted successfully");
+      onDone();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to delete task");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal title="⚠️ Delete Task" onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-sm text-gray-600">
+          Are you sure you want to delete the task <strong className="text-gray-900">"{task.title}"</strong>?
+        </p>
+        <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-100">
+          ⚠️ This action cannot be undone and will permanently remove all attachments.
+        </p>
+        <div className="flex gap-2 pt-2">
+          <button
+            onClick={handle}
+            disabled={loading}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-red-200 transition"
+          >
+            {loading ? "Deleting..." : "Yes, Delete Task"}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 bg-gray-100 rounded-xl text-sm font-medium hover:bg-gray-200 transition"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 // ── ACTIVITY / COMMENTS DRAWER ─────────────────────────────────
 function ActivityDrawer({ task, onClose }) {
   const dispatch = useDispatch();
@@ -1077,7 +1123,7 @@ function Modal({ title, onClose, children, wide }) {
 export default function TaskCard({ task, onUpdate }) {
   const dispatch = useDispatch();
   const { user } = useAuth();
-  const [modal, setModal] = useState(null); // 'submit'|'review'|'edit'|'activity'|'reassign'
+  const [modal, setModal] = useState(null); // 'submit'|'review'|'edit'|'activity'|'reassign'|'delete'
   const [reviewStage, setReviewStage] = useState(null); // 'department'|'branch'
   const [starting, setStarting] = useState(false);
 
@@ -1087,17 +1133,8 @@ export default function TaskCard({ task, onUpdate }) {
     if (onUpdate) onUpdate();
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this task? This action cannot be undone and will permanently remove all attachments.")) {
-      return;
-    }
-    try {
-      await deleteTask(task._id);
-      toast.success("Task deleted successfully");
-      if (onUpdate) onUpdate();
-    } catch (e) {
-      toast.error(e.response?.data?.message || "Failed to delete task");
-    }
+  const handleDelete = () => {
+    setModal("delete");
   };
 
   const userId = user?._id || user?.id;
@@ -1158,12 +1195,12 @@ export default function TaskCard({ task, onUpdate }) {
   return (
     <>
       <div
-        className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all p-4 ${isOverdue ? "border-red-200 bg-red-50/20" : ""}`}
+        className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 hover-lift p-4 ${isOverdue ? "border-red-200 bg-red-50/20" : ""}`}
       >
         {/* Progress stepper */}
         <Stepper status={task.status} />
 
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             {/* Title row */}
             <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
@@ -1270,11 +1307,11 @@ export default function TaskCard({ task, onUpdate }) {
           </div>
 
           {/* ACTIONS */}
-          <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
+          <div className="flex flex-row sm:flex-col flex-wrap sm:flex-nowrap gap-1.5 flex-shrink-0 items-center sm:items-end justify-start sm:justify-end pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100/70 w-full sm:w-auto">
             {/* Activity */}
             <button
               onClick={() => setModal("activity")}
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-[10px] font-medium transition"
+              className="px-2.5 py-1 bg-zinc-50 hover:bg-zinc-100 text-zinc-600 border border-zinc-200/80 rounded-lg text-[10px] font-semibold transition flex items-center gap-1 shadow-sm whitespace-nowrap"
             >
               💬{" "}
               {(task.comments?.length || 0) + (task.activityLog?.length || 0) >
@@ -1285,27 +1322,25 @@ export default function TaskCard({ task, onUpdate }) {
 
             {/* Edit & Reassign & Delete */}
             {canManage && (
-              <div className="flex flex-col gap-1 w-full">
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setModal("edit")}
-                    className="flex-1 px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    onClick={() => setModal("reassign")}
-                    className="flex-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap"
-                  >
-                    🔄 Reassign
-                  </button>
-                </div>
+              <div className="flex gap-1.5 flex-wrap sm:flex-nowrap">
+                <button
+                  onClick={() => setModal("edit")}
+                  className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 rounded-lg text-[10px] font-semibold transition flex items-center gap-1 shadow-sm whitespace-nowrap"
+                >
+                  ✏️ Edit
+                </button>
+                <button
+                  onClick={() => setModal("reassign")}
+                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/80 rounded-lg text-[10px] font-semibold transition flex items-center gap-1 shadow-sm whitespace-nowrap"
+                >
+                  🔄 Reassign
+                </button>
                 {(isAdmin || isAssigner) && (
                   <button
                     onClick={handleDelete}
-                    className="w-full px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-medium transition whitespace-nowrap"
+                    className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-lg text-[10px] font-semibold transition flex items-center gap-1 shadow-sm whitespace-nowrap"
                   >
-                    🗑️ Delete Task
+                    🗑️ Delete
                   </button>
                 )}
               </div>
@@ -1318,7 +1353,7 @@ export default function TaskCard({ task, onUpdate }) {
                   setReviewStage("assigner");
                   setModal("review");
                 }}
-                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
+                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm whitespace-nowrap"
               >
                 🔍 Review / Approve
               </button>
@@ -1329,7 +1364,7 @@ export default function TaskCard({ task, onUpdate }) {
                   setReviewStage("department");
                   setModal("review");
                 }}
-                className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
+                className="px-2.5 py-1 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm whitespace-nowrap"
               >
                 🔍 Review / Approve
               </button>
@@ -1340,7 +1375,7 @@ export default function TaskCard({ task, onUpdate }) {
                   setReviewStage("branch");
                   setModal("review");
                 }}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
+                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm whitespace-nowrap"
               >
                 🔍 Review / Approve
               </button>
@@ -1352,7 +1387,7 @@ export default function TaskCard({ task, onUpdate }) {
                 <button
                   onClick={handleStart}
                   disabled={starting}
-                  className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm disabled:opacity-50"
+                  className="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm disabled:opacity-50 whitespace-nowrap"
                 >
                   {starting ? "Starting..." : "▶️ Start Task"}
                 </button>
@@ -1362,7 +1397,7 @@ export default function TaskCard({ task, onUpdate }) {
             {task.status === "in-progress" && isMine && (
               <button
                 onClick={() => setModal("submit")}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm"
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-semibold transition shadow-sm whitespace-nowrap"
               >
                 📤 Submit Task
               </button>
@@ -1370,7 +1405,7 @@ export default function TaskCard({ task, onUpdate }) {
 
             {/* Status badges */}
             {task.status === "submitted" && isMine && !canReview && (
-              <span className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-medium">
+              <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200/80 rounded-lg text-[10px] font-medium whitespace-nowrap">
                 {deptReviewStatus === "pending"
                   ? "⏳ Awaiting Department Review"
                   : deptReviewStatus === "approved" &&
@@ -1380,7 +1415,7 @@ export default function TaskCard({ task, onUpdate }) {
               </span>
             )}
             {["approved", "completed"].includes(task.status) && (
-              <span className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-[10px] font-semibold">
+              <span className="px-2.5 py-1 bg-green-50 text-green-700 border border-green-200/80 rounded-lg text-[10px] font-semibold whitespace-nowrap">
                 ✅ Approved
               </span>
             )}
@@ -1416,6 +1451,13 @@ export default function TaskCard({ task, onUpdate }) {
       )}
       {modal === "reassign" && (
         <ReassignModal
+          task={task}
+          onClose={() => setModal(null)}
+          onDone={closeModal}
+        />
+      )}
+      {modal === "delete" && (
+        <DeleteConfirmModal
           task={task}
           onClose={() => setModal(null)}
           onDone={closeModal}

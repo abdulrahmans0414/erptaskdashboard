@@ -36,6 +36,7 @@ import {
 } from "../../services/api";
 import SearchableCombobox from "../Common/SearchableCombobox";
 import toast from "react-hot-toast";
+import { useDocumentMetadata } from "../../hooks/useDocumentMetadata";
 
 const ROLE_LABELS = {
   admin: "Admin",
@@ -186,6 +187,13 @@ UserTableRow.displayName = "UserTableRow";
 
 const UserManagement = () => {
   const { user } = useAuth();
+  
+  useDocumentMetadata({
+    title: "User Control Panel - ERP Task Controller",
+    description: "Configure corporate roles, branches, and monitor live workloads securely.",
+    noIndex: true,
+  });
+
   const isAdmin = user?.role === "admin";
   const { settings } = useSettings();
   const departments = useMemo(() => settings?.departments || ["IT"], [settings]);
@@ -796,112 +804,133 @@ const UserManagement = () => {
 
               {/* Simple Single-Column Form */}
               <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                <div className="overflow-y-auto flex-1 px-8 py-6 space-y-5">
-                  {/* Name */}
-                  <Field label="Name" required>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className={inputClass}
-                      placeholder="Employee full name"
-                    />
-                  </Field>
-
-                  {/* Email Address */}
-                  <Field label="Email Address" required>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className={inputClass}
-                      placeholder="corporate@domain.com"
-                    />
-                  </Field>
-
-                  {/* Employee ID */}
-                  <Field label="Employee ID">
-                    <input
-                      type="text"
-                      placeholder="e.g. EMP1049"
-                      value={formData.employeeId}
-                      onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                      className={inputClass}
-                    />
-                  </Field>
-
-                  {/* Account Password */}
-                  <Field label={editingUser ? "Password" : "Password"} required={!editingUser}>
-                    <div className="relative">
+                <div className="overflow-y-auto flex-1 px-8 py-6 space-y-6">
+                  {/* Section: Account Identity */}
+                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                      <span>👤</span> Account Identity
+                    </h3>
+                    
+                    {/* Name */}
+                    <Field label="Name" required>
                       <input
-                        type={showPwd ? "text" : "password"}
-                        required={!editingUser}
-                        placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className={`${inputClass} pr-10`}
+                        type="text"
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className={inputClass}
+                        placeholder="Employee full name"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPwd((s) => !s)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
-                        tabIndex={-1}
+                    </Field>
+
+                    {/* Email Address */}
+                    <Field label="Email Address" required>
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className={inputClass}
+                        placeholder="corporate@domain.com"
+                      />
+                    </Field>
+
+                    {/* Employee ID */}
+                    <Field label="Employee ID">
+                      <input
+                        type="text"
+                        placeholder="e.g. EMP1049"
+                        value={formData.employeeId}
+                        onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                        className={inputClass}
+                      />
+                    </Field>
+                  </div>
+
+                  {/* Section: Corporate Mapping */}
+                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                      <span>🏢</span> Corporate Mapping
+                    </h3>
+
+                    {/* Role */}
+                    <Field label="Role" required>
+                      <select
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        className={inputClass}
                       >
-                        {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                      </button>
-                    </div>
-                  </Field>
+                        {(roles || []).map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_LABELS[r] || r}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
 
-                  {/* Role */}
-                  <Field label="Role" required>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className={inputClass}
-                    >
-                      {(roles || []).map((r) => (
-                        <option key={r} value={r}>
-                          {ROLE_LABELS[r] || r}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  {/* Branch */}
-                  <SearchableCombobox
-                    label="Branch"
-                    options={branchComboboxOptions}
-                    value={formData.branch}
-                    onChange={handleBranchChange}
-                    placeholder="Select branch..."
-                    isClearable={false}
-                  />
-
-                  {/* Department */}
-                  <SearchableCombobox
-                    label="Department"
-                    options={deptComboboxOptions}
-                    value={formData.department}
-                    onChange={handleDeptChange}
-                    placeholder="Select department..."
-                    isClearable={false}
-                  />
-
-                  {/* Status Toggle */}
-                  <label className="flex items-center justify-between gap-3 cursor-pointer bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-2xl px-4 py-3.5 transition select-none">
-                    <div>
-                      <p className="text-xs font-bold text-slate-700">Account Status</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Enable or disable employee system access</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={formData.isActive}
-                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                      className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500/20"
+                    {/* Branch */}
+                    <SearchableCombobox
+                      label="Branch"
+                      options={branchComboboxOptions}
+                      value={formData.branch}
+                      onChange={handleBranchChange}
+                      placeholder="Select branch..."
+                      isClearable={false}
                     />
-                  </label>
+
+                    {/* Department */}
+                    <SearchableCombobox
+                      label="Department"
+                      options={deptComboboxOptions}
+                      value={formData.department}
+                      onChange={handleDeptChange}
+                      placeholder="Select department..."
+                      isClearable={false}
+                    />
+                  </div>
+
+                  {/* Section: Security & Access */}
+                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                      <span>🔑</span> Security & Access
+                    </h3>
+
+                    {/* Account Password */}
+                    <Field label={editingUser ? "Password" : "Password"} required={!editingUser}>
+                      <div className="relative">
+                        <input
+                          type={showPwd ? "text" : "password"}
+                          required={!editingUser}
+                          placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          className={`${inputClass} pr-10`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPwd((s) => !s)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                        </button>
+                      </div>
+                    </Field>
+
+                    {/* Status Toggle */}
+                    <label className="flex items-center justify-between gap-3 cursor-pointer bg-white border border-slate-200 hover:border-slate-350 rounded-xl px-4 py-3 transition select-none">
+                      <div>
+                        <p className="text-xs font-bold text-slate-700">Account Status</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Enable or disable employee system access</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={formData.isActive}
+                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                        className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer"
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 {/* Footer Controls */}

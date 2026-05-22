@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { useSettings } from "../../context/SettingsContext";
 import { getBranches, getDeletedTasks, restoreTask } from "../../services/api";
+import { useDocumentMetadata } from "../../hooks/useDocumentMetadata";
 
 // ── Priority badge helpers ────────────────────────────
 const PRIORITY_STYLES = {
@@ -35,11 +36,27 @@ const STAT_META = [
 ];
 
 export default function Tasks() {
+  useDocumentMetadata({
+    title: "Tasks Management | ERP Task Manager",
+    noIndex: true,
+  });
+
   const dispatch = useDispatch();
   const { user } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const { items: allTasks, pagination, loading, dashboardStats } = useSelector((s) => s.tasks);
+
+  const [dbBranches, setDbBranches] = useState([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState({
+    search: "",
+    status: "all",
+    priority: "all",
+    department: "all",
+    branch: "all",
+  });
 
   const BRANCHES = useMemo(() => {
     return (dbBranches || []).length > 0
@@ -51,17 +68,6 @@ export default function Tasks() {
   const DEPTS = settings?.departments || [
     "IT", "HR", "Graphic", "Academic", "Finance", "Marketing", "Legal", "Transport", "Operations", "Admin"
   ];
-
-  const [showCreate, setShowCreate] = useState(false);
-  const [filters, setFilters] = useState({
-    search: "",
-    status: "all",
-    priority: "all",
-    department: "all",
-    branch: "all",
-  });
-  const [page, setPage] = useState(1);
-  const [dbBranches, setDbBranches] = useState([]);
 
   // Deleted local Recycle Bin modal states
 
@@ -244,7 +250,7 @@ export default function Tasks() {
         {STAT_META.map((s) => (
           <div
             key={s.l}
-            className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 flex items-center gap-3 border-l-4 ${s.accent} hover:shadow-md transition-shadow`}
+            className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 flex items-center gap-3 border-l-4 ${s.accent} hover:shadow-md hover-lift transition-all duration-300`}
           >
             <div className={`${s.iconBg} w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0`}>
               {s.icon}

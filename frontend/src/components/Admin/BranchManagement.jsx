@@ -14,6 +14,7 @@ import { useSettings } from "../../context/SettingsContext";
 import { useAuth } from "../../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import { useDocumentMetadata } from "../../hooks/useDocumentMetadata";
 
 const BRANCH_NAMES = [
   "Gaurabagh",
@@ -57,7 +58,7 @@ const Combobox = ({ label, value, onChange, options, placeholder, icon }) => {
 
   return (
     <div className="relative flex-1">
-      <label className="text-slate-500 font-medium text-xs mb-1.5 ml-1 block">
+      <label className="text-slate-550 font-semibold text-xs mb-1.5 ml-1 block">
         {label}
       </label>
       <div 
@@ -159,6 +160,13 @@ const Combobox = ({ label, value, onChange, options, placeholder, icon }) => {
 
 const BranchManagement = () => {
   const { user } = useAuth();
+  
+  useDocumentMetadata({
+    title: "Branch Control Panel - ERP Task Controller",
+    description: "Manage branch geographic profiles, allowable department catalogs, and assign governing heads.",
+    noIndex: true,
+  });
+
   const isAdmin = user?.role === "admin";
   const { settings } = useSettings();
   const allDepts = settings?.departments || [
@@ -840,170 +848,190 @@ const BranchManagement = () => {
                     )}
                   </AnimatePresence>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <Field label="Branch Name" required>
+                  {/* Section 1: Profile Details */}
+                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                      <span>🏢</span> Profile Details
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Branch Name" required>
+                        <input
+                          type="text"
+                          required
+                          value={formData.name}
+                          onChange={(e) =>
+                            setFormData({ ...formData, name: e.target.value })
+                          }
+                          className={inputClass}
+                          placeholder="e.g. Gaurabagh"
+                        />
+                      </Field>
+                      <Field label="Branch Code" required>
+                        <input
+                          type="text"
+                          required
+                          value={formData.code}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              code: e.target.value.toUpperCase(),
+                            })
+                          }
+                          className={inputClass}
+                          placeholder="e.g. GB"
+                          maxLength={5}
+                        />
+                      </Field>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Geography & Mapping */}
+                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                      <span>📍</span> Geography & Mapping
+                    </h3>
+                    
+                    <Field label="Location Landmark">
                       <input
                         type="text"
-                        required
-                        value={formData.name}
+                        value={formData.location}
                         onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
+                          setFormData({ ...formData, location: e.target.value })
                         }
                         className={inputClass}
-                        placeholder="e.g. Gaurabagh"
+                        placeholder="Street landmark, area"
                       />
                     </Field>
-                    <Field label="Branch Code" required>
-                      <input
-                        type="text"
-                        required
-                        value={formData.code}
+
+                    <Field label="Complete Address">
+                      <textarea
+                        value={formData.address}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            code: e.target.value.toUpperCase(),
-                          })
+                          setFormData({ ...formData, address: e.target.value })
+                        }
+                        className={`${inputClass} resize-none h-18 py-2`}
+                        placeholder="Detailed company address..."
+                      />
+                    </Field>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="City">
+                        <input
+                          type="text"
+                          value={formData.city}
+                          onChange={(e) =>
+                            setFormData({ ...formData, city: e.target.value })
+                          }
+                          className={inputClass}
+                        />
+                      </Field>
+                      <Field label="State">
+                        <input
+                          type="text"
+                          value={formData.state}
+                          onChange={(e) =>
+                            setFormData({ ...formData, state: e.target.value })
+                          }
+                          className={inputClass}
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Pincode">
+                        <input
+                          type="text"
+                          value={formData.pincode}
+                          onChange={(e) =>
+                            setFormData({ ...formData, pincode: e.target.value })
+                          }
+                          className={inputClass}
+                        />
+                      </Field>
+                      <Field label="Phone">
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, phone: e.target.value })
+                          }
+                          className={inputClass}
+                          placeholder="Landline / support"
+                        />
+                      </Field>
+                    </div>
+
+                    <Field label="Email Address">
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
                         }
                         className={inputClass}
-                        placeholder="e.g. GB"
-                        maxLength={5}
+                        placeholder="branch@company.com"
                       />
                     </Field>
                   </div>
 
-                  <Field label="Location Landmark">
-                    <input
-                      type="text"
-                      value={formData.location}
-                      onChange={(e) =>
-                        setFormData({ ...formData, location: e.target.value })
-                      }
-                      className={inputClass}
-                      placeholder="Street landmark, area"
-                    />
-                  </Field>
-
-                  <Field label="Complete Address">
-                    <textarea
-                      value={formData.address}
-                      onChange={(e) =>
-                        setFormData({ ...formData, address: e.target.value })
-                      }
-                      className={`${inputClass} resize-none h-18 py-2`}
-                      placeholder="Detailed company address..."
-                    />
-                  </Field>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <Field label="City">
-                      <input
-                        type="text"
-                        value={formData.city}
-                        onChange={(e) =>
-                          setFormData({ ...formData, city: e.target.value })
-                        }
-                        className={inputClass}
+                  {/* Section 3: Governance & Operations */}
+                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                      <span>👑</span> Governance & Operations
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <Combobox
+                        label="Branch Head"
+                        value={formData.head}
+                        onChange={(val) => setFormData({ ...formData, head: val })}
+                        options={allUsers}
+                        placeholder="Select head..."
+                        icon="👤"
                       />
-                    </Field>
-                    <Field label="State">
-                      <input
-                        type="text"
-                        value={formData.state}
-                        onChange={(e) =>
-                          setFormData({ ...formData, state: e.target.value })
-                        }
-                        className={inputClass}
+                      <Combobox
+                        label="Branch Manager"
+                        value={formData.manager}
+                        onChange={(val) => setFormData({ ...formData, manager: val })}
+                        options={allUsers}
+                        placeholder="Select manager..."
+                        icon="🧑‍💼"
                       />
-                    </Field>
-                  </div>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <Field label="Pincode">
-                      <input
-                        type="text"
-                        value={formData.pincode}
-                        onChange={(e) =>
-                          setFormData({ ...formData, pincode: e.target.value })
-                        }
-                        className={inputClass}
-                      />
-                    </Field>
-                    <Field label="Phone">
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
-                        }
-                        className={inputClass}
-                        placeholder="Landline / support"
-                      />
-                    </Field>
-                  </div>
-
-                  <Field label="Email Address">
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className={inputClass}
-                      placeholder="branch@company.com"
-                    />
-                  </Field>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <Combobox
-                      label="Branch Head"
-                      value={formData.head}
-                      onChange={(val) => setFormData({ ...formData, head: val })}
-                      options={allUsers}
-                      placeholder="Select head..."
-                      icon="👤"
-                    />
-                    <Combobox
-                      label="Branch Manager"
-                      value={formData.manager}
-                      onChange={(val) => setFormData({ ...formData, manager: val })}
-                      options={allUsers}
-                      placeholder="Select manager..."
-                      icon="🧑‍💼"
-                    />
-                  </div>
-
-                  {/* Mapped Departments checklist stacked vertically */}
-                  <div className="pt-4 border-t border-slate-200">
-                    <label className="text-slate-700 font-bold text-xs ml-1 block mb-3">
-                      📂 Allowed Departments for Mapped Operations
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(allDepts || []).map((dept) => {
-                        const checked = (formData.departments || [])?.includes(dept);
-                        return (
-                          <label
-                            key={dept}
-                            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition select-none ${
-                              checked
-                                ? "bg-blue-50/50 border-blue-200 text-blue-700 font-bold shadow-sm"
-                                : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                const nextDepts = e.target.checked
-                                  ? [...(formData.departments || []), dept]
-                                  : (formData.departments || []).filter((d) => d !== dept);
-                                setFormData({ ...formData, departments: nextDepts });
-                              }}
-                              className="w-4.5 h-4.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500/20"
-                            />
-                            {dept}
-                          </label>
-                        );
-                      })}
+                    {/* Mapped Departments checklist stacked vertically */}
+                    <div className="pt-2">
+                      <label className="text-slate-550 font-semibold text-xs ml-1 block mb-3">
+                        📂 Allowed Departments for Mapped Operations
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(allDepts || []).map((dept) => {
+                          const checked = (formData.departments || [])?.includes(dept);
+                          return (
+                            <label
+                              key={dept}
+                              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition select-none ${
+                                checked
+                                  ? "bg-blue-50/50 border-blue-200 text-blue-700 font-bold shadow-sm"
+                                  : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const nextDepts = e.target.checked
+                                    ? [...(formData.departments || []), dept]
+                                    : (formData.departments || []).filter((d) => d !== dept);
+                                  setFormData({ ...formData, departments: nextDepts });
+                                }}
+                                className="w-4.5 h-4.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500/20"
+                              />
+                              {dept}
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>

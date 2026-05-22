@@ -111,7 +111,7 @@ const TaskPerformance = () => {
     <div className="p-5 space-y-5 max-w-7xl mx-auto">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-5 text-white">
-        <h1 className="text-2xl font-bold">📊 Task Performance</h1>
+        <h1 className="text-2xl font-bold text-white">📊 Task Performance</h1>
         <p className="text-sm opacity-90 mt-1">
           Track completion rates, time efficiency & team performance
         </p>
