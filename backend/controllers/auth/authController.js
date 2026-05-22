@@ -173,7 +173,9 @@ export const reviewRegistration = async (req, res) => {
             await pending.save();
 
             // Send welcome email
-            await sendWelcomeEmail(pending.email, pending.name, pending.role, pending.department);
+            sendWelcomeEmail(pending.email, pending.name, pending.role, pending.department).catch(err => {
+                console.error('Failed to send welcome email:', err.message);
+            });
 
             res.json({ success: true, message: `${pending.name}'s account created successfully. Welcome email sent.` });
 
@@ -237,7 +239,9 @@ export const verifyOtp = async (req, res) => {
         await pending.save();
 
         // Send welcome email
-        await sendWelcomeEmail(pending.email, pending.name, pending.role, pending.department);
+        sendWelcomeEmail(pending.email, pending.name, pending.role, pending.department).catch(err => {
+            console.error('Failed to send welcome email:', err.message);
+        });
 
         const token = generateToken(user._id);
 

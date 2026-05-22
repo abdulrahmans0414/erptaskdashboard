@@ -120,10 +120,19 @@ export const updateSettings = async (req, res) => {
         if (emailConfig) {
             // Only update the password if a new one is provided (or if we explicitly want to clear it)
             // If the frontend sends '********' or '••••••••', it means password wasn't changed.
-            if (emailConfig.pass === '********' || emailConfig.pass === '••••••••') {
-                delete emailConfig.pass;
+            const updatedConfig = { ...emailConfig };
+            if (updatedConfig.pass === '********' || updatedConfig.pass === '••••••••') {
+                delete updatedConfig.pass;
             }
-            settings.emailConfig = { ...settings.emailConfig, ...emailConfig };
+            
+            // Merge fields safely without losing existing values like the password
+            settings.emailConfig = {
+                host: updatedConfig.host !== undefined ? updatedConfig.host : settings.emailConfig.host,
+                port: updatedConfig.port !== undefined ? updatedConfig.port : settings.emailConfig.port,
+                user: updatedConfig.user !== undefined ? updatedConfig.user : settings.emailConfig.user,
+                pass: updatedConfig.pass !== undefined ? updatedConfig.pass : settings.emailConfig.pass,
+                fromEmail: updatedConfig.fromEmail !== undefined ? updatedConfig.fromEmail : settings.emailConfig.fromEmail
+            };
         }
 
         await settings.save();

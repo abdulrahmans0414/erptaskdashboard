@@ -171,7 +171,7 @@ export const createTask = async (req, res) => {
                 try {
                     const member = await User.findById(memberId).select('email name');
                     if (member && member.email) {
-                        await sendEmailNotification(
+                        sendEmailNotification(
                             member.email,
                             'TASK_ASSIGNED',
                             {
@@ -185,10 +185,12 @@ export const createTask = async (req, res) => {
                                 senderId: req.user._id
                             },
                             task.taskFormAttachments
-                        );
+                        ).catch(emailErr => {
+                            console.error(`Failed to send email to team member ${memberId}:`, emailErr.message);
+                        });
                     }
-                } catch (emailErr) {
-                    console.error(`Failed to send email to team member ${memberId}:`, emailErr.message);
+                } catch (dbErr) {
+                    console.error(`Database lookup failed for team member ${memberId}:`, dbErr.message);
                 }
             }
         } else if (taskData.assignedTo) {
@@ -202,7 +204,7 @@ export const createTask = async (req, res) => {
             try {
                 const assignee = await User.findById(taskData.assignedTo).select('email name');
                 if (assignee && assignee.email) {
-                    await sendEmailNotification(
+                    sendEmailNotification(
                         assignee.email,
                         'TASK_ASSIGNED',
                         {
@@ -216,10 +218,12 @@ export const createTask = async (req, res) => {
                             senderId: req.user._id
                         },
                         task.taskFormAttachments
-                    );
+                    ).catch(emailErr => {
+                        console.error('Failed to send task assignment email:', emailErr.message);
+                    });
                 }
-            } catch (emailErr) {
-                console.error('Failed to send task assignment email:', emailErr.message);
+            } catch (dbErr) {
+                console.error('Database lookup failed for assignee:', dbErr.message);
             }
         }
         
@@ -550,7 +554,7 @@ export const startTask = async (req, res) => {
                     task._id
                 );
                 if (assigner.email) {
-                    await sendEmailNotification(
+                    sendEmailNotification(
                         assigner.email,
                         'TASK_UPDATED',
                         {
@@ -560,7 +564,9 @@ export const startTask = async (req, res) => {
                             taskId: task._id,
                             senderId: req.user._id
                         }
-                    );
+                    ).catch(emailErr => {
+                        console.error('Failed to send task update email:', emailErr.message);
+                    });
                 }
             }
         }
@@ -715,7 +721,7 @@ export const submitTaskWithTime = async (req, res) => {
                 );
 
                 if (reviewer.email) {
-                    await sendEmailNotification(
+                    sendEmailNotification(
                         reviewer.email,
                         'TASK_SUBMITTED',
                         {
@@ -729,7 +735,9 @@ export const submitTaskWithTime = async (req, res) => {
                             senderId: req.user._id
                         },
                         uploaded
-                    );
+                    ).catch(emailErr => {
+                        console.error('Failed to send task submission email:', emailErr.message);
+                    });
                 }
             }
         }
@@ -860,7 +868,7 @@ export const reviewTask = async (req, res) => {
                     task._id
                 );
                 if (branchHead.email) {
-                    await sendEmailNotification(branchHead.email, 'TASK_SUBMITTED', {
+                    sendEmailNotification(branchHead.email, 'TASK_SUBMITTED', {
                         employeeName: branchHead.name,
                         taskTitle: task.title,
                         dueDate: task.dueDate,
@@ -869,6 +877,8 @@ export const reviewTask = async (req, res) => {
                         feedback: `Dept Head (${req.user.name}) approved "${task.title}". Ready for branch head approval.`,
                         taskId: task._id,
                         senderId: req.user._id
+                    }).catch(emailErr => {
+                        console.error('Failed to send task submission email to branch head:', emailErr.message);
                     });
                 }
             }
@@ -883,7 +893,7 @@ export const reviewTask = async (req, res) => {
             }
 
             if (assignee?.email) {
-                await sendEmailNotification(
+                sendEmailNotification(
                     assignee.email,
                     status === 'approved' ? 'TASK_APPROVED' : 'TASK_REJECTED',
                     {
@@ -896,7 +906,9 @@ export const reviewTask = async (req, res) => {
                         taskId: task._id,
                         senderId: req.user._id
                     }
-                );
+                ).catch(emailErr => {
+                    console.error('Failed to send task status update email:', emailErr.message);
+                });
             }
         }
 
@@ -1193,7 +1205,7 @@ export const reassignTask = async (req, res) => {
                 try {
                     const member = await User.findById(memberId).select('email name');
                     if (member && member.email) {
-                        await sendEmailNotification(
+                        sendEmailNotification(
                             member.email,
                             'TASK_ASSIGNED',
                             {
@@ -1206,10 +1218,12 @@ export const reassignTask = async (req, res) => {
                                 taskId: task._id,
                                 senderId: req.user._id
                             }
-                        );
+                        ).catch(emailErr => {
+                            console.error(`Failed to send email to team member ${memberId}:`, emailErr.message);
+                        });
                     }
-                } catch (emailErr) {
-                    console.error(`Failed to send email to team member ${memberId}:`, emailErr.message);
+                } catch (dbErr) {
+                    console.error(`Database lookup failed for team member ${memberId}:`, dbErr.message);
                 }
             }
         } else if (task.assignedTo) {
@@ -1223,7 +1237,7 @@ export const reassignTask = async (req, res) => {
             try {
                 const assignee = await User.findById(task.assignedTo).select('email name');
                 if (assignee && assignee.email) {
-                    await sendEmailNotification(
+                    sendEmailNotification(
                         assignee.email,
                         'TASK_ASSIGNED',
                         {
@@ -1236,10 +1250,12 @@ export const reassignTask = async (req, res) => {
                             taskId: task._id,
                             senderId: req.user._id
                         }
-                    );
+                    ).catch(emailErr => {
+                        console.error('Failed to send task reassignment email:', emailErr.message);
+                    });
                 }
-            } catch (emailErr) {
-                console.error('Failed to send email to assignee:', emailErr.message);
+            } catch (dbErr) {
+                console.error('Database lookup failed for assignee:', dbErr.message);
             }
         }
 
