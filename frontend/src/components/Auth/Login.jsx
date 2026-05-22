@@ -21,17 +21,18 @@ const DEPARTMENTS = [
   "Legal",
   "Transport",
   "Operations",
+  "Admin",
 ];
 
 const BRANCHES = [
-  "Gaurabagh",
+  "Central Gaurabagh",
   "Vikas Nagar",
-  "Kalyanpur",
-  "Kursi",
   "Hive",
-  "Ring Road",
+  "Hifz Academy",
+  "Kursi Road",
   "Muazzam Nagar",
   "Aziz Nagar",
+  "Mailaraiganj",
 ];
 
 const ROLES = [
@@ -1153,9 +1154,12 @@ export default function AuthPage() {
           </div>
 
           {/* Centered Footer Copyright */}
-          <div className="text-center mt-8">
+          <div className="text-center mt-8 space-y-1">
             <p className="text-xs text-slate-500 font-medium">
               TaskGrid ERP v2.0 • © 2026 Scholars' Group Of Institution
+            </p>
+            <p className="text-[10px] text-slate-400/80 font-bold uppercase tracking-widest">
+              Developed By Abdul Rahman
             </p>
           </div>
         </div>
