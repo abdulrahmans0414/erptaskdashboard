@@ -384,7 +384,9 @@ const EmployeeProfile = () => {
 
   const doughnutOptions = {
     responsive: true,
-    maintainAspectRatio: true,
+    // false = Chart.js fills its parent container exactly; prevents canvas
+    // from overflowing its h-64 bounding box and overlapping nav panels.
+    maintainAspectRatio: false,
     cutout: "65%",
     plugins: {
       legend: {
@@ -760,7 +762,7 @@ const EmployeeProfile = () => {
               <h3 className="font-semibold text-slate-800 mb-4 text-center">
                 📊 Task Status Distribution
               </h3>
-              <div className="h-64 flex items-center justify-center">
+              <div className="relative w-full h-64 max-h-[260px] overflow-hidden flex items-center justify-center">
                 {stats.total > 0 ? (
                   <Doughnut data={statusChartData} options={doughnutOptions} />
                 ) : (

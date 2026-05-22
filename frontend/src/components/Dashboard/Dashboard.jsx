@@ -1598,18 +1598,22 @@ const Dashboard = () => {
           <h2 className="font-semibold text-sm mb-4">
             📈 Task Trend ({getTimeLabel()})
           </h2>
-          <div className="h-64">
+          {/* relative overflow-hidden = Chart.js canvas bounding box isolation */}
+          <div className="relative w-full h-64 max-h-[260px] overflow-hidden">
             <Bar data={barData} options={chartOptions} />
           </div>
         </div>
         <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
           <h2 className="font-semibold text-sm mb-4">📊 Status Distribution</h2>
-          <div className="h-64 flex items-center justify-center">
+          {/* relative + overflow-hidden = strict bounding box for Chart.js canvas */}
+          <div className="relative w-full h-64 max-h-[260px] overflow-hidden flex items-center justify-center">
             <Doughnut
               data={doughnutData}
               options={{
                 responsive: true,
-                maintainAspectRatio: true,
+                // false = canvas fills parent height exactly; prevents ring from
+                // blowing up beyond h-64 and overlapping the navigation panels.
+                maintainAspectRatio: false,
                 cutout: "65%",
                 plugins: {
                   legend: {

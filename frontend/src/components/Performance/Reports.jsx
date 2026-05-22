@@ -175,13 +175,18 @@ const TaskPerformance = () => {
       {empNames.length > 0 && (
         <div className="bg-white rounded-xl p-5 shadow-sm border">
           <h2 className="text-lg font-semibold mb-3">📈 Top 10 Employees</h2>
-          <div className="h-64">
+          {/* relative + overflow-hidden isolates Chart.js canvas within its grid cell */}
+          <div className="relative w-full h-64 max-h-[260px] overflow-hidden">
             <Bar
               data={barChartData}
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { position: "top" } },
+                scales: {
+                  y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: "rgba(0,0,0,0.05)" } },
+                  x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+                },
               }}
             />
           </div>

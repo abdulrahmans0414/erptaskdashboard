@@ -170,3 +170,24 @@ main {
 
 /* ── Prevent layout shifts ─────────────────────────── */
 img { display: block; }
+
+/* ── Chart.js / Canvas Layout Isolation ───────────────────
+   Prevents canvas elements from escaping their grid cells
+   and overlapping navigation or adjacent components.
+   ────────────────────────────────────────────────────────── */
+canvas {
+  /* Hard cap: a raw canvas can never exceed its parent width */
+  max-width: 100% !important;
+  display: block;
+}
+
+/* Utility class for chart wrappers — use instead of bare h-64 */
+.chart-frame {
+  position: relative;
+  width: 100%;
+  max-height: 260px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
