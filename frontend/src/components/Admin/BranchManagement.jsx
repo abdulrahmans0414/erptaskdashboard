@@ -332,6 +332,24 @@ const BranchManagement = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Sync selected branch or auto-select first one on desktop
+  useEffect(() => {
+    if (branches.length > 0) {
+      const stillExists = branches.find((b) => b._id === selectedBranch?._id);
+      if (stillExists) {
+        setSelectedBranch(stillExists);
+      } else {
+        if (window.innerWidth >= 1024) {
+          setSelectedBranch(branches[0]);
+        } else {
+          setSelectedBranch(null);
+        }
+      }
+    } else {
+      setSelectedBranch(null);
+    }
+  }, [branches]);
+
   useEffect(() => {
     if (!showModal && !showTransferModal && !confirmDelete) return;
     const onKey = (e) => {
@@ -614,290 +632,164 @@ const BranchManagement = () => {
             </div>
           ))}
         </div>
-
-        {/* Filter bar */}
-        <div className="relative">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm select-none">
-            🔍
-          </span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by branch name, code, location city, or landmark..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition shadow-sm"
-          />
-        </div>
-
-        {/* Core Branch grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-3xl border border-slate-200 p-5 animate-pulse space-y-4"
-              >
-                <div className="h-6 w-2/3 bg-slate-200 rounded-lg" />
-                <div className="h-4 w-1/3 bg-slate-200 rounded-md" />
-                <div className="space-y-2 pt-2">
-                  <div className="h-3 w-full bg-slate-100 rounded" />
-                  <div className="h-3 w-5/6 bg-slate-100 rounded" />
-                  <div className="h-3 w-4/6 bg-slate-100 rounded" />
-                </div>
+             {/* Split Master-Detail Layout */}
+        <div className="flex flex-col lg:flex-row gap-6 items-stretch w-full lg:h-[calc(100vh-17.5rem)] lg:min-h-[580px]">
+          
+          {/* LEFT PANEL - Master Branch List (30% width on lg) */}
+          <div className={`w-full lg:w-[320px] xl:w-[360px] flex-shrink-0 flex flex-col bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm ${selectedBranch ? 'hidden lg:flex' : 'flex'}`}>
+            {/* Header / Search inside Left Panel */}
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-3 flex-shrink-0">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Directory ({branches.length})
+                </span>
+                {isAdmin && (
+                  <button
+                    onClick={openCreate}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 transition"
+                  >
+                    + Add Branch
+                  </button>
+                )}
               </div>
-            ))}
-          </div>
-        ) : branches.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl border border-dashed border-slate-200 py-16 text-center shadow-sm"
-          >
-            <div className="text-6xl mb-4">🏬</div>
-            <p className="text-slate-700 font-bold text-lg">No Active Branches Found</p>
-            <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
-              {search
-                ? "We couldn't find any branch matching your search. Try resetting the text filter."
-                : 'Get started by creating your first business branch card using the "Add Branch" action.'}
-            </p>
-          </motion.div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {branches.map((branch) => (
-              <motion.div
-                layoutId={`branch-${branch._id}`}
-                key={branch._id}
-                onClick={() => setSelectedBranch(branch)}
-                className="group bg-white rounded-3xl shadow-sm border border-slate-200 p-5 hover:shadow-xl hover:-translate-y-1 hover:border-blue-200 cursor-pointer transition-all duration-200 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-slate-800 text-lg truncate leading-tight group-hover:text-blue-600 transition-colors">
-                        {branch.name}
-                      </h3>
-                      <span className="inline-block mt-2 text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100/50">
-                        {branch.code}
-                      </span>
-                    </div>
-                    {isAdmin && (
-                      <div className="flex gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => openEdit(branch)}
-                          title="Edit branch mapping matrix"
-                          className="p-1.5 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-400 transition"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(branch)}
-                          title="Soft-delete branch (Archive)"
-                          className="p-1.5 rounded-lg hover:bg-red-50 hover:text-red-600 text-slate-400 transition"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    )}
-                  </div>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs select-none">🔍</span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search branches..."
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-8.5 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-sm"
+                />
+              </div>
+            </div>
 
-                  <div className="mt-4 text-xs text-slate-650 space-y-2.5">
-                    <p className="flex gap-2 min-w-0 items-start">
-                      <span className="text-slate-400 text-sm">📍</span>
-                      <span className="truncate" title={branch.location}>
-                        {branch.location || "Location landmark not configured"}
-                      </span>
-                    </p>
-                    <p className="flex gap-2 min-w-0 items-center">
-                      <span className="text-slate-400 text-sm">🏙️</span>
-                      <span className="truncate">
-                        {branch.city || "—"}{branch.state ? `, ${branch.state}` : ""}
-                      </span>
-                    </p>
-
-                    {/* Populated Heads / Managers display */}
-                    {(() => {
-                      const headObj = typeof branch?.head === 'object' ? branch.head : null;
-                      const headName = (typeof (headObj?.name || branch?.headName) === 'string') ? (headObj?.name || branch.headName) : '';
-                      const managerObj = typeof branch?.manager === 'object' ? branch.manager : null;
-                      const managerName = (typeof managerObj?.name === 'string') ? managerObj?.name : '';
-                      
-                      const isSame = headName && managerName && headName.trim().toLowerCase() === managerName.trim().toLowerCase();
-                      
-                      if (isSame) {
-                        return (
-                          <div className="pt-2.5 border-t border-slate-100 mt-3" title="Combined branch authority">
-                            <p className="flex gap-2 items-center text-slate-700">
-                              <span className="text-slate-400 text-sm">👤</span>
-                              <span className="truncate font-semibold text-slate-800">
-                                Authority: {headName}
-                              </span>
-                            </p>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="pt-2.5 border-t border-slate-100 mt-3 space-y-1.5">
-                          {headName && (
-                            <p className="flex gap-2 items-center text-slate-700" title="Branch Head">
-                              <span className="text-slate-400 text-sm">👤</span>
-                              <span className="truncate font-medium text-slate-800">
-                                Head: {headName}
-                              </span>
-                            </p>
-                          )}
-                          {managerName && (
-                            <p className="flex gap-2 items-center text-slate-700" title="Branch Manager">
-                              <span className="text-slate-400 text-xs">🧑‍💼</span>
-                              <span className="truncate font-medium text-slate-800">
-                                Manager: {managerName}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
+            {/* List container */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+              {loading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-16 w-full bg-slate-100 rounded-2xl animate-pulse" />
+                  ))}
                 </div>
-
-                {/* Summary badges */}
-                {(() => {
+              ) : branches.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  No branches found
+                </div>
+              ) : (
+                branches.map((branch) => {
                   const branchKey = (branch?.name || "").trim().toLowerCase();
                   const branchUsers = usersByBranch[branchKey] || [];
-                  const deptsCount = branch?.departments?.length || 0;
+                  const isSelected = selectedBranch?._id === branch._id;
+
                   return (
-                    <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between text-slate-500 text-[10px] font-bold">
-                      <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/60 px-2 py-0.5 rounded-lg">
-                        <span>👥</span>
-                        <span className="text-slate-750 font-semibold">{branchUsers.length} Staff</span>
+                    <div
+                      key={branch._id}
+                      onClick={() => setSelectedBranch(branch)}
+                      className={`group p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100"
+                          : "bg-white border-slate-200 hover:bg-slate-50 text-slate-800"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0">
+                          <h4 className={`font-bold text-sm truncate ${isSelected ? "text-white" : "text-slate-800 group-hover:text-blue-600"}`}>
+                            {branch.name}
+                          </h4>
+                          <span className={`inline-block mt-1 text-[9px] font-mono font-bold tracking-wider px-1.5 py-0.2 rounded-md ${
+                            isSelected ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700 border border-blue-100/50"
+                          }`}>
+                            {branch.code}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] truncate ${isSelected ? "text-white/85" : "text-slate-400 font-medium"}`}>
+                          {branch.city || "—"}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/60 px-2 py-0.5 rounded-lg">
-                        <span>📂</span>
-                        <span className="text-slate-750 font-semibold">{deptsCount} Depts</span>
+
+                      <div className="mt-3.5 flex items-center justify-between text-[9px] font-bold">
+                        <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md ${
+                          isSelected ? "bg-white/10 text-white" : "bg-slate-50 border border-slate-200/60 text-slate-750"
+                        }`}>
+                          <span>👥</span>
+                          <span>{branchUsers.length} Staff</span>
+                        </div>
+                        <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md ${
+                          isSelected ? "bg-white/10 text-white" : "bg-slate-50 border border-slate-200/60 text-slate-750"
+                        }`}>
+                          <span>📂</span>
+                          <span>{branch.departments?.length || 0} Depts</span>
+                        </div>
                       </div>
                     </div>
                   );
-                })()}
-              </motion.div>
-            ))}
+                })
+              )}
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Branch Detail Drawer */}
-      {createPortal(
-        <AnimatePresence>
-          {selectedBranch && (
-            <div className="fixed inset-0 z-[80] flex justify-end">
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => {
-                  setSelectedBranch(null);
-                  setDrawerStaffSearch("");
-                }}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-              />
-              
-              {/* Drawer Content */}
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
-                className="relative bg-white w-full max-w-md h-full shadow-2xl flex flex-col z-50 border-l border-slate-200 overflow-hidden"
-              >
-                {/* Drawer Header */}
-                <div className="flex justify-between items-center px-6 py-5 border-b border-slate-150 flex-shrink-0 bg-slate-50/50">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🏢</span>
-                      <h2 className="text-lg font-bold text-slate-800 truncate" title={activeBranchData?.name}>
-                        {activeBranchData?.name}
-                      </h2>
+          {/* RIGHT PANEL - Branch Selected Command Center (70% width on lg) */}
+          <div className={`flex-1 flex flex-col bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm ${selectedBranch ? 'flex' : 'hidden lg:flex justify-center items-center p-8 bg-slate-50/20'}`}>
+            {!selectedBranch ? (
+              <div className="text-center max-w-sm">
+                <div className="text-5xl mb-4 select-none">🏢</div>
+                <h3 className="text-slate-800 font-extrabold text-base">Select a Branch</h3>
+                <p className="text-slate-500 text-xs mt-1.5 leading-relaxed">
+                  Choose a branch from the left master list directory to load its Command Center, staff roster, allowed departments, and contact configurations.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Detail Header */}
+                <div className="px-6 py-4.5 border-b border-slate-150 bg-slate-50/50 flex justify-between items-center flex-shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      onClick={() => setSelectedBranch(null)}
+                      className="lg:hidden p-1.5 rounded-lg bg-slate-200/60 hover:bg-slate-200 text-slate-700 text-xs transition font-semibold"
+                    >
+                      ← Back
+                    </button>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🏢</span>
+                        <h2 className="text-base font-black text-slate-800 truncate" title={activeBranchData?.name}>
+                          {activeBranchData?.name}
+                        </h2>
+                        <span className="inline-block text-[9px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100/50">
+                          {activeBranchData?.code}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-550 truncate mt-0.5">
+                        {activeBranchData?.city || "—"}{activeBranchData?.state ? `, ${activeBranchData?.state}` : ""}
+                      </p>
                     </div>
-                    <span className="inline-block mt-1.5 text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100/50">
-                      {activeBranchData?.code}
-                    </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedBranch(null);
-                      setDrawerStaffSearch("");
-                    }}
-                    className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition text-lg font-bold"
-                  >
-                    ×
-                  </button>
+
+                  {isAdmin && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => openEdit(activeBranchData)}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(activeBranchData)}
+                        className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                      >
+                        🗑️ Archive
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Drawer Body - Scrollable */}
+                {/* Detail Body (Scrollable) */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-                  {/* Stats Quick Grid */}
-                  {(() => {
-                    const branchKey = (activeBranchData?.name || "").trim().toLowerCase();
-                    const branchUsers = usersByBranch[branchKey] || [];
-                    const deptsCount = activeBranchData?.departments?.length || 0;
-                    return (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl p-3.5 text-center shadow-sm">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Staff</p>
-                          <p className="text-2xl font-black text-blue-600 mt-1">
-                            👥 {branchUsers.length}
-                          </p>
-                        </div>
-                        <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl p-3.5 text-center shadow-sm">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mapped Depts</p>
-                          <p className="text-2xl font-black text-indigo-600 mt-1">
-                            📂 {deptsCount}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Contact Info & Governance */}
-                  <div className="space-y-3.5 bg-slate-50/30 p-4.5 rounded-2xl border border-slate-200/50">
-                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200/60 pb-1.5 mb-2.5">
-                      📍 Branch Details & Authority
-                    </h3>
-                    <p className="text-xs flex items-start gap-2.5 min-w-0">
-                      <span className="text-slate-400 flex-shrink-0 text-sm">📍</span>
-                      <span className="text-slate-700">
-                        <strong className="text-slate-900 block font-semibold mb-0.5">Location Landmark</strong>
-                        {activeBranchData?.location || "No landmark configured"}
-                      </span>
-                    </p>
-                    <p className="text-xs flex items-start gap-2.5 min-w-0">
-                      <span className="text-slate-400 flex-shrink-0 text-sm">🏠</span>
-                      <span className="text-slate-700">
-                        <strong className="text-slate-900 block font-semibold mb-0.5">Full Address</strong>
-                        {activeBranchData?.address || "No address configured"}
-                      </span>
-                    </p>
-                    <p className="text-xs flex items-center gap-2.5 min-w-0">
-                      <span className="text-slate-400 flex-shrink-0 text-sm">🏙️</span>
-                      <span className="text-slate-750">
-                        <strong className="text-slate-900 inline font-semibold">City/State: </strong>
-                        {activeBranchData?.city || "—"}{activeBranchData?.state ? `, ${activeBranchData?.state}` : ""}
-                        {activeBranchData?.pincode ? ` (${activeBranchData?.pincode})` : ""}
-                      </span>
-                    </p>
-                    <p className="text-xs flex items-center gap-2.5 min-w-0">
-                      <span className="text-slate-400 flex-shrink-0 text-sm">📞</span>
-                      <span className="text-slate-750">
-                        <strong className="text-slate-900 inline font-semibold">Phone: </strong>
-                        {activeBranchData?.phone || "—"}
-                      </span>
-                    </p>
-                    <p className="text-xs flex items-center gap-2.5 min-w-0">
-                      <span className="text-slate-400 flex-shrink-0 text-sm">✉️</span>
-                      <span className="text-slate-755 truncate" title={activeBranchData?.email}>
-                        <strong className="text-slate-900 inline font-semibold">Email: </strong>
-                        {activeBranchData?.email || "—"}
-                      </span>
-                    </p>
+                  {/* Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    {/* Governance & Authority Card */}
                     {(() => {
                       const headObj = typeof activeBranchData?.head === 'object' ? activeBranchData.head : null;
                       const headName = (typeof (headObj?.name || activeBranchData?.headName) === 'string') ? (headObj?.name || activeBranchData.headName) : '';
@@ -905,43 +797,84 @@ const BranchManagement = () => {
                       const managerObj = typeof activeBranchData?.manager === 'object' ? activeBranchData.manager : null;
                       const managerName = (typeof managerObj?.name === 'string') ? managerObj?.name : '';
                       const managerEmail = (typeof managerObj?.email === 'string') ? managerObj?.email : '';
-                      
+
                       return (
-                        <div className="pt-2.5 border-t border-slate-200/60 mt-3 space-y-2">
-                          {headName && (
-                            <div className="text-xs flex gap-2.5 items-start">
-                              <span className="text-slate-400 flex-shrink-0 text-sm">👤</span>
-                              <div className="min-w-0">
-                                <span className="text-slate-900 font-semibold block">Branch Head</span>
-                                <span className="text-slate-700 font-medium block truncate">{headName}</span>
-                                {headEmail && <span className="text-[10px] text-slate-400 block truncate">{headEmail}</span>}
-                              </div>
-                            </div>
-                          )}
-                          {managerName && managerName !== headName && (
-                            <div className="text-xs flex gap-2.5 items-start pt-1.5 border-t border-slate-100/50">
-                              <span className="text-slate-400 flex-shrink-0 text-sm">🧑‍💼</span>
-                              <div className="min-w-0">
-                                <span className="text-slate-900 font-semibold block">Branch Manager</span>
-                                <span className="text-slate-700 font-medium block truncate">{managerName}</span>
-                                {managerEmail && <span className="text-[10px] text-slate-400 block truncate">{managerEmail}</span>}
-                              </div>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+                          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1.5 select-none">
+                            <span>👑</span> Governance & Authority
+                          </h3>
+                          {(!headName && !managerName) ? (
+                            <p className="text-xs text-slate-400 italic py-2">No governing head or manager assigned.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {headName && (
+                                <div className="text-xs flex gap-2.5 items-start">
+                                  <div className="h-7 w-7 rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center font-bold flex-shrink-0">
+                                    👤
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Branch Head</span>
+                                    <span className="text-slate-800 font-semibold block truncate mt-0.5">{headName}</span>
+                                    {headEmail && <span className="text-[10px] text-slate-500 block truncate">{headEmail}</span>}
+                                  </div>
+                                </div>
+                              )}
+                              {managerName && managerName !== headName && (
+                                <div className="text-xs flex gap-2.5 items-start pt-2 border-t border-slate-100/50">
+                                  <div className="h-7 w-7 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center font-bold flex-shrink-0">
+                                    🧑‍💼
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Branch Manager</span>
+                                    <span className="text-slate-800 font-semibold block truncate mt-0.5">{managerName}</span>
+                                    {managerEmail && <span className="text-[10px] text-slate-500 block truncate">{managerEmail}</span>}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       );
                     })()}
+
+                    {/* Contact & Geography Card */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2 text-xs">
+                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1.5 mb-1.5 select-none">
+                        <span>📍</span> Contact & Address
+                      </h3>
+                      <p className="flex items-start gap-2.5 text-slate-700 min-w-0">
+                        <span className="text-slate-400 text-xs flex-shrink-0">📍</span>
+                        <span className="truncate" title={activeBranchData?.location || "No landmark configured"}>
+                          <strong>Landmark: </strong>{activeBranchData?.location || "No landmark configured"}
+                        </span>
+                      </p>
+                      <p className="flex items-start gap-2.5 text-slate-700 min-w-0">
+                        <span className="text-slate-400 text-xs flex-shrink-0">🏠</span>
+                        <span className="whitespace-pre-line" title={activeBranchData?.address || "No address configured"}>
+                          <strong>Address: </strong>{activeBranchData?.address || "No address configured"}
+                        </span>
+                      </p>
+                      <p className="flex items-center gap-2.5 text-slate-700 min-w-0">
+                        <span className="text-slate-400 text-xs flex-shrink-0">📞</span>
+                        <span className="truncate"><strong>Phone: </strong>{activeBranchData?.phone || "—"}</span>
+                      </p>
+                      <p className="flex items-center gap-2.5 text-slate-700 min-w-0">
+                        <span className="text-slate-400 text-xs flex-shrink-0">✉️</span>
+                        <span className="truncate" title={activeBranchData?.email}><strong>Email: </strong>{activeBranchData?.email || "—"}</span>
+                      </p>
+                    </div>
+
                   </div>
 
-                  {/* Allowed Departments Pills */}
-                  <div className="space-y-2.5">
-                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      📂 Allowed Departments
+                  {/* Allowed Departments Section */}
+                  <div className="space-y-2.5 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1.5 select-none">
+                      <span>📂</span> Permitted Operating Departments
                     </h3>
                     {activeBranchData?.departments?.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic">No departments mapped to this branch.</p>
+                      <p className="text-xs text-slate-400 italic py-1">No departments mapped to this branch.</p>
                     ) : (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 pt-1">
                         {activeBranchData?.departments?.map((dept) => (
                           <span
                             key={dept}
@@ -954,12 +887,12 @@ const BranchManagement = () => {
                     )}
                   </div>
 
-                  {/* Staff Directory section */}
+                  {/* Staff Table Section (Command Center Table) */}
                   {(() => {
                     const branchKey = (activeBranchData?.name || "").trim().toLowerCase();
                     const branchUsers = usersByBranch[branchKey] || [];
                     
-                    // Filter staff in drawer
+                    // Filter staff list
                     const filteredStaff = branchUsers.filter((emp) => {
                       if (!drawerStaffSearch) return true;
                       const q = drawerStaffSearch.toLowerCase().trim();
@@ -971,100 +904,104 @@ const BranchManagement = () => {
                     });
 
                     return (
-                      <div className="space-y-3.5">
-                        <div className="flex justify-between items-center">
-                          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            👥 Staff Directory ({branchUsers.length})
+                      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                        {/* Table Controls */}
+                        <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
+                          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 select-none">
+                            <span>👥</span> Staff Directory ({branchUsers.length})
                           </h3>
+                          
+                          {branchUsers.length > 0 && (
+                            <div className="relative w-full sm:w-60">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs select-none">🔍</span>
+                              <input
+                                type="text"
+                                value={drawerStaffSearch}
+                                onChange={(e) => setDrawerStaffSearch(e.target.value)}
+                                placeholder="Search employees..."
+                                className="w-full bg-white border border-slate-200 rounded-xl pl-8.5 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                              />
+                            </div>
+                          )}
                         </div>
 
-                        {/* Search bar inside drawer */}
-                        {branchUsers.length > 0 && (
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs select-none">🔍</span>
-                            <input
-                              type="text"
-                              value={drawerStaffSearch}
-                              onChange={(e) => setDrawerStaffSearch(e.target.value)}
-                              placeholder="Search staff by name, role, dept..."
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8.5 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
-                            />
-                          </div>
-                        )}
-
+                        {/* Table Display */}
                         {filteredStaff.length === 0 ? (
-                          <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 border border-slate-200/60 border-dashed rounded-2xl">
-                            {branchUsers.length === 0 ? "No active staff assigned" : "No staff matches query"}
+                          <div className="py-12 text-center text-xs text-slate-400 bg-slate-50/20">
+                            {branchUsers.length === 0 ? "No active staff assigned to this branch" : "No staff members match search query"}
                           </div>
                         ) : (
-                          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                            {filteredStaff.map((emp) => {
-                              const initials = emp.name ? emp.name.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
-                              return (
-                                <div key={emp._id} className="flex items-center justify-between bg-white hover:bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80 transition-colors shadow-sm">
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    {emp.avatar ? (
-                                      <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 flex-shrink-0" />
-                                    ) : (
-                                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                                        {initials}
-                                      </div>
-                                    )}
-                                    <div className="min-w-0">
-                                      <p className="text-xs font-bold text-slate-800 truncate" title={emp.name}>{emp.name}</p>
-                                      <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-                                        <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[8px] uppercase tracking-wider font-bold border border-slate-200/50">{emp.department}</span>
-                                        <span className="truncate capitalize">• {emp?.role?.replace('-', ' ') || ""}</span>
-                                      </p>
-                                    </div>
-                                  </div>
-                                  {isAdmin && (
-                                    <button
-                                      onClick={() => handleOpenTransferModal(emp)}
-                                      title={`Reassign/Transfer ${emp.name}`}
-                                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-150 transition active:scale-95 text-xs flex-shrink-0 flex items-center gap-1 font-semibold"
-                                    >
-                                      <span>Reassign</span> 🔄
-                                    </button>
-                                  )}
-                                </div>
-                              );
-                            })}
+                          <div className="w-full overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  <th className="px-4 py-3">Employee</th>
+                                  <th className="px-4 py-3">Department</th>
+                                  <th className="px-4 py-3">Role</th>
+                                  {isAdmin && <th className="px-4 py-3 text-right">Actions</th>}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 text-xs">
+                                {filteredStaff.map((emp) => {
+                                  const initials = emp.name ? emp.name.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
+                                  return (
+                                    <tr key={emp._id} className="hover:bg-slate-50/55 transition-colors">
+                                      {/* Avatar + Name */}
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2.5">
+                                          {emp.avatar ? (
+                                            <img src={emp.avatar} alt="" className="w-7 h-7 rounded-full object-cover border border-slate-200 flex-shrink-0" />
+                                          ) : (
+                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
+                                              {initials}
+                                            </div>
+                                          )}
+                                          <div className="min-w-0">
+                                            <span className="font-semibold text-slate-800 block truncate" title={emp.name}>{emp.name}</span>
+                                            <span className="text-[10px] text-slate-450 block truncate">{emp.email}</span>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      {/* Department Tag */}
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-650 text-[9px] uppercase tracking-wider font-bold border border-slate-200/50">
+                                          {emp.department}
+                                        </span>
+                                      </td>
+                                      {/* Role */}
+                                      <td className="px-4 py-3 text-slate-550 capitalize whitespace-nowrap">
+                                        {emp?.role?.replace('-', ' ') || "—"}
+                                      </td>
+                                      {/* Actions */}
+                                      {isAdmin && (
+                                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                                          <button
+                                            onClick={() => handleOpenTransferModal(emp)}
+                                            title={`Reassign/Transfer ${emp.name}`}
+                                            className="px-2.5 py-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 hover:border-blue-150 transition active:scale-95 text-[11px] font-semibold inline-flex items-center gap-1"
+                                          >
+                                            <span>Transfer</span> 🔄
+                                          </button>
+                                        </td>
+                                      )}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
                         )}
                       </div>
                     );
                   })()}
-                </div>
 
-                {/* Drawer Footer Actions */}
-                {isAdmin && (
-                  <div className="p-6 border-t border-slate-200 bg-slate-50/50 flex-shrink-0 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(activeBranchData)}
-                      className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold transition text-xs flex items-center justify-center gap-1.5"
-                    >
-                      ✏️ Edit Branch
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setConfirmDelete(activeBranchData);
-                        setSelectedBranch(null);
-                      }}
-                      className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-750 text-white font-semibold transition text-xs flex items-center justify-center gap-1.5 shadow-sm"
-                    >
-                      🗑️ Archive Branch
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>,
-        document.getElementById("modal-root") || document.body
-      )}
+                </div>
+              </>
+            )}
+          </div>
+
+        </div>
+      </div>
 
       {/* Confirm Soft-Delete Modal */}
       {createPortal(
