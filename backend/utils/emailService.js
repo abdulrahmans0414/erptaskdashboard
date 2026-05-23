@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 
 import Settings from '../models/Settings.js';
 import EmailLog from '../models/EmailLog.js';
@@ -36,6 +37,9 @@ const createTransporter = async () => {
         tls: {
             rejectUnauthorized: false // Allow self-signed certs in dev
         },
+        lookup: (hostname, options, callback) => {
+            dns.lookup(hostname, { family: 4 }, callback);
+        },
         family: 4 // Force IPv4 to prevent connection issues on IPv6-unfriendly networks
     });
 };
@@ -72,6 +76,9 @@ const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
         greetingTimeout: 5000,
         socketTimeout: 10000,
         tls: { rejectUnauthorized: false },
+        lookup: (hostname, options, callback) => {
+            dns.lookup(hostname, { family: 4 }, callback);
+        },
         family: 4 // Force IPv4 to prevent connection issues on IPv6-unfriendly networks
     });
 
