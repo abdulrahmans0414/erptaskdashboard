@@ -67,7 +67,7 @@ const Layout = ({ children }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 selection:bg-blue-500/10 selection:text-blue-600 subpixel-antialiased">
+    <div className="h-screen w-screen overflow-hidden flex bg-gradient-to-br from-slate-50 via-white to-blue-50/20 selection:bg-blue-500/10 selection:text-blue-600 subpixel-antialiased">
       {/* Left Navigation Shell */}
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -92,14 +92,17 @@ const Layout = ({ children }) => {
         )}
       </AnimatePresence>
 
-      {/* Main Content Workspace Wrapper */}
-      {/* Note: Targeted transition properties avoid page-wide repaint lag. */}
-      <div
-        className="transition-[padding-left] duration-300 ease-in-out min-h-screen flex flex-col"
-        style={{
-          paddingLeft: isMobile ? 0 : sidebarCollapsed ? 80 : 256,
-        }}
-      >
+      {/* Desktop Sidebar Footprint Wrapper */}
+      {!isMobile && (
+        <div
+          className={`shrink-0 transition-all duration-300 ease-in-out h-full ${
+            sidebarCollapsed ? "w-20" : "w-64 min-w-[16rem]"
+          }`}
+        />
+      )}
+
+      {/* Main Content Workspace Viewing Deck */}
+      <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
         <Header
           sidebarCollapsed={sidebarCollapsed}
           user={user}
@@ -109,7 +112,7 @@ const Layout = ({ children }) => {
         />
 
         {/* Semantic Content Container with Micro-Animation and Isolated Error Recovery */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 mt-14 overflow-x-hidden">
+        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:p-8">
           <ErrorBoundary>
             <Suspense fallback={<DashboardSkeleton />}>
               <AnimatePresence mode="wait">
