@@ -198,7 +198,7 @@ const TaskPerformance = () => {
         <div className="p-4 border-b bg-gray-50">
           <h2 className="text-lg font-semibold">👥 Employee Performance</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">

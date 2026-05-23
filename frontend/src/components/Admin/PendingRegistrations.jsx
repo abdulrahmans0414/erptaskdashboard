@@ -122,7 +122,7 @@ export default function PendingRegistrations() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
+    <div className="w-full">
       <style>{`
         @keyframes slideUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }

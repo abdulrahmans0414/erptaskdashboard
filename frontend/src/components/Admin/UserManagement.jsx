@@ -541,7 +541,7 @@ const UserManagement = () => {
   }, [departmentsForSelectedBranch]);
 
   return (
-    <div className="min-h-screen bg-transparent text-slate-800 antialiased subpixel-antialiased">
+    <div className="w-full text-slate-800 antialiased subpixel-antialiased">
       <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-7">
         
         {/* Modern Enterprise Header */}
@@ -704,9 +704,8 @@ const UserManagement = () => {
         ) : (
           <>
             {/* Desktop Table View */}
-            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
+            <div className="hidden md:block w-full overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+              <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b border-slate-100 text-slate-500">
                     <tr>
                       <th className="text-xs font-bold uppercase tracking-wider py-4 px-5">
@@ -740,7 +739,6 @@ const UserManagement = () => {
                     ))}
                   </tbody>
                 </table>
-              </div>
 
               {/* Advanced Pagination UI (Desktop only, rendered at bottom of table) */}
               {pagination.pages > 1 && (

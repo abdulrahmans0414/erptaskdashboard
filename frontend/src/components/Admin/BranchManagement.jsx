@@ -513,7 +513,7 @@ const BranchManagement = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
+    <div className="w-full">
       <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -925,7 +925,7 @@ const BranchManagement = () => {
                       <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
                         <span>🏢</span> Profile Details
                       </h3>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Field label="Branch Name" required>
                           <input
                             type="text"
@@ -986,7 +986,7 @@ const BranchManagement = () => {
                         />
                       </Field>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Field label="City">
                           <input
                             type="text"

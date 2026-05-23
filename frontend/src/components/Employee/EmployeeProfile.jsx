@@ -465,7 +465,7 @@ const EmployeeProfile = () => {
 
   /* ------------------------------------------------------------------ */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30">
+    <div className="w-full text-slate-800 antialiased subpixel-antialiased">
       <style>{`
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1011,7 +1011,7 @@ const EmployeeProfile = () => {
             ) : (
               <>
                 {/* Desktop table */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block w-full overflow-x-auto rounded-lg border border-gray-200 bg-white">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-100">
