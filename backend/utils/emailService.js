@@ -49,36 +49,48 @@ const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
     const replyTo = process.env.REPLY_TO_EMAIL || 'spisitteam@gmail.com';
     mailOptions.replyTo = replyTo;
 
-    // 🌐 HTTP API Fallback (Resend) - Bypass Render's SMTP port blocks!
-    if (process.env.RESEND_API_KEY) {
+    // 🌐 HTTP API Fallback (Brevo / Sendinblue) - Bypass Render's SMTP port blocks!
+    if (process.env.BREVO_API_KEY) {
         try {
-            logger.info(`🌐 RESEND_API_KEY detected. Sending email to ${mailOptions.to} via Resend API...`);
-                        const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-            const fromName = process.env.RESEND_FROM_NAME || 'spistask';
-            const response = await fetch('https://api.resend.com/emails', {
+            logger.info(`🌐 BREVO_API_KEY detected. Sending email to ${mailOptions.to} via Brevo API...`);
+            const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || 'spisitteam@gmail.com';
+            const senderName = process.env.BREVO_SENDER_NAME || 'spistask';
+            
+            const response = await fetch('https://api.brevo.com/v3/smtp/email', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                    'Content-Type': 'application/json'
+                    'accept': 'application/json',
+                    'api-key': process.env.BREVO_API_KEY,
+                    'content-type': 'application/json'
                 },
                 body: JSON.stringify({
-                    from: `"${fromName}" <${fromEmail}>`,
-                    to: [mailOptions.to],
+                    sender: {
+                        name: senderName,
+                        email: senderEmail
+                    },
+                    to: [
+                        {
+                            email: mailOptions.to
+                        }
+                    ],
+                    replyTo: {
+                        email: replyTo,
+                        name: senderName
+                    },
                     subject: mailOptions.subject,
-                    html: mailOptions.html,
-                    text: mailOptions.text,
-                    reply_to: replyTo
+                    htmlContent: mailOptions.html,
+                    textContent: mailOptions.text
                 })
             });
             const resData = await response.json();
             if (response.ok) {
-                logger.info(`✅ Email successfully sent via Resend API: ${resData.id}`);
-                return { messageId: resData.id };
+                logger.info(`✅ Email successfully sent via Brevo API: ${resData.messageId}`);
+                return { messageId: resData.messageId };
             } else {
-                logger.warn(`⚠️ Resend API returned error: ${JSON.stringify(resData)}. Falling back to SMTP...`);
+                logger.warn(`⚠️ Brevo API returned error: ${JSON.stringify(resData)}. Falling back to SMTP...`);
             }
         } catch (apiError) {
-            logger.error(`❌ Resend API failed: ${apiError.message}. Falling back to SMTP...`);
+            logger.error(`❌ Brevo API failed: ${apiError.message}. Falling back to SMTP...`);
         }
     }
 
