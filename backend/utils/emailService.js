@@ -504,79 +504,106 @@ export const sendEmailNotification = async (toEmail, type, data, attachments = [
             return false;
         }
 
-        const content = `
-            <p style="color:#334155;font-size:16px;margin:0 0 8px;">
-                Hello <strong>${data.employeeName || 'User'}</strong> 👋
-            </p>
-            
-            <p style="color:#64748b;font-size:14px;margin:0 0 24px;line-height:1.6;">
-                ${getTaskMessage(type, data)}
-            </p>
-
-            <!-- Task Details Card -->
-            <div style="background:${config.badgeColor};border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:24px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                    <span style="font-size:18px;">${config.badgeIcon}</span>
-                    <span style="color:${config.badgeTextColor};font-size:13px;font-weight:700;">
-                        Task Details
-                    </span>
-                </div>
-                <div style="display:grid;gap:6px;">
-                    <div style="display:flex;align-items:center;gap:8px;color:#334155;font-size:13px;">
-                        <span>📝</span>
-                        <span><strong>Task:</strong> ${data.taskTitle || 'N/A'}</span>
-                    </div>
-                    ${data.dueDate ? `
-                    <div style="display:flex;align-items:center;gap:8px;color:#334155;font-size:13px;">
-                        <span>📅</span>
-                        <span><strong>Due:</strong> ${new Date(data.dueDate).toLocaleDateString('en-IN', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                        })}</span>
-                    </div>` : ''}
-                    ${data.priority ? `
-                    <div style="display:flex;align-items:center;gap:8px;color:#334155;font-size:13px;">
-                        <span>🏷️</span>
-                        <span><strong>Priority:</strong> 
-                            <span style="
-                                display:inline-block;
-                                padding:2px 10px;
-                                border-radius:12px;
-                                font-size:11px;
-                                font-weight:600;
-                                ${getPriorityStyle(data.priority)}
-                            ">${data.priority}</span>
-                        </span>
-                    </div>` : ''}
-                    ${data.department ? `
-                    <div style="display:flex;align-items:center;gap:8px;color:#334155;font-size:13px;">
-                        <span>🏢</span>
-                        <span><strong>Department:</strong> ${data.department}</span>
-                    </div>` : ''}
-                </div>
-            </div>
-
-            ${data.feedback ? `
-            <div style="background:#f8fafc;border-left:4px solid #64748b;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
-                <p style="color:#475569;font-size:13px;font-weight:700;margin:0 0 6px;">
-                    💬 Feedback/Note:
-                </p>
-                <p style="color:#64748b;font-size:13px;margin:0;line-height:1.5;">
-                    ${data.feedback}
-                </p>
-            </div>` : ''}
-
-            <div style="text-align:center;margin-top:24px;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/tasks" 
-                   style="display:inline-block;background:#2563eb;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">
-                    View Tasks →
-                </a>
-            </div>
-        `;
-
         const subject = getTaskSubject(type, data);
+
+        // Inline priority styles helper
+        const getPriorityStyleInline = (priority) => {
+            const p = (priority || '').toLowerCase();
+            if (p === 'high' || p === 'urgent') return 'background-color:#fef2f2;color:#dc2626;';
+            if (p === 'medium') return 'background-color:#fffbeb;color:#b45309;';
+            return 'background-color:#f0fdf4;color:#15803d;';
+        };
+
+        const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${subject}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:'Inter','Segoe UI',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;">
+    <!-- Outer Centered Container -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f7;padding:40px 20px;width:100% !important;line-height:100% !important;">
+        <tr>
+            <td align="center">
+                <!-- Inner Table with max-width 600px -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
+                    <!-- HEADER: Blue brand strip top (#2563eb) -->
+                    <tr>
+                        <td style="background-color:#2563eb;padding:28px 24px;text-align:center;border-top-left-radius:12px;border-top-right-radius:12px;">
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;font-family:'Inter','Segoe UI',Helvetica,Arial,sans-serif;">SPIS Task Manager</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- BODY CARD: White box with rounded corners (inherited) -->
+                    <tr>
+                        <td style="padding:40px 32px;font-size:15px;line-height:1.6;color:#334155;">
+                            <!-- Greeting: Hello [Name], -->
+                            <p style="margin:0 0 12px;font-size:18px;font-weight:700;color:#0f172a;">Hello ${data.employeeName || 'User'},</p>
+                            <!-- Intro -->
+                            <p style="margin:0 0 24px;color:#475569;font-size:15px;">You have a new task assignment.</p>
+                            
+                            <!-- DATA GRID: Display Task details in clean table layout -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-bottom:28px;background-color:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden;">
+                                <thead>
+                                    <tr style="background-color:#f1f5f9;">
+                                        <th colspan="2" style="padding:14px 16px;text-align:left;font-size:13px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;">Task Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;width:30%;font-size:13px;">Title</td>
+                                        <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;color:#0f172a;font-weight:600;font-size:14px;">${data.taskTitle || 'N/A'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#64748b;font-size:13px;">Priority</td>
+                                        <td style="padding:14px 16px;border-bottom:1px solid #e2e8f0;color:#0f172a;font-size:13px;">
+                                            <span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;${getPriorityStyleInline(data.priority)}">${data.priority || 'Medium'}</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:14px 16px;font-weight:600;color:#64748b;font-size:13px;">Due Date</td>
+                                        <td style="padding:14px 16px;color:#ef4444;font-weight:700;font-size:13px;">${data.dueDate ? new Date(data.dueDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            ${data.feedback ? `
+                            <!-- Optional Instructions Box -->
+                            <div style="background-color:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;padding:18px 20px;margin-bottom:28px;">
+                                <p style="margin:0 0 6px;color:#1e3a8a;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">📋 Instructions / Notes:</p>
+                                <p style="margin:0;color:#1e40af;font-size:13px;line-height:1.6;">${data.feedback}</p>
+                            </div>` : ''}
+
+                            <!-- CALL TO ACTION: A prominent Green Button (#16a34a) linking to the app -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:30px 0 10px;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="${process.env.FRONTEND_URL || 'https://erptaskdashboard.vercel.app'}/tasks" 
+                                           style="display:inline-block;background-color:#16a34a;color:#ffffff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px;box-shadow:0 4px 6px rgba(22,163,74,0.15);letter-spacing:0.2px;font-family:'Inter','Segoe UI',Helvetica,Arial,sans-serif;">
+                                            View Task Dashboard
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- FOOTER: Small gray text "Sent by SPIS ERP System" -->
+                    <tr>
+                        <td style="padding:24px 32px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;border-bottom-left-radius:12px;border-bottom-right-radius:12px;">
+                            <p style="margin:0;font-size:11px;color:#94a3b8;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;font-family:'Inter','Segoe UI',Helvetica,Arial,sans-serif;">Sent by SPIS ERP System</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+        `;
 
         // Format attachments for nodemailer
         const mailAttachments = (attachments || []).map(att => {
@@ -606,16 +633,11 @@ export const sendEmailNotification = async (toEmail, type, data, attachments = [
         }).filter(Boolean);
 
         await sendMailWithFallback({
-            from: `"TaskGrid ERP" <${process.env.EMAIL_USER}>`,
+            from: `"SPIS Task Manager" <${process.env.EMAIL_USER}>`,
             to: toEmail,
             subject,
-            html: createEmailTemplate({
-                headerColor: config.headerColor,
-                headerIcon: config.headerIcon,
-                headerTitle: config.headerTitle,
-                headerSubtitle: config.headerSubtitle,
-                content,
-            }),
+            html: htmlContent,
+            text: `Hello ${data.employeeName || 'User'},\n\nYou have a new task assignment.\nTask: ${data.taskTitle || 'N/A'}\nPriority: ${data.priority || 'Medium'}\nDue Date: ${data.dueDate || 'N/A'}\n\nView Task Dashboard: ${process.env.FRONTEND_URL || 'https://erptaskdashboard.vercel.app'}/tasks`,
             attachments: mailAttachments.length > 0 ? mailAttachments : undefined
         });
 
