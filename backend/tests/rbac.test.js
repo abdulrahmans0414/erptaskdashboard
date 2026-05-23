@@ -12,10 +12,12 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
+import dns from 'dns';
 import User from '../models/User.js';
 import Task from '../models/Task.js';
 
-// Load environmental variables
+// ✅ DNS Configuration - Fix for MongoDB Atlas SRV lookup
+dns.setServers(['1.1.1.1', '8.8.8.8']);
 dotenv.config();
 
 const BASE_URL = process.env.API_URL || 'http://localhost:5001';
