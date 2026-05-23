@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import dns from 'dns';
+import axios from 'axios';
 
 import Settings from '../models/Settings.js';
 import EmailLog from '../models/EmailLog.js';
@@ -53,44 +54,41 @@ const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
     if (process.env.BREVO_API_KEY) {
         try {
             logger.info(`🌐 BREVO_API_KEY detected. Sending email to ${mailOptions.to} via Brevo API...`);
-            const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || 'spisitteam@gmail.com';
-            const senderName = process.env.BREVO_SENDER_NAME || 'spistask';
             
-            const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
+            const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
+                sender: {
+                    name: 'SPIS Task Manager',
+                    email: 'spisitteam@gmail.com'
+                },
+                to: [
+                    {
+                        email: mailOptions.to
+                    }
+                ],
+                replyTo: {
+                    email: replyTo,
+                    name: 'SPIS Task Manager'
+                },
+                subject: mailOptions.subject,
+                htmlContent: mailOptions.html,
+                textContent: mailOptions.text
+            }, {
                 headers: {
                     'accept': 'application/json',
                     'api-key': process.env.BREVO_API_KEY,
                     'content-type': 'application/json'
-                },
-                body: JSON.stringify({
-                    sender: {
-                        name: senderName,
-                        email: senderEmail
-                    },
-                    to: [
-                        {
-                            email: mailOptions.to
-                        }
-                    ],
-                    replyTo: {
-                        email: replyTo,
-                        name: senderName
-                    },
-                    subject: mailOptions.subject,
-                    htmlContent: mailOptions.html,
-                    textContent: mailOptions.text
-                })
+                }
             });
-            const resData = await response.json();
-            if (response.ok) {
-                logger.info(`✅ Email successfully sent via Brevo API: ${resData.messageId}`);
-                return { messageId: resData.messageId };
+
+            if (response.status === 200 || response.status === 201) {
+                logger.info(`✅ Email successfully sent via Brevo API: ${response.data.messageId}`);
+                return { messageId: response.data.messageId };
             } else {
-                logger.warn(`⚠️ Brevo API returned error: ${JSON.stringify(resData)}. Falling back to SMTP...`);
+                logger.warn(`⚠️ Brevo API returned error status ${response.status}: ${JSON.stringify(response.data)}. Falling back to SMTP...`);
             }
         } catch (apiError) {
-            logger.error(`❌ Brevo API failed: ${apiError.message}. Falling back to SMTP...`);
+            const errResponse = apiError.response?.data ? JSON.stringify(apiError.response.data) : apiError.message;
+            logger.error(`❌ Brevo API failed: ${errResponse}. Falling back to SMTP...`);
         }
     }
 
