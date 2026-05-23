@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
 import {
   startTask,
@@ -1096,10 +1097,10 @@ function ActivityDrawer({ task, onClose }) {
 
 // ── MODAL WRAPPER ─────────────────────────────────────────────────
 function Modal({ title, onClose, children, wide }) {
-  return (
+  return createPortal(
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
       {onClose && (
-        <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       )}
       <div
         className={`bg-white rounded-2xl shadow-2xl w-full ${wide ? "max-w-lg" : "max-w-md"} max-h-[90vh] overflow-y-auto z-10`}
@@ -1115,7 +1116,8 @@ function Modal({ title, onClose, children, wide }) {
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.getElementById("modal-root") || document.body
   );
 }
 

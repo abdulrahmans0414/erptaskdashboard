@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useFocusTrap } from "../hooks/useAccessibility";
 
 /**
@@ -73,7 +74,7 @@ export default function ResponsiveModal({
     full: "max-w-full mx-4",
   };
 
-  return (
+  return createPortal(
     <div
       ref={backdropRef}
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
@@ -128,7 +129,8 @@ export default function ResponsiveModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.getElementById("modal-root") || document.body
   );
 }
 

@@ -239,11 +239,11 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
   const handleFileChange = (e) => setTaskFormFiles(Array.from(e.target.files || []));
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 overflow-y-auto antialiased">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -422,7 +422,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.getElementById("modal-root") || document.body
   );
 };
 

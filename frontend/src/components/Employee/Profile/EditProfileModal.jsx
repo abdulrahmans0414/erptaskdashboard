@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useSettings } from '../../../context/SettingsContext';
 
 const EditProfileModal = ({
@@ -14,7 +15,7 @@ const EditProfileModal = ({
 
     if (!showEditModal) return null;
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
                 <div className="sticky top-0 bg-white border-b border-slate-100 p-5 flex justify-between items-center rounded-t-2xl z-10">
@@ -166,7 +167,8 @@ const EditProfileModal = ({
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.getElementById('modal-root') || document.body
     );
 };
 

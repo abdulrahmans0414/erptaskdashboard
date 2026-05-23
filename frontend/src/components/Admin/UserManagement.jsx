@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
@@ -868,257 +869,263 @@ const UserManagement = () => {
       </div>
 
       {/* Clean Single-Column Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased">
-            <div className="fixed inset-0" onClick={handleCloseModal} />
-            <motion.div
-              initial={{ scale: 0.97, y: 15, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.97, y: 15, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.45 }}
-              className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-100 z-50 flex flex-col max-h-[92vh]"
-            >
-              {/* Header section with clean title */}
-              <div className="flex justify-between items-center px-8 py-5 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
-                <div>
-                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    {editingUser ? "✏️ Edit Employee" : "👤 Add New Employee"}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {editingUser ? "Update employee account details" : "Create a new employee profile"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition"
-                >
-                  <FiX size={16} />
-                </button>
-              </div>
-
-              {/* Dynamic Warning/Error Banner */}
-              {bannerError && (
-                <div className="bg-red-50 border-b border-red-100 text-red-650 px-6 py-2.5 text-xs font-semibold flex items-center gap-2 flex-shrink-0 animate-[slideUp_.25s_ease-out]">
-                  <FiAlertTriangle size={13} className="flex-shrink-0 text-red-400" />
-                  <span>{bannerError}</span>
-                </div>
-              )}
-
-              {/* Simple Single-Column Form */}
-              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                <div className="overflow-y-auto flex-1 px-8 py-6 space-y-6">
-                  {/* Section: Account Identity */}
-                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
-                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
-                      <span>👤</span> Account Identity
-                    </h3>
-                    
-                    {/* Name */}
-                    <Field label="Name" required>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className={inputClass}
-                        placeholder="Employee full name"
-                      />
-                      <p className="text-[10px] text-slate-500 mt-1 select-none">
-                        Enter the full first and last name of the employee (minimum 2 characters).
-                      </p>
-                    </Field>
-
-                    {/* Email Address */}
-                    <Field label="Email Address" required>
-                      <input
-                        type="email"
-                        required
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className={inputClass}
-                        placeholder="corporate@domain.com"
-                      />
-                      <p className="text-[10px] text-slate-500 mt-1 select-none">
-                        A unique corporate email address. Used for security authentication and notifications.
-                      </p>
-                    </Field>
-
-                    {/* Employee ID */}
-                    <Field label="Employee ID">
-                      <input
-                        type="text"
-                        placeholder="e.g. EMP1049"
-                        value={formData.employeeId}
-                        onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                        className={inputClass}
-                      />
-                      <p className="text-[10px] text-slate-500 mt-1 select-none">
-                        Unique corporate identifier assigned to the employee (alphanumeric).
-                      </p>
-                    </Field>
+      {createPortal(
+        <AnimatePresence>
+          {showModal && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased">
+              <div className="fixed inset-0" onClick={handleCloseModal} />
+              <motion.div
+                initial={{ scale: 0.97, y: 15, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.97, y: 15, opacity: 0 }}
+                transition={{ type: "spring", duration: 0.45 }}
+                className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-100 z-50 flex flex-col max-h-[92vh]"
+              >
+                {/* Header section with clean title */}
+                <div className="flex justify-between items-center px-8 py-5 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                      {editingUser ? "✏️ Edit Employee" : "👤 Add New Employee"}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {editingUser ? "Update employee account details" : "Create a new employee profile"}
+                    </p>
                   </div>
-
-                  {/* Section: Corporate Mapping */}
-                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
-                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
-                      <span>🏢</span> Corporate Mapping
-                    </h3>
-
-                    {/* Role */}
-                    <Field label="Role" required>
-                      <select
-                        value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                        className={inputClass}
-                      >
-                        {(roles || []).map((r) => (
-                          <option key={r} value={r}>
-                            {ROLE_LABELS[r] || r}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-
-                    {/* Branch */}
-                    <SearchableCombobox
-                      label="Branch"
-                      options={branchComboboxOptions}
-                      value={formData.branch}
-                      onChange={handleBranchChange}
-                      placeholder="Select branch..."
-                      isClearable={false}
-                    />
-
-                    {/* Department */}
-                    <SearchableCombobox
-                      label="Department"
-                      options={deptComboboxOptions}
-                      value={formData.department}
-                      onChange={handleDeptChange}
-                      placeholder="Select department..."
-                      isClearable={false}
-                    />
-                  </div>
-
-                  {/* Section: Security & Access */}
-                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
-                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
-                      <span>🔑</span> Security & Access
-                    </h3>
-
-                    {/* Account Password */}
-                    <Field label={editingUser ? "Password" : "Password"} required={!editingUser}>
-                      <div className="relative">
-                        <input
-                          type={showPwd ? "text" : "password"}
-                          required={!editingUser}
-                          placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          className={`${inputClass} pr-10`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPwd((s) => !s)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
-                          tabIndex={-1}
-                        >
-                          {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-1 select-none">
-                        {editingUser 
-                          ? "Leave blank to preserve existing password. To update, enter at least 6 characters." 
-                          : "Set a secure account password containing at least 6 characters."}
-                      </p>
-                    </Field>
-
-                    {/* Status Toggle */}
-                    <label className="flex items-center justify-between gap-3 cursor-pointer bg-white border border-slate-200 hover:border-slate-350 rounded-xl px-4 py-3 transition select-none">
-                      <div>
-                        <p className="text-xs font-bold text-slate-700">Account Status</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Enable or disable employee system access</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={formData.isActive}
-                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                        className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {/* Footer Controls */}
-                <div className="flex gap-3 px-8 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
+                    className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition"
+                  >
+                    <FiX size={16} />
+                  </button>
+                </div>
+
+                {/* Dynamic Warning/Error Banner */}
+                {bannerError && (
+                  <div className="bg-red-50 border-b border-red-100 text-red-650 px-6 py-2.5 text-xs font-semibold flex items-center gap-2 flex-shrink-0 animate-[slideUp_.25s_ease-out]">
+                    <FiAlertTriangle size={13} className="flex-shrink-0 text-red-400" />
+                    <span>{bannerError}</span>
+                  </div>
+                )}
+
+                {/* Simple Single-Column Form */}
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                  <div className="overflow-y-auto flex-1 px-8 py-6 space-y-6">
+                    {/* Section: Account Identity */}
+                    <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                      <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                        <span>👤</span> Account Identity
+                      </h3>
+                      
+                      {/* Name */}
+                      <Field label="Name" required>
+                        <input
+                          type="text"
+                          required
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          className={inputClass}
+                          placeholder="Employee full name"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1 select-none">
+                          Enter the full first and last name of the employee (minimum 2 characters).
+                        </p>
+                      </Field>
+
+                      {/* Email Address */}
+                      <Field label="Email Address" required>
+                        <input
+                          type="email"
+                          required
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className={inputClass}
+                          placeholder="corporate@domain.com"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1 select-none">
+                          A unique corporate email address. Used for security authentication and notifications.
+                        </p>
+                      </Field>
+
+                      {/* Employee ID */}
+                      <Field label="Employee ID">
+                        <input
+                          type="text"
+                          placeholder="e.g. EMP1049"
+                          value={formData.employeeId}
+                          onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                          className={inputClass}
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1 select-none">
+                          Unique corporate identifier assigned to the employee (alphanumeric).
+                        </p>
+                      </Field>
+                    </div>
+
+                    {/* Section: Corporate Mapping */}
+                    <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                      <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                        <span>🏢</span> Corporate Mapping
+                      </h3>
+
+                      {/* Role */}
+                      <Field label="Role" required>
+                        <select
+                          value={formData.role}
+                          onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                          className={inputClass}
+                        >
+                          {(roles || []).map((r) => (
+                            <option key={r} value={r}>
+                              {ROLE_LABELS[r] || r}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+
+                      {/* Branch */}
+                      <SearchableCombobox
+                        label="Branch"
+                        options={branchComboboxOptions}
+                        value={formData.branch}
+                        onChange={handleBranchChange}
+                        placeholder="Select branch..."
+                        isClearable={false}
+                      />
+
+                      {/* Department */}
+                      <SearchableCombobox
+                        label="Department"
+                        options={deptComboboxOptions}
+                        value={formData.department}
+                        onChange={handleDeptChange}
+                        placeholder="Select department..."
+                        isClearable={false}
+                      />
+                    </div>
+
+                    {/* Section: Security & Access */}
+                    <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                      <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                        <span>🔑</span> Security & Access
+                      </h3>
+
+                      {/* Account Password */}
+                      <Field label={editingUser ? "Password" : "Password"} required={!editingUser}>
+                        <div className="relative">
+                          <input
+                            type={showPwd ? "text" : "password"}
+                            required={!editingUser}
+                            placeholder={editingUser ? "Leave blank to keep unchanged" : "••••••••"}
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            className={`${inputClass} pr-10`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPwd((s) => !s)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1 select-none">
+                          {editingUser 
+                            ? "Leave blank to preserve existing password. To update, enter at least 6 characters." 
+                            : "Set a secure account password containing at least 6 characters."}
+                        </p>
+                      </Field>
+
+                      {/* Status Toggle */}
+                      <label className="flex items-center justify-between gap-3 cursor-pointer bg-white border border-slate-200 hover:border-slate-350 rounded-xl px-4 py-3 transition select-none">
+                        <div>
+                          <p className="text-xs font-bold text-slate-700">Account Status</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Enable or disable employee system access</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={formData.isActive}
+                          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                          className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Footer Controls */}
+                  <div className="flex gap-3 px-8 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm transition-all disabled:opacity-50 text-sm"
+                    >
+                      {submitting ? "Saving..." : editingUser ? "Save Changes" : "Create Employee"}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.getElementById("modal-root") || document.body
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {confirmDelete && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] overflow-y-auto antialiased">
+              <div className="fixed inset-0" onClick={() => setConfirmDelete(null)} />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 p-6 space-y-4"
+              >
+                <div className="flex items-center gap-3 text-rose-600">
+                  <div className="h-10 w-10 rounded-full bg-rose-50 flex items-center justify-center text-lg">
+                    <FiAlertTriangle />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-800">
+                    Delete Employee Account
+                  </h3>
+                </div>
+                <div className="text-slate-650 text-sm leading-relaxed">
+                  <p>Are you sure you want to delete <strong>{confirmDelete.name}</strong>?</p>
+                  <p className="mt-1.5 text-slate-400 text-xs">
+                    This action will soft-delete their profile, nullify task assignments, and transition active tasks to 'Unassigned'.
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(null)}
+                    className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold transition text-xs"
                   >
                     Cancel
                   </button>
                   <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm transition-all disabled:opacity-50 text-sm"
+                    type="button"
+                    onClick={() => handleDelete(confirmDelete)}
+                    className="flex-1 py-2.5 rounded-xl bg-red-650 hover:bg-red-700 text-white font-bold transition text-xs"
                   >
-                    {submitting ? "Saving..." : editingUser ? "Save Changes" : "Create Employee"}
+                    Confirm Delete
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {confirmDelete && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[100] overflow-y-auto antialiased">
-            <div className="fixed inset-0" onClick={() => setConfirmDelete(null)} />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 p-6 space-y-4"
-            >
-              <div className="flex items-center gap-3 text-rose-600">
-                <div className="h-10 w-10 rounded-full bg-rose-50 flex items-center justify-center text-lg">
-                  <FiAlertTriangle />
-                </div>
-                <h3 className="text-base font-bold text-slate-800">
-                  Delete Employee Account
-                </h3>
-              </div>
-              <div className="text-slate-650 text-sm leading-relaxed">
-                <p>Are you sure you want to delete <strong>{confirmDelete.name}</strong>?</p>
-                <p className="mt-1.5 text-slate-400 text-xs">
-                  This action will soft-delete their profile, nullify task assignments, and transition active tasks to 'Unassigned'.
-                </p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold transition text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(confirmDelete)}
-                  className="flex-1 py-2.5 rounded-xl bg-red-650 hover:bg-red-700 text-white font-bold transition text-xs"
-                >
-                  Confirm Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.getElementById("modal-root") || document.body
+      )}
     </div>
   );
 };

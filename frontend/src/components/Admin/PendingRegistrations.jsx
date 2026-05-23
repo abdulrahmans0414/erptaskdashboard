@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   getAllPendingRegistrations,
   reviewRegistration,
@@ -129,8 +130,8 @@ export default function PendingRegistrations() {
       `}</style>
 
       {/* OTP Modal */}
-      {otpInfo && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 animate-[fadeIn_.15s_ease-out]">
+      {otpInfo && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-[fadeIn_.15s_ease-out]">
           <div className="bg-white rounded-3xl shadow-2xl p-7 w-full max-w-sm text-center animate-[scaleIn_.2s_ease-out]">
             <div className="h-16 w-16 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 grid place-items-center text-3xl shadow-lg shadow-blue-200 mb-4">
               🔑
@@ -167,7 +168,8 @@ export default function PendingRegistrations() {
               Done
             </button>
           </div>
-        </div>
+        </div>,
+        document.getElementById("modal-root") || document.body
       )}
 
       <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-5">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTasks, fetchDashboardStats } from "../../store/features/tasks";
 import {
@@ -448,9 +449,9 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel, loading }) => {
     return () => document.removeEventListener("keydown", handleESC);
   }, [onCancel, loading]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fadeIn"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
       onClick={(e) => e.target === e.currentTarget && !loading && onCancel()}
     >
       <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scaleIn">
@@ -495,7 +496,8 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel, loading }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.getElementById("modal-root") || document.body
   );
 };
 
@@ -1739,9 +1741,9 @@ const Dashboard = () => {
       )}
 
       {/* Review Modal */}
-      {selectedTaskForReview && (
+      {selectedTaskForReview && createPortal(
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fadeIn"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
           onClick={(e) =>
             e.target === e.currentTarget &&
             !reviewLoading &&
@@ -1814,7 +1816,8 @@ const Dashboard = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.getElementById("modal-root") || document.body
       )}
 
       {confirmModal && (

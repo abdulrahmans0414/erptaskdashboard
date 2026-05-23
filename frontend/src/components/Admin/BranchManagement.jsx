@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   getBranches,
@@ -816,495 +817,502 @@ const BranchManagement = () => {
         )}
       </div>
 
-
-
       {/* Confirm Soft-Delete Modal */}
-      <AnimatePresence>
-        {confirmDelete && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
-            <div className="fixed inset-0" onClick={() => setConfirmDelete(null)} />
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md z-50 border border-slate-100"
-            >
-              <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mb-3">
-                ⚠️
-              </div>
-              <h3 className="text-lg font-extrabold text-slate-900">Archive branch?</h3>
-              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                This will soft-delete and hide the branch <strong>{confirmDelete.name}</strong> from the main view.
-                All active departments, staff members, and active task catalogs linked exclusively to this branch will be placed in an archived/hidden state. You can restore this structure fully at any time from the Recycle Bin.
-              </p>
-              <div className="flex gap-2.5 mt-5">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(confirmDelete)}
-                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition shadow-md shadow-red-100"
-                >
-                  Archive Branch
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* High-Fidelity Split-Pane Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased">
-            <div className="fixed inset-0" onClick={handleCloseModal} />
-            <motion.div
-              initial={{ scale: 0.97, y: 15, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.97, y: 15, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.45 }}
-              className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 z-50 flex flex-col max-h-[92vh]"
-            >
-              {/* Modal Header */}
-              <div className="flex justify-between items-center px-8 py-5 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
-                <div>
-                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    {editingBranch ? "🏢 Edit Branch Details" : "🏢 Add New Branch"}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {editingBranch
-                      ? `Configure settings for branch: ${editingBranch.name}`
-                      : "Initialize new business branch structures and assign active departments."}
-                  </p>
+      {createPortal(
+        <AnimatePresence>
+          {confirmDelete && (
+            <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+              <div className="fixed inset-0" onClick={() => setConfirmDelete(null)} />
+              <motion.div
+                initial={{ scale: 0.96, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.96, opacity: 0 }}
+                className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md z-50 border border-slate-100"
+              >
+                <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mb-3">
+                  ⚠️
                 </div>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition text-lg font-bold"
-                >
-                  ×
-                </button>
-              </div>
-
-              {/* Single-Column Scrollable Form */}
-              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                <div className="overflow-y-auto flex-1 px-8 py-6 space-y-5">
-                  {/* Absolute Banner Notification */}
-                  <AnimatePresence>
-                    {bannerError && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="bg-red-50 border-l-4 border-red-500 rounded-xl p-3.5 text-xs text-red-800 leading-relaxed flex gap-3 items-start shadow-sm"
-                      >
-                        <span className="text-base select-none">❌</span>
-                        <div className="flex-1">
-                          <strong className="font-bold block">Save Error Raised</strong>
-                          <span className="mt-0.5 block opacity-90">{bannerError}</span>
-                        </div>
-                        <button 
-                          type="button" 
-                          onClick={() => setBannerError(null)}
-                          className="text-red-400 hover:text-red-700 font-bold ml-1 text-base leading-none"
-                        >
-                          ×
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Section 1: Profile Details */}
-                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
-                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
-                      <span>🏢</span> Profile Details
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Field label="Branch Name" required>
-                        <input
-                          type="text"
-                          required
-                          value={formData.name}
-                          onChange={(e) =>
-                            setFormData({ ...formData, name: e.target.value })
-                          }
-                          className={inputClass}
-                          placeholder="e.g. Gaurabagh"
-                        />
-                      </Field>
-                      <Field label="Branch Code" required>
-                        <input
-                          type="text"
-                          required
-                          value={formData.code}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              code: e.target.value.toUpperCase(),
-                            })
-                          }
-                          className={inputClass}
-                          placeholder="e.g. GB"
-                          maxLength={5}
-                        />
-                      </Field>
-                    </div>
-                  </div>
-
-                  {/* Section 2: Geography & Mapping */}
-                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
-                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
-                      <span>📍</span> Geography & Mapping
-                    </h3>
-                    
-                    <Field label="Location Landmark">
-                      <input
-                        type="text"
-                        value={formData.location}
-                        onChange={(e) =>
-                          setFormData({ ...formData, location: e.target.value })
-                        }
-                        className={inputClass}
-                        placeholder="Street landmark, area"
-                      />
-                    </Field>
-
-                    <Field label="Complete Address">
-                      <textarea
-                        value={formData.address}
-                        onChange={(e) =>
-                          setFormData({ ...formData, address: e.target.value })
-                        }
-                        className={`${inputClass} resize-none h-18 py-2`}
-                        placeholder="Detailed company address..."
-                      />
-                    </Field>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <Field label="City">
-                        <input
-                          type="text"
-                          value={formData.city}
-                          onChange={(e) =>
-                            setFormData({ ...formData, city: e.target.value })
-                          }
-                          className={inputClass}
-                        />
-                      </Field>
-                      <Field label="State">
-                        <input
-                          type="text"
-                          value={formData.state}
-                          onChange={(e) =>
-                            setFormData({ ...formData, state: e.target.value })
-                          }
-                          className={inputClass}
-                        />
-                      </Field>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <Field label="Pincode">
-                        <input
-                          type="text"
-                          value={formData.pincode}
-                          onChange={(e) =>
-                            setFormData({ ...formData, pincode: e.target.value })
-                          }
-                          className={inputClass}
-                        />
-                      </Field>
-                      <Field label="Phone">
-                        <input
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) =>
-                            setFormData({ ...formData, phone: e.target.value })
-                          }
-                          className={inputClass}
-                          placeholder="Landline / support"
-                        />
-                      </Field>
-                    </div>
-
-                    <Field label="Email Address">
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                        className={inputClass}
-                        placeholder="branch@company.com"
-                      />
-                    </Field>
-                  </div>
-
-                  {/* Section 3: Governance & Operations */}
-                  <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
-                    <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
-                      <span>👑</span> Governance & Operations
-                    </h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <Combobox
-                        label="Branch Head"
-                        value={formData.head}
-                        onChange={(val) => setFormData({ ...formData, head: val })}
-                        placeholder="Select head..."
-                        icon="👤"
-                      />
-                      <Combobox
-                        label="Branch Manager"
-                        value={formData.manager}
-                        onChange={(val) => setFormData({ ...formData, manager: val })}
-                        placeholder="Select manager..."
-                        icon="🧑‍💼"
-                      />
-                    </div>
-
-                    {/* Mapped Departments checklist stacked vertically */}
-                    <div className="pt-2">
-                      <label className="text-slate-550 font-semibold text-xs ml-1 block mb-3">
-                        📂 Allowed Departments for Mapped Operations
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(allDepts || []).map((dept) => {
-                          const checked = (formData.departments || [])?.includes(dept);
-                          return (
-                            <label
-                              key={dept}
-                              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition select-none ${
-                                checked
-                                  ? "bg-blue-50/50 border-blue-200 text-blue-700 font-bold shadow-sm"
-                                  : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50"
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  const nextDepts = e.target.checked
-                                    ? [...(formData.departments || []), dept]
-                                    : (formData.departments || []).filter((d) => d !== dept);
-                                  setFormData({ ...formData, departments: nextDepts });
-                                }}
-                                className="w-4.5 h-4.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500/20"
-                              />
-                              {dept}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Unified Footer Actions */}
-                <div className="flex gap-3 px-8 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+                <h3 className="text-lg font-extrabold text-slate-900">Archive branch?</h3>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  This will soft-delete and hide the branch <strong>{confirmDelete.name}</strong> from the main view.
+                  All active departments, staff members, and active task catalogs linked exclusively to this branch will be placed in an archived/hidden state. You can restore this structure fully at any time from the Recycle Bin.
+                </p>
+                <div className="flex gap-2.5 mt-5">
                   <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
+                    onClick={() => setConfirmDelete(null)}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition"
                   >
                     Cancel
                   </button>
                   <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm transition-all disabled:opacity-50 text-sm"
+                    onClick={() => handleDelete(confirmDelete)}
+                    className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition shadow-md shadow-red-100"
                   >
-                    {submitting ? "Saving..." : editingBranch ? "Save Changes" : "Create Branch"}
+                    Archive Branch
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.getElementById("modal-root") || document.body
+      )}
 
-      {/* Transfer Employee Modal */}
-      <AnimatePresence>
-        {showTransferModal && transferEmployee && (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
-            <div 
-              className="fixed inset-0" 
-              onClick={() => {
-                setShowTransferModal(false);
-                setTransferEmployee(null);
-              }} 
-            />
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col z-50 border border-slate-100"
-            >
-              {/* Modal Header */}
-              <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50/30 to-indigo-50/30">
-                <div>
-                  <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                    <span>🔄</span> Transfer Employee
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Migrate employee tasks and branch scopes atomically.
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowTransferModal(false);
-                    setTransferEmployee(null);
-                  }}
-                  className="h-8 w-8 grid place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition text-lg"
-                >
-                  ×
-                </button>
-              </div>
-
-              <form onSubmit={handleTransferSubmit} className="px-6 py-5 space-y-6">
-                {/* Employee card */}
-                <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/50 flex items-center gap-3">
-                  {transferEmployee.avatar ? (
-                    <img
-                      src={transferEmployee.avatar}
-                      alt=""
-                      className="w-11 h-11 rounded-full object-cover border border-slate-200 flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      {transferEmployee.name
-                        ? transferEmployee.name
-                            .split(" ")
-                            .filter(Boolean)
-                            .map((n) => n[0])
-                            .join("")
-                            .substring(0, 2)
-                            .toUpperCase()
-                        : "??"}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <h4 className="font-extrabold text-slate-800 truncate leading-tight">
-                      {transferEmployee.name}
-                    </h4>
-                    <p className="text-[10px] text-slate-500 capitalize mt-0.5 font-medium">
-                      {transferEmployee?.role?.replace("-", " ") || ""}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100/60 text-blue-700 border border-blue-200/30">
-                        {transferEmployee.branch}
-                      </span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-200/70 text-slate-600">
-                        {transferEmployee.department}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Target Branch */}
-                <Field label="Target Destination Branch" required>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm select-none">
-                      🏢
-                    </span>
-                    <select
-                      value={transferForm.targetBranch}
-                      onChange={(e) => {
-                        const nextBranch = e.target.value;
-                         const selectedBranchObj = (branches || []).find(
-                           (b) => b.name === nextBranch
-                         );
-                        const allowedDepts = selectedBranchObj?.departments || [];
-                        setTransferForm({
-                          targetBranch: nextBranch,
-                          targetDept: allowedDepts.includes(transferForm.targetDept)
-                            ? transferForm.targetDept
-                            : allowedDepts[0] || "",
-                        });
-                      }}
-                      className={`${inputClass} pl-10 bg-slate-50 hover:bg-slate-100/50`}
-                      required
-                    >
-                      <option value="" disabled>
-                        Select target branch...
-                      </option>
-                      {(branches || []).map((b) => (
-                        <option key={b._id} value={b.name}>
-                          {b.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </Field>
-
-                {/* Target Department */}
-                <Field label="Target Mapped Department" required>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm select-none">
-                      📂
-                    </span>
-                    <select
-                      value={transferForm.targetDept}
-                      onChange={(e) =>
-                        setTransferForm({
-                          ...transferForm,
-                          targetDept: e.target.value,
-                        })
-                      }
-                      className={`${inputClass} pl-10 bg-slate-50 hover:bg-slate-100/50`}
-                      required
-                      disabled={!transferForm.targetBranch}
-                    >
-                      <option value="" disabled>
-                        Select target department...
-                      </option>
-                      {(
-                        (branches || []).find((b) => b?.name === transferForm.targetBranch)
-                          ?.departments || []
-                      ).map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </Field>
-
-                <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-3 text-[10px] text-amber-800 leading-relaxed flex gap-2.5 items-start">
-                  <span className="text-base select-none mt-0.5">💡</span>
+      {/* High-Fidelity Split-Pane Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {showModal && (
+            <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[99] overflow-y-auto antialiased">
+              <div className="fixed inset-0" onClick={handleCloseModal} />
+              <motion.div
+                initial={{ scale: 0.97, y: 15, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.97, y: 15, opacity: 0 }}
+                transition={{ type: "spring", duration: 0.45 }}
+                className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100 z-50 flex flex-col max-h-[92vh]"
+              >
+                {/* Modal Header */}
+                <div className="flex justify-between items-center px-8 py-5 border-b border-slate-150 sticky top-0 bg-white z-20 flex-shrink-0">
                   <div>
-                    <strong>Task Migration Pipeline:</strong> Transferring this employee automatically re-routes all their active and historic task logs to match the new branch metadata, ensuring flawless KPI tracking and dashboard stability.
+                    <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                      {editingBranch ? "🏢 Edit Branch Details" : "🏢 Add New Branch"}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {editingBranch
+                        ? `Configure settings for branch: ${editingBranch.name}`
+                        : "Initialize new business branch structures and assign active departments."}
+                    </p>
                   </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2 border-t border-slate-100">
                   <button
                     type="button"
+                    onClick={handleCloseModal}
+                    className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-850 flex items-center justify-center transition text-lg font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Single-Column Scrollable Form */}
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                  <div className="overflow-y-auto flex-1 px-8 py-6 space-y-5">
+                    {/* Absolute Banner Notification */}
+                    <AnimatePresence>
+                      {bannerError && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="bg-red-50 border-l-4 border-red-500 rounded-xl p-3.5 text-xs text-red-800 leading-relaxed flex gap-3 items-start shadow-sm"
+                        >
+                          <span className="text-base select-none">❌</span>
+                          <div className="flex-1">
+                            <strong className="font-bold block">Save Error Raised</strong>
+                            <span className="mt-0.5 block opacity-90">{bannerError}</span>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => setBannerError(null)}
+                            className="text-red-400 hover:text-red-700 font-bold ml-1 text-base leading-none"
+                          >
+                            ×
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Section 1: Profile Details */}
+                    <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                      <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                        <span>🏢</span> Profile Details
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="Branch Name" required>
+                          <input
+                            type="text"
+                            required
+                            value={formData.name}
+                            onChange={(e) =>
+                              setFormData({ ...formData, name: e.target.value })
+                            }
+                            className={inputClass}
+                            placeholder="e.g. Gaurabagh"
+                          />
+                        </Field>
+                        <Field label="Branch Code" required>
+                          <input
+                            type="text"
+                            required
+                            value={formData.code}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                code: e.target.value.toUpperCase(),
+                              })
+                            }
+                            className={inputClass}
+                            placeholder="e.g. GB"
+                            maxLength={5}
+                          />
+                        </Field>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Geography & Mapping */}
+                    <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                      <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                        <span>📍</span> Geography & Mapping
+                      </h3>
+                      
+                      <Field label="Location Landmark">
+                        <input
+                          type="text"
+                          value={formData.location}
+                          onChange={(e) =>
+                            setFormData({ ...formData, location: e.target.value })
+                          }
+                          className={inputClass}
+                          placeholder="Street landmark, area"
+                        />
+                      </Field>
+
+                      <Field label="Complete Address">
+                        <textarea
+                          value={formData.address}
+                          onChange={(e) =>
+                            setFormData({ ...formData, address: e.target.value })
+                          }
+                          className={`${inputClass} resize-none h-18 py-2`}
+                          placeholder="Detailed company address..."
+                        />
+                      </Field>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="City">
+                          <input
+                            type="text"
+                            value={formData.city}
+                            onChange={(e) =>
+                              setFormData({ ...formData, city: e.target.value })
+                            }
+                            className={inputClass}
+                          />
+                        </Field>
+                        <Field label="State">
+                          <input
+                            type="text"
+                            value={formData.state}
+                            onChange={(e) =>
+                              setFormData({ ...formData, state: e.target.value })
+                            }
+                            className={inputClass}
+                          />
+                        </Field>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="Pincode">
+                          <input
+                            type="text"
+                            value={formData.pincode}
+                            onChange={(e) =>
+                              setFormData({ ...formData, pincode: e.target.value })
+                            }
+                            className={inputClass}
+                          />
+                        </Field>
+                        <Field label="Phone">
+                          <input
+                            type="tel"
+                            value={formData.phone}
+                            onChange={(e) =>
+                              setFormData({ ...formData, phone: e.target.value })
+                            }
+                            className={inputClass}
+                            placeholder="Landline / support"
+                          />
+                        </Field>
+                      </div>
+
+                      <Field label="Email Address">
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData({ ...formData, email: e.target.value })
+                          }
+                          className={inputClass}
+                          placeholder="branch@company.com"
+                        />
+                      </Field>
+                    </div>
+
+                    {/* Section 3: Governance & Operations */}
+                    <div className="space-y-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover-lift">
+                      <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-2 mb-1 select-none">
+                        <span>👑</span> Governance & Operations
+                      </h3>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <Combobox
+                          label="Branch Head"
+                          value={formData.head}
+                          onChange={(val) => setFormData({ ...formData, head: val })}
+                          placeholder="Select head..."
+                          icon="👤"
+                        />
+                        <Combobox
+                          label="Branch Manager"
+                          value={formData.manager}
+                          onChange={(val) => setFormData({ ...formData, manager: val })}
+                          placeholder="Select manager..."
+                          icon="🧑‍💼"
+                        />
+                      </div>
+
+                      {/* Mapped Departments checklist stacked vertically */}
+                      <div className="pt-2">
+                        <label className="text-slate-550 font-semibold text-xs ml-1 block mb-3">
+                          📂 Allowed Departments for Mapped Operations
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(allDepts || []).map((dept) => {
+                            const checked = (formData.departments || [])?.includes(dept);
+                            return (
+                              <label
+                                key={dept}
+                                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition select-none ${
+                                  checked
+                                    ? "bg-blue-50/50 border-blue-200 text-blue-700 font-bold shadow-sm"
+                                    : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    const nextDepts = e.target.checked
+                                      ? [...(formData.departments || []), dept]
+                                      : (formData.departments || []).filter((d) => d !== dept);
+                                    setFormData({ ...formData, departments: nextDepts });
+                                  }}
+                                  className="w-4.5 h-4.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500/20"
+                                />
+                                {dept}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Unified Footer Actions */}
+                  <div className="flex gap-3 px-8 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="flex-1 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm transition-all disabled:opacity-50 text-sm"
+                    >
+                      {submitting ? "Saving..." : editingBranch ? "Save Changes" : "Create Branch"}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.getElementById("modal-root") || document.body
+      )}
+
+      {/* Transfer Employee Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {showTransferModal && transferEmployee && (
+            <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+              <div 
+                className="fixed inset-0" 
+                onClick={() => {
+                  setShowTransferModal(false);
+                  setTransferEmployee(null);
+                }} 
+              />
+              <motion.div
+                initial={{ scale: 0.96, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.96, opacity: 0 }}
+                className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col z-50 border border-slate-100"
+              >
+                {/* Modal Header */}
+                <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50/30 to-indigo-50/30">
+                  <div>
+                    <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                      <span>🔄</span> Transfer Employee
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Migrate employee tasks and branch scopes atomically.
+                    </p>
+                  </div>
+                  <button
                     onClick={() => {
                       setShowTransferModal(false);
                       setTransferEmployee(null);
                     }}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-semibold text-xs transition"
+                    className="h-8 w-8 grid place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition text-lg"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={transferSubmitting}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white py-2.5 rounded-xl font-semibold text-xs transition shadow-lg shadow-blue-200"
-                  >
-                    {transferSubmitting ? "Syncing..." : "Confirm Transfer"}
+                    ×
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+                <form onSubmit={handleTransferSubmit} className="px-6 py-5 space-y-6">
+                  {/* Employee card */}
+                  <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/50 flex items-center gap-3">
+                    {transferEmployee.avatar ? (
+                      <img
+                        src={transferEmployee.avatar}
+                        alt=""
+                        className="w-11 h-11 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {transferEmployee.name
+                          ? transferEmployee.name
+                              .split(" ")
+                              .filter(Boolean)
+                              .map((n) => n[0])
+                              .join("")
+                              .substring(0, 2)
+                              .toUpperCase()
+                          : "??"}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <h4 className="font-extrabold text-slate-800 truncate leading-tight">
+                        {transferEmployee.name}
+                      </h4>
+                      <p className="text-[10px] text-slate-500 capitalize mt-0.5 font-medium">
+                        {transferEmployee?.role?.replace("-", " ") || ""}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100/60 text-blue-700 border border-blue-200/30">
+                          {transferEmployee.branch}
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-200/70 text-slate-650">
+                          {transferEmployee.department}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Target Branch */}
+                  <Field label="Target Destination Branch" required>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm select-none">
+                        🏢
+                      </span>
+                      <select
+                        value={transferForm.targetBranch}
+                        onChange={(e) => {
+                          const nextBranch = e.target.value;
+                           const selectedBranchObj = (branches || []).find(
+                             (b) => b.name === nextBranch
+                           );
+                          const allowedDepts = selectedBranchObj?.departments || [];
+                          setTransferForm({
+                            targetBranch: nextBranch,
+                            targetDept: allowedDepts.includes(transferForm.targetDept)
+                              ? transferForm.targetDept
+                              : allowedDepts[0] || "",
+                          });
+                        }}
+                        className={`${inputClass} pl-10 bg-slate-50 hover:bg-slate-100/50`}
+                        required
+                      >
+                        <option value="" disabled>
+                          Select target branch...
+                        </option>
+                        {(branches || []).map((b) => (
+                          <option key={b._id} value={b.name}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </Field>
+
+                  {/* Target Department */}
+                  <Field label="Target Mapped Department" required>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm select-none">
+                        📂
+                      </span>
+                      <select
+                        value={transferForm.targetDept}
+                        onChange={(e) =>
+                          setTransferForm({
+                            ...transferForm,
+                            targetDept: e.target.value,
+                          })
+                        }
+                        className={`${inputClass} pl-10 bg-slate-50 hover:bg-slate-100/50`}
+                        required
+                        disabled={!transferForm.targetBranch}
+                      >
+                        <option value="" disabled>
+                          Select target department...
+                        </option>
+                        {(
+                          (branches || []).find((b) => b?.name === transferForm.targetBranch)
+                            ?.departments || []
+                        ).map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </Field>
+
+                  <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-3 text-[10px] text-amber-800 leading-relaxed flex gap-2.5 items-start">
+                    <span className="text-base select-none mt-0.5">💡</span>
+                    <div>
+                      <strong>Task Migration Pipeline:</strong> Transferring this employee automatically re-routes all their active and historic task logs to match the new branch metadata, ensuring flawless KPI tracking and dashboard stability.
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTransferModal(false);
+                        setTransferEmployee(null);
+                      }}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-semibold text-xs transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={transferSubmitting}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white py-2.5 rounded-xl font-semibold text-xs transition shadow-lg shadow-blue-200"
+                    >
+                      {transferSubmitting ? "Syncing..." : "Confirm Transfer"}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.getElementById("modal-root") || document.body
+      )}
     </div>
   );
 };

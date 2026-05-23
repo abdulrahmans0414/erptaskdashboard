@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { submitTaskWithAttachments } from "../../services/api";
 import toast from "react-hot-toast";
 
@@ -131,10 +132,10 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       )}
       <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl z-10">
         {/* Header */}
@@ -241,7 +242,7 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+            <div className="bg-red-50 border-border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
               <span className="flex-shrink-0">⚠️</span>
               <span>{error}</span>
             </div>
@@ -397,8 +398,8 @@ const SubmitTaskModal = ({ isOpen, onClose, task, onSubmitted }) => {
             </div>
           </form>
         </div>
-      </div>
-    </div>
+    </div>,
+    document.getElementById("modal-root") || document.body
   );
 };
 

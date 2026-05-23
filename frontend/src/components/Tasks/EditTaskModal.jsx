@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   updateTask,
@@ -201,11 +202,11 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[99] flex items-center justify-center p-4 overflow-y-auto antialiased">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -266,7 +267,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
                         key={preset.value}
                         type="button"
                         onClick={() => handleDatePreset(preset.value)}
-                        className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-blue-50/50 hover:border-blue-200 rounded-xl text-[11px] font-semibold text-slate-600 hover:text-blue-700 transition active:scale-95 shadow-sm"
+                        className="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-blue-50/50 hover:border-blue-200 rounded-xl text-[11px] font-semibold text-slate-655 hover:text-blue-700 transition active:scale-95 shadow-sm"
                       >
                         {preset.label}
                       </button>
@@ -373,7 +374,8 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.getElementById("modal-root") || document.body
   );
 };
 

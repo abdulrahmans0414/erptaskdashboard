@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { reassignTask, getUsers } from "../../services/api";
 import toast from "react-hot-toast";
 
@@ -72,11 +73,10 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
       setLoading(false);
     }
   };
-
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl p-5 w-full max-w-md shadow-2xl">
         <div className="flex justify-between mb-4">
           <h3 className="font-bold">🔄 Reassign Task</h3>
@@ -196,8 +196,8 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </div>,
+    document.getElementById("modal-root") || document.body
   );
 };
 
