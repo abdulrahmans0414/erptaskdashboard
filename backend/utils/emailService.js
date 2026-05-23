@@ -46,6 +46,9 @@ const createTransporter = async () => {
 
 // ── Transporter Wrapper with Fallback ────────────────────────────
 const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
+    const replyTo = process.env.REPLY_TO_EMAIL || 'spisitteam@gmail.com';
+    mailOptions.replyTo = replyTo;
+
     // 🌐 HTTP API Fallback (Resend) - Bypass Render's SMTP port blocks!
     if (process.env.RESEND_API_KEY) {
         try {
@@ -62,7 +65,8 @@ const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
                     to: [mailOptions.to],
                     subject: mailOptions.subject,
                     html: mailOptions.html,
-                    text: mailOptions.text
+                    text: mailOptions.text,
+                    reply_to: replyTo
                 })
             });
             const resData = await response.json();
