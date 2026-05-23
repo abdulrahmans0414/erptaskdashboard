@@ -53,7 +53,8 @@ const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
     if (process.env.RESEND_API_KEY) {
         try {
             logger.info(`🌐 RESEND_API_KEY detected. Sending email to ${mailOptions.to} via Resend API...`);
-            const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+                        const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+            const fromName = process.env.RESEND_FROM_NAME || 'spistask';
             const response = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {
@@ -61,7 +62,7 @@ const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    from: mailOptions.from ? mailOptions.from.replace(/<[^>]+>/, `<${fromEmail}>`) : `TaskGrid ERP <${fromEmail}>`,
+                    from: `"${fromName}" <${fromEmail}>`,
                     to: [mailOptions.to],
                     subject: mailOptions.subject,
                     html: mailOptions.html,
