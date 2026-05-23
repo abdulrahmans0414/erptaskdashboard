@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   createTask,
@@ -132,12 +133,12 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
   const departmentsForSelectedBranch = useMemo(() => {
     const b = formData.branch;
-    if (!b) return departments;
-    const branchObj = dbBranches.find((br) => br.name === b);
+    if (!b) return departments || [];
+    const branchObj = (dbBranches || []).find((br) => br?.name === b);
     if (branchObj?.departments?.length > 0) return branchObj.departments;
-    const set = new Set(users.filter((u) => u.branch === b).map((u) => u.department).filter(Boolean));
-    const allowed = departments.filter((d) => set.has(d));
-    return allowed.length > 0 ? allowed : departments;
+    const set = new Set((users || []).filter((u) => u?.branch === b).map((u) => u?.department).filter(Boolean));
+    const allowed = (departments || []).filter((d) => set.has(d));
+    return allowed.length > 0 ? allowed : (departments || []);
   }, [formData.branch, dbBranches, departments, users]);
 
   const handleBranchChange = useCallback((nextBranch) => {
