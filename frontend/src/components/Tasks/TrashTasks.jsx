@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { getDeletedTasks, restoreTask } from "../../services/api";
+import { getDeletedTasks, restoreTask, hardDeleteDocument } from "../../services/api";
 import toast from "react-hot-toast";
 
 const PRIORITY_STYLES = {
@@ -23,6 +23,7 @@ const TrashTasks = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [restoringId, setRestoringId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const loadDeleted = useCallback(async () => {
     setLoading(true);
@@ -60,6 +61,28 @@ const TrashTasks = () => {
       toast.error(error.response?.data?.message || "Failed to restore task");
     } finally {
       setRestoringId(null);
+    }
+  };
+
+  const handleDelete = async (id, title) => {
+    if (!window.confirm(`⚠️ WARNING: Are you sure you want to permanently delete task "${title}"?\n\nThis action is IRREVERSIBLE and will purge all Cloudinary attachments and database records permanently.`)) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      const response = await hardDeleteDocument("task", id);
+      if (response.data.success) {
+        toast.success(`🔥 Task "${title}" permanently purged!`);
+        setDeletedTasks((prev) => prev.filter((t) => t._id !== id));
+      } else {
+        toast.error(response.data.message || "Failed to permanently delete task");
+      }
+    } catch (error) {
+      console.error("Error permanently deleting task:", error);
+      toast.error(error.response?.data?.message || "Failed to permanently delete task");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -191,20 +214,37 @@ const TrashTasks = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleRestore(t._id, t.title)}
-                      disabled={restoringId === t._id}
-                      className="sm:self-center bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-emerald-250 transition flex items-center justify-center gap-1.5"
-                    >
-                      {restoringId === t._id ? (
-                        <>
-                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Restoring…
-                        </>
-                      ) : (
-                        <>🔄 Restore Task</>
-                      )}
-                    </button>
+                    <div className="flex flex-wrap sm:items-center gap-2 sm:self-center">
+                      <button
+                        onClick={() => handleRestore(t._id, t.title)}
+                        disabled={restoringId === t._id || deletingId === t._id}
+                        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition flex items-center justify-center gap-1.5"
+                      >
+                        {restoringId === t._id ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Restoring…
+                          </>
+                        ) : (
+                          <>🔄 Restore Task</>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(t._id, t.title)}
+                        disabled={restoringId === t._id || deletingId === t._id}
+                        className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition flex items-center justify-center gap-1.5"
+                      >
+                        {deletingId === t._id ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Purging…
+                          </>
+                        ) : (
+                          <>🔥 Permanent Delete</>
+                        )}
+                      </button>
+                    </div>
                   </motion.div>
                 );
               })}

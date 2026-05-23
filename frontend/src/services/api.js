@@ -7,3 +7,4 @@ export * from './api/departmentApi.js';
 export * from './api/branchApi.js';
 export * from './api/emailLogApi.js';
 export default api;
+export const hardDeleteDocument = (type, id) => api.delete(`/trash/${type}/${id}`);

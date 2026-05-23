@@ -14,6 +14,7 @@ import branchRoutes from './routes/branchRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import realtimeRoutes from './routes/realtimeRoutes.js';
 import emailLogRoutes from './routes/emailLogRoutes.js';
+import trashRoutes from './routes/trashRoutes.js';
 import User from './models/User.js';
 import Branch from './models/Branch.js';
 import { seedDatabase } from './seed.js';
@@ -173,6 +174,7 @@ app.use('/api/branches', branchRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/realtime', realtimeRoutes);
 app.use('/api/email-logs', emailLogRoutes);
+app.use('/api/trash', trashRoutes);
 
 app.get('/api/test-email', async (req, res) => {
     try {
