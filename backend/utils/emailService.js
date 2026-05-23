@@ -46,6 +46,37 @@ const createTransporter = async () => {
 
 // ── Transporter Wrapper with Fallback ────────────────────────────
 const sendMailWithFallback = async (mailOptions, forceEnv = false) => {
+    // 🌐 HTTP API Fallback (Resend) - Bypass Render's SMTP port blocks!
+    if (process.env.RESEND_API_KEY) {
+        try {
+            logger.info(`🌐 RESEND_API_KEY detected. Sending email to ${mailOptions.to} via Resend API...`);
+            const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    from: mailOptions.from ? mailOptions.from.replace(/<[^>]+>/, `<${fromEmail}>`) : `TaskGrid ERP <${fromEmail}>`,
+                    to: [mailOptions.to],
+                    subject: mailOptions.subject,
+                    html: mailOptions.html,
+                    text: mailOptions.text
+                })
+            });
+            const resData = await response.json();
+            if (response.ok) {
+                logger.info(`✅ Email successfully sent via Resend API: ${resData.id}`);
+                return { messageId: resData.id };
+            } else {
+                logger.warn(`⚠️ Resend API returned error: ${JSON.stringify(resData)}. Falling back to SMTP...`);
+            }
+        } catch (apiError) {
+            logger.error(`❌ Resend API failed: ${apiError.message}. Falling back to SMTP...`);
+        }
+    }
+
     let host = process.env.EMAIL_HOST || 'smtp.gmail.com';
     let port = parseInt(process.env.EMAIL_PORT, 10) || 587;
     let user = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : '';
