@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTasks, setPollingStatus, fetchDashboardStats } from "../../store/features/tasks";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import TaskCard from "./TaskCard";
 import CreateTaskModal from "./CreateTaskModal";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,6 +45,7 @@ export default function Tasks() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
+  const location = useLocation();
   const { items: allTasks, pagination, loading, dashboardStats } = useSelector((s) => s.tasks);
 
   const [dbBranches, setDbBranches] = useState([]);
@@ -126,14 +127,23 @@ export default function Tasks() {
     return () => clearTimeout(timer);
   }, [filters.search]);
 
-  // Read URL search query param if present on mount to interlink from Email Center
+  // Read URL search query param or status if present or changes
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const searchParam = params.get("search");
-    if (searchParam) {
-      setFilters((prev) => ({ ...prev, search: searchParam }));
-    }
-  }, []);
+    const statusParam = params.get("status");
+    setFilters((prev) => {
+      const next = { ...prev };
+      if (searchParam) next.search = searchParam;
+      if (statusParam) {
+        const validStatuses = ["all", "pending", "in-progress", "submitted", "approved", "rejected"];
+        if (validStatuses.includes(statusParam)) {
+          next.status = statusParam;
+        }
+      }
+      return next;
+    });
+  }, [location.search]);
 
   // Clamp filter options to user's authorized scope
   useEffect(() => {
@@ -211,60 +221,73 @@ export default function Tasks() {
 
 
 
-      {/* ── Header ───────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">📋 Tasks</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            {user?.name} · {user?.role?.replace("-", " ")} · {user?.branch}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <button
-            onClick={() => load()}
-            className="px-3 py-2 text-sm bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition font-medium text-slate-600 shadow-sm"
-          >
-            🔄 Refresh
-          </button>
-          {canAssign && (
-            <>
-              <Link
-                to="/tasks/trash"
-                className="px-3 py-2 text-sm bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition font-medium text-slate-600 hover:text-red-600 shadow-sm flex items-center gap-1.5"
-              >
-                🗑️ <span className="hidden sm:inline">Deleted Tasks</span>
-              </Link>
-              <button
-                onClick={() => setShowCreate(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition shadow-sm shadow-blue-500/20"
-              >
-                + Assign Task
-              </button>
-            </>
-          )}
+      {/* ── Header (Unified Card Style matching Dashboard.jsx) ── */}
+      <div className={`bg-gradient-to-br ${["admin", "department-head", "branch-head"].includes(user?.role) ? "from-slate-800 to-slate-950" : "from-blue-600 via-blue-700 to-indigo-700"} rounded-2xl p-5 md:p-6 text-white shadow-xl animate-fadeIn`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">📋 Tasks</h1>
+            <p className="text-slate-200/90 text-xs mt-1.5 font-medium leading-relaxed capitalize">
+              {user?.name} • {user?.role?.replace(/-/g, " ")}
+              {user?.department && user.department.toLowerCase() !== user.role?.toLowerCase() && ` • ${user.department}`}
+              {user?.branch && ` • ${user.branch}`}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => load()}
+              className="flex-1 sm:flex-initial px-3.5 py-2 text-xs bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-300 font-semibold tracking-wide text-white"
+            >
+              🔄 Refresh
+            </button>
+            {canAssign && (
+              <>
+                <Link
+                  to="/tasks/trash"
+                  className="flex-1 sm:flex-initial px-3.5 py-2 text-xs bg-white/10 hover:bg-red-500/20 border border-white/10 rounded-xl transition-all duration-300 font-semibold tracking-wide text-white flex items-center justify-center gap-1.5"
+                >
+                  🗑️ <span className="hidden sm:inline">Deleted Tasks</span>
+                </Link>
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all duration-300 active:scale-95"
+                >
+                  + Assign Task
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ── Stat Cards (Premium Glassmorphic Overhaul) ─ */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-        {STAT_META.map((s) => (
-          <div
-            key={s.l}
-            className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 flex items-center gap-3 border-l-4 ${s.accent} hover:shadow-md hover-lift transition-all duration-300`}
-          >
-            <div className={`${s.iconBg} w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0`}>
-              {s.icon}
+        {STAT_META.map((s) => {
+          const filterVal = s.key === "total" ? "all" : s.key === "inProgress" ? "in-progress" : s.key;
+          const isActive = filters.status === filterVal;
+          return (
+            <div
+              key={s.l}
+              onClick={() => setF("status", filterVal)}
+              className={`bg-white rounded-2xl border p-3.5 flex items-center gap-3 border-l-4 ${s.accent} cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ${
+                isActive 
+                  ? "border-slate-350 shadow-md ring-2 ring-blue-500/10" 
+                  : "border-slate-100 shadow-sm"
+              }`}
+            >
+              <div className={`${s.iconBg} w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 font-bold`}>
+                {s.icon}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider leading-none">
+                  {s.l}
+                </p>
+                <p className="text-2xl font-bold text-slate-800 mt-0.5 leading-none">
+                  {stats[s.key]}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider leading-none">
-                {s.l}
-              </p>
-              <p className="text-2xl font-bold text-slate-800 mt-0.5 leading-none">
-                {stats[s.key]}
-              </p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Filters ──────────────────────────────────── */}
@@ -297,11 +320,22 @@ export default function Tasks() {
               }
               className="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 capitalize disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
             >
-              {opts.map((o) => (
-                <option key={o} value={o} className="capitalize">
-                  {o === "all" ? `All ${k}s` : o}
-                </option>
-              ))}
+              {opts.map((o) => {
+                let label = o;
+                if (o === "all") {
+                  if (k === "status") label = "All Statuses";
+                  else if (k === "priority") label = "All Priorities";
+                  else if (k === "department") label = "All Departments";
+                  else if (k === "branch") label = "All Branches";
+                } else {
+                  label = o.replace("-", " ");
+                }
+                return (
+                  <option key={o} value={o} className="capitalize">
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           ))}
         </div>

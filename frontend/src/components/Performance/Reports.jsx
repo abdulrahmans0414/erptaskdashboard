@@ -304,42 +304,6 @@ const TaskPerformance = () => {
         )}
       </div>
 
-      {/* Weekly Trend */}
-      {stats?.weeklyTrend && stats.weeklyTrend.length > 0 && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border">
-          <h2 className="text-lg font-semibold mb-4 text-slate-800">📅 Weekly Trend</h2>
-          <div className="space-y-3">
-            {stats.weeklyTrend.map((day) => (
-              <div key={day.day} className="flex items-center gap-4">
-                <div className="w-24 text-sm font-semibold text-slate-600">
-                  {day.day}
-                </div>
-                <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden flex">
-                  <div
-                    className="bg-green-500 h-full text-[10px] text-white flex items-center justify-center font-bold"
-                    style={{
-                      width: `${(day.completed / (day.completed + day.pending || 1)) * 100}%`,
-                    }}
-                  >
-                    {day.completed > 0 && day.completed}
-                  </div>
-                  <div
-                    className="bg-yellow-400 h-full text-[10px] text-white flex items-center justify-center font-bold"
-                    style={{
-                      width: `${(day.pending / (day.completed + day.pending || 1)) * 100}%`,
-                    }}
-                  >
-                    {day.pending > 0 && day.pending}
-                  </div>
-                </div>
-                <div className="text-xs text-slate-500 font-semibold w-24">
-                  ✅ {day.completed} Done · ⏳ {day.pending} Active
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

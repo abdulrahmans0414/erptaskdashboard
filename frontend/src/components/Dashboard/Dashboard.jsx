@@ -792,15 +792,16 @@ const Dashboard = () => {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
-            { label: "Total Tasks", value: stats.totalTasks, bg: "bg-slate-50/60 border-slate-200/80 text-slate-700", fill: "bg-slate-100 text-slate-600" },
-            { label: "Pending", value: stats.pendingTasks, bg: "bg-amber-50/40 border-amber-100 text-amber-700", fill: "bg-amber-100/60 text-amber-600" },
-            { label: "In Progress", value: stats.inProgressTasks, bg: "bg-blue-50/40 border-blue-100 text-blue-700", fill: "bg-blue-100/60 text-blue-600" },
-            { label: "Submitted", value: stats.submittedTasks, bg: "bg-purple-50/40 border-purple-100 text-purple-700", fill: "bg-purple-100/60 text-purple-600" },
-            { label: "Completed", value: stats.completedTasks, bg: "bg-emerald-50/40 border-emerald-100 text-emerald-700", fill: "bg-emerald-100/60 text-emerald-600" },
+            { label: "Total Tasks", value: stats.totalTasks, status: "all", bg: "bg-slate-50/60 border-slate-200/80 text-slate-700 hover:border-slate-350", fill: "bg-slate-100 text-slate-600" },
+            { label: "Pending", value: stats.pendingTasks, status: "pending", bg: "bg-amber-50/40 border-amber-100 text-amber-700 hover:border-amber-250", fill: "bg-amber-100/60 text-amber-600" },
+            { label: "In Progress", value: stats.inProgressTasks, status: "in-progress", bg: "bg-blue-50/40 border-blue-100 text-blue-700 hover:border-blue-250", fill: "bg-blue-100/60 text-blue-600" },
+            { label: "Submitted", value: stats.submittedTasks, status: "submitted", bg: "bg-purple-50/40 border-purple-100 text-purple-700 hover:border-purple-250", fill: "bg-purple-100/60 text-purple-600" },
+            { label: "Completed", value: stats.completedTasks, status: "approved", bg: "bg-emerald-50/40 border-emerald-100 text-emerald-700 hover:border-emerald-250", fill: "bg-emerald-100/60 text-emerald-600" },
           ].map((s, i) => (
             <div
               key={i}
-              className={`rounded-2xl px-2 py-3.5 md:px-4 md:py-4 shadow-sm border text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 animate-fadeInUp stagger-${i + 1} ${s.bg}`}
+              onClick={() => navigate(`/tasks?status=${s.status}`)}
+              className={`rounded-2xl px-2 py-3.5 md:px-4 md:py-4 shadow-sm border text-center cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 animate-fadeInUp stagger-${i + 1} ${s.bg}`}
             >
               <div className={`w-8 h-8 ${s.fill} rounded-xl flex items-center justify-center text-sm mx-auto mb-2.5 font-bold shadow-sm`}>
                 {s.label.charAt(0)}
@@ -1109,16 +1110,17 @@ const Dashboard = () => {
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {[
-          { l: "Total", v: totalTasks, bg: "bg-slate-50/50 border-slate-200/80 hover:bg-slate-100/50", c: "text-slate-700" },
-          { l: "Done", v: completedTasks, bg: "bg-emerald-50/30 border-emerald-100/80 hover:border-emerald-200 hover:bg-emerald-50/50", c: "text-emerald-600" },
-          { l: "Progress", v: inProgressTasks, bg: "bg-blue-50/30 border-blue-100/80 hover:border-blue-200 hover:bg-blue-50/50", c: "text-blue-600" },
-          { l: "Pending", v: pendingTasks, bg: "bg-amber-50/30 border-amber-100/80 hover:border-emerald-200 hover:bg-amber-50/50", c: "text-amber-600" },
-          { l: "Submitted", v: submittedTasks, bg: "bg-purple-50/30 border-purple-100/80 hover:border-purple-200 hover:bg-purple-50/50", c: "text-purple-650" },
-          { l: "Rejected", v: rejectedTasks, bg: "bg-rose-50/30 border-rose-100/80 hover:border-rose-200 hover:bg-rose-50/50", c: "text-rose-600" },
+          { l: "Total", v: totalTasks, status: "all", bg: "bg-slate-50/50 border-slate-200/80 hover:border-slate-350 hover:bg-slate-100/50", c: "text-slate-700" },
+          { l: "Done", v: completedTasks, status: "approved", bg: "bg-emerald-50/30 border-emerald-100/80 hover:border-emerald-250 hover:bg-emerald-50/50", c: "text-emerald-600" },
+          { l: "Progress", v: inProgressTasks, status: "in-progress", bg: "bg-blue-50/30 border-blue-100/80 hover:border-blue-250 hover:bg-blue-50/50", c: "text-blue-600" },
+          { l: "Pending", v: pendingTasks, status: "pending", bg: "bg-amber-50/30 border-amber-100/80 hover:border-amber-250 hover:bg-amber-50/50", c: "text-amber-600" },
+          { l: "Submitted", v: submittedTasks, status: "submitted", bg: "bg-purple-50/30 border-purple-100/80 hover:border-purple-250 hover:bg-purple-50/50", c: "text-purple-650" },
+          { l: "Rejected", v: rejectedTasks, status: "rejected", bg: "bg-rose-50/30 border-rose-100/80 hover:border-rose-250 hover:bg-rose-50/50", c: "text-rose-600" },
         ].map((s, i) => (
           <div
             key={i}
-            className={`rounded-2xl px-2 py-3.5 md:px-4 md:py-4 shadow-sm border text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 animate-fadeInUp stagger-${i + 1} ${s.bg}`}
+            onClick={() => navigate(`/tasks?status=${s.status}`)}
+            className={`rounded-2xl px-2 py-3.5 md:px-4 md:py-4 shadow-sm border text-center cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 animate-fadeInUp stagger-${i + 1} ${s.bg}`}
           >
             <p className="text-[10px] md:text-xs text-slate-500 uppercase tracking-wider truncate font-semibold">
               {s.l}
