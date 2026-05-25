@@ -79,6 +79,9 @@ const EMPTY_FORM = {
   department: "IT",
   branch: "Gaurabagh",
   employeeId: "",
+  phone: "",
+  designation: "",
+  dateOfJoining: "",
   customFields: {},
   isActive: true,
 };
@@ -508,6 +511,9 @@ const UserManagement = () => {
       department: userToEdit.department || "IT",
       branch: userToEdit.branch || "Gaurabagh",
       employeeId: userToEdit.employeeId || "",
+      phone: userToEdit.phone || "",
+      designation: userToEdit.designation || "",
+      dateOfJoining: userToEdit.dateOfJoining || "",
       customFields: userToEdit.customFields || {},
       isActive: userToEdit.isActive !== false,
     });
@@ -959,6 +965,20 @@ const UserManagement = () => {
                           Unique corporate identifier assigned to the employee (alphanumeric).
                         </p>
                       </Field>
+
+                      {/* Phone Number */}
+                      <Field label="Phone Number">
+                        <input
+                          type="tel"
+                          placeholder="+1 234 567 8900"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className={inputClass}
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1 select-none">
+                          Contact number for emergency or direct communication.
+                        </p>
+                      </Field>
                     </div>
 
                     {/* Section: Corporate Mapping */}
@@ -1001,6 +1021,27 @@ const UserManagement = () => {
                         placeholder="Select department..."
                         isClearable={false}
                       />
+
+                      {/* Designation */}
+                      <Field label="Designation / Title">
+                        <input
+                          type="text"
+                          placeholder="e.g. Senior Software Engineer"
+                          value={formData.designation}
+                          onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                          className={inputClass}
+                        />
+                      </Field>
+
+                      {/* Date of Joining */}
+                      <Field label="Date of Joining">
+                        <input
+                          type="date"
+                          value={formData.dateOfJoining ? formData.dateOfJoining.substring(0, 10) : ""}
+                          onChange={(e) => setFormData({ ...formData, dateOfJoining: e.target.value })}
+                          className={inputClass}
+                        />
+                      </Field>
                     </div>
 
                     {/* Section: Security & Access */}

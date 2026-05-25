@@ -490,7 +490,8 @@ export const seedDatabase = async (isApi = false) => {
             role: 'admin',
             department: 'IT',
             branch: 'Central Gaurabagh',
-            isActive: true
+            isActive: true,
+            employeeId: 'DIR001'
         });
         console.log(`✅ Admin user: admin@example.com / admin123`);
         
@@ -502,7 +503,8 @@ export const seedDatabase = async (isApi = false) => {
             role: 'admin',
             department: 'Admin',
             branch: 'Central Gaurabagh',
-            isActive: true
+            isActive: true,
+            employeeId: 'OM001'
         });
         console.log(`✅ Overall Branch Manager: abdul.habib@company.com / branch123`);
 
@@ -513,7 +515,8 @@ export const seedDatabase = async (isApi = false) => {
             role: 'admin',
             department: 'Academic',
             branch: 'Central Gaurabagh',
-            isActive: true
+            isActive: true,
+            employeeId: 'OM002'
         });
         console.log(`✅ Overall Academic Manager: asiya.arif@company.com / academic123`);
 
@@ -545,7 +548,8 @@ export const seedDatabase = async (isApi = false) => {
                 role: 'department-head',
                 department: dept.name,
                 branch: 'Central Gaurabagh',
-                isActive: true
+                isActive: true,
+                employeeId: 'DPT-' + dept.code
             });
             console.log(`✅ Department Manager: ${dept.manager} (${dept.name})`);
         }
@@ -558,7 +562,8 @@ export const seedDatabase = async (isApi = false) => {
             role: 'hr',
             department: 'HR',
             branch: 'Central Gaurabagh',
-            isActive: true
+            isActive: true,
+            employeeId: 'HR001'
         });
         console.log(`✅ HR user: hr@example.com / hr1234`);
         

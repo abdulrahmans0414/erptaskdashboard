@@ -209,6 +209,16 @@ export const updateUser = async (req, res) => {
             const canEditScoped = isBranchHead || isDeptHead;
 
             if (canEditAll || canEditScoped) {
+                // Scoped heads cannot maliciously transfer employees to other branches
+                if (!canEditAll) {
+                    if (branch && branch !== req.user.branch) {
+                        return { status: 403, success: false, message: 'You cannot move employees to a different branch' };
+                    }
+                    if (req.user.role === 'department-head' && department && department !== req.user.department) {
+                        return { status: 403, success: false, message: 'You cannot move employees to a different department' };
+                    }
+                }
+
                 // Cross-Component branch/department validation if either changes
                 if (branch || department) {
                     const targetBranchName = branch ? String(branch).trim() : user.branch;
