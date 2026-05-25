@@ -13,27 +13,8 @@ import { reviewTask } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
 import { useNavigate } from "react-router-dom";
-import { Bar, Doughnut } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Filler,
-} from "chart.js";
-
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Filler,
-);
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer, ComposedChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { getTaskAnalytics } from '../../services/api';
 
 const API_ORIGIN = (
   import.meta.env.VITE_API_URL || "http://localhost:5001/api"
@@ -87,6 +68,8 @@ const animations = `
   .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 `;
 
 import toast from "react-hot-toast";
@@ -507,6 +490,19 @@ const Dashboard = () => {
   const { settings } = useSettings();
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -320, behavior: "smooth" });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 320, behavior: "smooth" });
+    }
+  };
 
   const dispatch = useDispatch();
   const allTasks = useSelector((state) => state.tasks.items);
@@ -514,6 +510,7 @@ const Dashboard = () => {
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [analyticsData, setAnalyticsData] = useState(null);
   const [selectedTaskForReview, setSelectedTaskForReview] = useState(null);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -622,6 +619,10 @@ const Dashboard = () => {
       timeFilter
     })); 
     dispatch(fetchDashboardStats(statsParams));
+    
+    getTaskAnalytics().then(res => {
+        if (res.data.success) setAnalyticsData(res.data.data);
+    }).catch(err => console.error("Error fetching analytics", err));
   }, [dispatch, selectedDepartment, selectedBranch, timeFilter, customStart, customEnd]);
 
   useEffect(() => {
@@ -793,26 +794,53 @@ const Dashboard = () => {
     })
     .slice(0, 5);
 
-  const filteredEmployees = employees.filter((emp) => {
-    if (selectedBranch !== "all" && emp.branch !== selectedBranch) return false;
-    if (selectedDepartment !== "all" && emp.department !== selectedDepartment)
-      return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        emp.name?.toLowerCase().includes(q) ||
-        emp.email?.toLowerCase().includes(q) ||
-        emp.employeeId?.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  const filteredLeadershipEmployees = useMemo(() => {
+    const leadershipRoles = ["admin", "branch-head", "department-head", "manager"];
+    return employees.filter((emp) => {
+      if (!leadershipRoles.includes(emp.role)) return false;
+      if (selectedBranch !== "all" && emp.branch !== selectedBranch) return false;
+      if (selectedDepartment !== "all" && emp.department !== selectedDepartment) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return (
+          emp.name?.toLowerCase().includes(q) ||
+          emp.email?.toLowerCase().includes(q) ||
+          emp.employeeId?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [employees, selectedBranch, selectedDepartment, searchQuery]);
 
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
-  const paginatedEmployees = filteredEmployees.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const filteredStaffEmployees = useMemo(() => {
+    const leadershipRoles = ["admin", "branch-head", "department-head", "manager"];
+    return employees.filter((emp) => {
+      if (leadershipRoles.includes(emp.role)) return false;
+      if (selectedBranch !== "all" && emp.branch !== selectedBranch) return false;
+      if (selectedDepartment !== "all" && emp.department !== selectedDepartment) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return (
+          emp.name?.toLowerCase().includes(q) ||
+          emp.email?.toLowerCase().includes(q) ||
+          emp.employeeId?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [employees, selectedBranch, selectedDepartment, searchQuery]);
+
+  const filteredEmployees = useMemo(() => {
+    return [...filteredLeadershipEmployees, ...filteredStaffEmployees];
+  }, [filteredLeadershipEmployees, filteredStaffEmployees]);
+
+  const totalPages = Math.ceil(filteredStaffEmployees.length / itemsPerPage);
+  const paginatedEmployees = useMemo(() => {
+    return filteredStaffEmployees.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredStaffEmployees, currentPage, itemsPerPage]);
 
   const getEmpStats = (eid) => {
     // This function is no longer used since backend handles it, but keeping it as a safe fallback just in case
@@ -1474,12 +1502,12 @@ const Dashboard = () => {
         )}
 
         {/* Branch + Dept + Search */}
-        <div className="grid grid-cols-2 lg:flex lg:flex-wrap items-stretch lg:items-center gap-2 md:gap-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
           <select
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
             disabled={user?.role === "branch-head"}
-            className="w-full px-2 py-2 md:px-3.5 md:py-2.5 bg-white border border-gray-200 rounded-xl text-xs min-w-[120px] lg:min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition truncate"
+            className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition truncate"
           >
             <option value="all">All Branches</option>
             {visibleBranches.map((b) => (
@@ -1488,20 +1516,7 @@ const Dashboard = () => {
               </option>
             ))}
           </select>
-          <select
-            value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
-            disabled={user?.role === "department-head"}
-            className="w-full px-2 py-2 md:px-3.5 md:py-2.5 bg-white border border-gray-200 rounded-xl text-xs min-w-[120px] lg:min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition truncate"
-          >
-            <option value="all">All Departments</option>
-            {departmentsForSelectedBranch.map((d) => (
-              <option key={d} value={d}>
-                🏢 {d}
-              </option>
-            ))}
-          </select>
-          <div className="w-full lg:flex-1 lg:min-w-[200px] relative" ref={searchInputRef}>
+          <div className="flex-[2] relative" ref={searchInputRef}>
             <input
               type="text"
               placeholder="🔍 Search..."
@@ -1510,7 +1525,7 @@ const Dashboard = () => {
                 setSearchQuery(e.target.value);
                 setShowSearchDropdown(true);
               }}
-              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+              className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
             />
             {showSearchDropdown && searchQuery && searchResults.length > 0 && (
               <div className="absolute z-20 top-full mt-2 w-full bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto">
@@ -1524,7 +1539,7 @@ const Dashboard = () => {
                     }}
                     className="px-4 py-3 hover:bg-blue-50 cursor-pointer flex items-center gap-3"
                   >
-                    <div className="w-9 h-9 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                       {emp.name?.charAt(0)}
                     </div>
                     <div className="flex-1">
@@ -1547,7 +1562,7 @@ const Dashboard = () => {
               setCustomStart("");
               setCustomEnd("");
             }}
-            className="w-full lg:w-auto px-5 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold hover:bg-rose-100 border border-rose-200 active:scale-95 transition-all text-center flex items-center justify-center gap-1.5"
+            className="flex-none px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold hover:bg-rose-100 border border-rose-200 active:scale-95 transition-all flex items-center justify-center gap-1.5"
           >
             <span>✕</span> <span>Reset</span>
           </button>
@@ -1596,39 +1611,68 @@ const Dashboard = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
-          <h2 className="font-semibold text-sm mb-4">
-            📈 Task Trend ({getTimeLabel()})
-          </h2>
-          {/* relative overflow-hidden = Chart.js canvas bounding box isolation */}
-          <div className="relative w-full h-64 max-h-[260px] overflow-hidden">
-            <Bar data={barData} options={chartOptions} />
+        <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-fadeInUp">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-semibold text-sm text-slate-700">
+              📈 Employee Productivity ({timeFilter})
+            </h2>
+            <select 
+              value={timeFilter}
+              onChange={e => setTimeFilter(e.target.value)}
+              className="text-xs border border-slate-200 rounded-lg px-2 py-1 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="last7">Last 7 Days</option>
+              <option value="thisMonth">This Month</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
+          <div className="w-full h-64 max-h-[260px]">
+            {analyticsData?.employeeProductivity ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={analyticsData.employeeProductivity}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                        <XAxis dataKey="employeeName" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} />
+                        <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} />
+                        <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} />
+                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                        <RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#475569' }} />
+                        <Bar yAxisId="left" dataKey="totalTasksCompleted" name="Tasks Completed" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={20} />
+                        <Line yAxisId="right" type="monotone" dataKey="averageTimeSpent" name="Avg Time (mins)" stroke="#8B5CF6" strokeWidth={3} dot={{ r: 4, fill: '#8B5CF6' }} />
+                    </ComposedChart>
+                </ResponsiveContainer>
+            ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Loading Analytics...</div>
+            )}
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
-          <h2 className="font-semibold text-sm mb-4">📊 Status Distribution</h2>
-          {/* relative + overflow-hidden = strict bounding box for Chart.js canvas */}
-          <div className="relative w-full h-64 max-h-[260px] overflow-hidden flex items-center justify-center">
-            <Doughnut
-              data={doughnutData}
-              options={{
-                responsive: true,
-                // false = canvas fills parent height exactly; prevents ring from
-                // blowing up beyond h-64 and overlapping the navigation panels.
-                maintainAspectRatio: false,
-                cutout: "65%",
-                plugins: {
-                  legend: {
-                    position: "bottom",
-                    labels: {
-                      usePointStyle: true,
-                      padding: 16,
-                      font: { size: 10 },
-                    },
-                  },
-                },
-              }}
-            />
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-fadeInUp">
+          <h2 className="font-semibold text-sm mb-4 text-slate-700">🏢 Department Workload</h2>
+          <div className="w-full h-64 max-h-[260px] flex items-center justify-center">
+             {analyticsData?.departmentWorkload ? (
+                 <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={analyticsData.departmentWorkload}
+                            dataKey="totalTasks"
+                            nameKey="_id"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={2}
+                        >
+                            {analyticsData.departmentWorkload.map((entry, index) => {
+                                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
+                                return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                            })}
+                        </Pie>
+                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                        <RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#475569' }} />
+                    </PieChart>
+                 </ResponsiveContainer>
+             ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Loading Analytics...</div>
+             )}
           </div>
         </div>
       </div>
@@ -1653,17 +1697,169 @@ const Dashboard = () => {
         </div>
       )} */}
 
-      {/* Employees */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
-        <div className="flex justify-between items-center mb-4">
+      {/* Heads & Management */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-sm text-slate-700">
+            Heads & Management ({filteredLeadershipEmployees.length})
+          </h2>
+          {/* Scroll Buttons */}
+          {filteredLeadershipEmployees.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={scrollLeft}
+                className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center transition active:scale-90 text-[11px] font-extrabold shadow-sm"
+                title="Scroll Left"
+              >
+                &lt;
+              </button>
+              <button
+                onClick={scrollRight}
+                className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center transition active:scale-90 text-[11px] font-extrabold shadow-sm"
+                title="Scroll Right"
+              >
+                &gt;
+              </button>
+            </div>
+          )}
+        </div>
+        {filteredLeadershipEmployees.length === 0 ? (
+          <div className="text-center py-8 text-gray-400 text-xs">
+            🔍 No management profiles found
+          </div>
+        ) : (
+          <div 
+            ref={scrollContainerRef}
+            className="flex gap-4 overflow-x-auto pb-3 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory"
+          >
+            {filteredLeadershipEmployees.map((emp, index) => {
+              const getInitialsForAvatar = (name) => {
+                if (!name) return "?";
+                const parts = name.split(" ");
+                if (parts.length > 1) {
+                  return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+                }
+                return name.charAt(0).toUpperCase();
+              };
+
+              const colors = {
+                IT: "from-blue-600 to-indigo-500 shadow-blue-100",
+                HR: "from-pink-500 to-rose-500 shadow-pink-100",
+                Graphic: "from-purple-500 to-violet-500 shadow-purple-100",
+                Academic: "from-violet-600 to-indigo-600 shadow-violet-100",
+                Finance: "from-emerald-500 to-teal-500 shadow-emerald-100",
+                Marketing: "from-amber-500 to-orange-500 shadow-amber-100",
+                Legal: "from-slate-600 to-slate-500 shadow-slate-100",
+                Transport: "from-yellow-500 to-amber-500 shadow-yellow-100",
+                Operations: "from-cyan-600 to-blue-500 shadow-cyan-100",
+              };
+
+              return (
+                <div
+                  key={emp._id || emp.id}
+                  onClick={() => navigate(`/employee/${emp._id || emp.id}`)}
+                  className="flex-none w-72 snap-start bg-gradient-to-br from-white to-indigo-50/10 border border-indigo-100 rounded-2xl p-4 hover:border-indigo-200 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between h-48 relative group"
+                >
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="relative">
+                        {emp.avatar ? (
+                          <img
+                            src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
+                            alt={emp.name}
+                            className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-50 group-hover:scale-105 transition"
+                            onError={(e) => {
+                              e.currentTarget.src = "";
+                              e.currentTarget.removeAttribute("src");
+                            }}
+                          />
+                        ) : (
+                          <div className={`w-10 h-10 bg-gradient-to-br ${colors[emp.department] || "from-indigo-500 to-purple-650"} rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:scale-105 transition`}>
+                            {getInitialsForAvatar(emp.name)}
+                          </div>
+                        )}
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-indigo-500 border-2 border-white rounded-full" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-slate-800 text-sm tracking-tight truncate group-hover:text-indigo-655 transition">
+                          {emp.name}
+                        </h4>
+                        <span className="text-[10px] font-bold text-indigo-500 tracking-wider uppercase block mt-0.5">
+                          {emp.role?.replace(/-/g, " ")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1 p-2 bg-slate-50 group-hover:bg-indigo-50/10 rounded-xl border border-slate-150 transition-colors duration-205">
+                      <div className="flex items-center gap-2 min-w-0 text-slate-500">
+                        <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs truncate">{emp.email || "No Email"}</span>
+                      </div>
+                      <div className="flex items-center gap-2 min-w-0 text-slate-500">
+                        <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span className="text-xs truncate">{emp.phone || "Not Provided"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-indigo-100/50 pt-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                    <span>🏢 {emp.department}</span>
+                    <span>📍 {emp.branch?.replace(" Branch", "")}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Staff Directory */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp space-y-4">
+        <div className="flex justify-between items-center pb-2 border-b border-slate-100">
           <h2 className="font-semibold text-sm">
-            👥 Employees ({filteredEmployees.length})
+            👥 Employees ({filteredStaffEmployees.length})
           </h2>
           <span className="text-xs text-gray-400">
             Page {currentPage} of {totalPages || 1}
           </span>
         </div>
-        {filteredEmployees.length === 0 ? (
+
+        {/* Filter by Department inside Employee Directory */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Filter by Department
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {["all", ...departmentsForSelectedBranch].map((dept) => {
+              const getDisplayName = (d) => {
+                if (d === "all") return "All";
+                if (d === "Academic") return "Academics";
+                return d;
+              };
+              const isActive = selectedDepartment === dept;
+              return (
+                <button
+                  key={dept}
+                  onClick={() => setSelectedDepartment(dept)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-155 border active:scale-95 shadow-sm whitespace-nowrap ${
+                    isActive
+                      ? "bg-blue-600 border-blue-500 text-white shadow-blue-500/10"
+                      : "bg-slate-50 border-slate-200/80 text-slate-655 hover:bg-slate-100 hover:border-slate-300"
+                  }`}
+                >
+                  {getDisplayName(dept)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {filteredStaffEmployees.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             🔍 No employees found
           </div>

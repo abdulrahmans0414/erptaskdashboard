@@ -24,6 +24,7 @@ import hpp from 'hpp';
 import cookieParser from 'cookie-parser';
 import { initializeTokenCleanup, checkTokenBlacklist } from './middleware/tokenBlacklist.js';
 import { startEmailWorker } from './workers/emailWorker.js';
+import { initEscalationWorker } from './workers/escalationWorker.js';
 import logger from './logger.js';
 import { sanitizeInput } from './middleware/sanitize.js';
 
@@ -133,12 +134,29 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+import morgan from 'morgan';
+app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
+
 // ==================== INPUT SANITIZATION ====================
 app.use(sanitizeInput);
 
 // ==================== RATE LIMITING (Login) ====================
 // Login rate limiter runs after body parser to inspect login email payloads securely
 app.use(loginLimiter);
+
+// Admin action rate limiter specifically for high-risk endpoints
+const adminActionLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 100, // 100 admin actions per 15 mins
+    message: { success: false, message: 'Too many administrative actions. Please try again later.' },
+    standardHeaders: 'draft-7',
+    legacyHeaders: false
+});
+
+// Apply adminActionLimiter to specific high-risk paths
+app.use('/api/settings', adminActionLimiter);
+app.use('/api/branches', adminActionLimiter);
+app.use('/api/departments', adminActionLimiter);
 
 // ==================== ADDITIONAL SECURITY ====================
 app.use(hpp({
@@ -298,10 +316,19 @@ const startServer = async () => {
     const userCount = await User.countDocuments();
     if (userCount === 0) {
         logger.info('⚠️ Database is empty. Seeding database automatically...');
-        await seedDatabase(true);
+        try {
+            await seedDatabase();
+            logger.info('🌱 Database seeding completed');
+        } catch (err) {
+            logger.error('🌱 Database seeding error:', err);
+        }
     }
 
-    app.listen(PORT, () => {
+    // Start background workers
+    startEmailWorker();
+    initEscalationWorker();
+
+    app.listen(PORT, '0.0.0.0', () => {
         logger.info(`✅ Server running on http://localhost:${PORT}`);
         logger.info(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
         logger.info(`🔒 Security: HPP, CORS, Rate Limiting enabled`);

@@ -19,19 +19,43 @@ export const logAuditAction = async (action, user, metadata = {}) => {
             userName: user?.name || user?.email || 'System',
             userRole: user?.role,
             action,
+            entityType: metadata.entityType || 'SYSTEM',
             details: metadata.details || '',
-            metadata: {
-                ...metadata,
-                ipAddress: metadata.ip || 'unknown',
-                userAgent: metadata.userAgent || 'unknown',
-                timestamp: new Date(),
-            },
+            oldData: metadata.oldData || null,
+            newData: metadata.newData || null,
+            ipAddress: metadata.ip || 'unknown',
+            userAgent: metadata.userAgent || 'unknown',
+            createdAt: new Date()
         });
 
         await auditEntry.save();
         return { success: true, auditId: auditEntry._id };
     } catch (error) {
         console.error('Error logging audit action:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const createAuditLog = async (req, action, entityType, entityId, oldData, newData) => {
+    try {
+        const auditEntry = new ActivityLog({
+            userId: req.user?._id || null,
+            userName: req.user?.name || req.user?.email || 'System',
+            userRole: req.user?.role || 'system',
+            action,
+            entityType,
+            details: `Action ${action} on ${entityType} ${entityId}`,
+            oldData,
+            newData,
+            ipAddress: req.ip || 'unknown',
+            userAgent: req.get('user-agent') || 'unknown',
+            createdAt: new Date()
+        });
+
+        await auditEntry.save();
+        return { success: true, auditId: auditEntry._id };
+    } catch (error) {
+        console.error('Error in createAuditLog:', error);
         return { success: false, error: error.message };
     }
 };

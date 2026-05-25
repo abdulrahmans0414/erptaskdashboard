@@ -1,0 +1,96 @@
+// ============ TASK ANALYTICS (AGGREGATION PIPELINES) ============
+export const getTaskAnalytics = async (req, res) => {
+    try {
+        const { role, department, branch } = req.user;
+        
+        let matchStage = { isDeleted: { $ne: true } };
+        
+        // Scope analytics based on user role
+        if (role !== 'admin' && role !== 'it') {
+            matchStage.branch = branch;
+            if (role === 'department-head' || role === 'hr') {
+                matchStage.department = role === 'hr' ? 'HR' : department;
+            } else {
+                return res.status(403).json({ success: false, message: 'Unauthorized to view analytics' });
+            }
+        }
+
+        // Pipeline 1: Department Workload & Status Distribution
+        const workloadPipeline = [
+            { $match: matchStage },
+            { 
+                $group: {
+                    _id: { department: '$department', status: '$status' },
+                    count: { $sum: 1 }
+                } 
+            },
+            {
+                $group: {
+                    _id: '$_id.department',
+                    statuses: {
+                        $push: {
+                            status: '$_id.status',
+                            count: '$count'
+                        }
+                    },
+                    totalTasks: { $sum: '$count' }
+                }
+            },
+            { $sort: { totalTasks: -1 } }
+        ];
+
+        // Pipeline 2: Employee Productivity (Average Time Spent)
+        const productivityPipeline = [
+            { $match: { ...matchStage, status: { $in: ['completed', 'submitted'] } } },
+            {
+                $group: {
+                    _id: '$assignedTo',
+                    totalTasksCompleted: { $sum: 1 },
+                    totalTimeSpent: { $sum: '$totalTimeSpent' },
+                    averageTimeSpent: { $avg: '$totalTimeSpent' }
+                }
+            },
+            // AssignedTo might be null for team tasks, so we filter out nulls
+            { $match: { _id: { $ne: null } } },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'employeeInfo'
+                }
+            },
+            { $unwind: '$employeeInfo' },
+            {
+                $project: {
+                    _id: 1,
+                    totalTasksCompleted: 1,
+                    totalTimeSpent: 1,
+                    averageTimeSpent: { $round: ['$averageTimeSpent', 2] },
+                    employeeName: '$employeeInfo.name',
+                    employeeEmail: '$employeeInfo.email',
+                    department: '$employeeInfo.department',
+                    role: '$employeeInfo.role'
+                }
+            },
+            { $sort: { totalTimeSpent: -1 } },
+            { $limit: 100 }
+        ];
+
+        const [departmentWorkload, employeeProductivity] = await Promise.all([
+            Task.aggregate(workloadPipeline),
+            Task.aggregate(productivityPipeline)
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                departmentWorkload,
+                employeeProductivity
+            }
+        });
+    } catch (error) {
+        console.error('Task analytics error:', error);
+        res.status(500).json({ success: false, message: 'Error generating task analytics' });
+    }
+};

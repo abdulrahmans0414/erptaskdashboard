@@ -17,8 +17,9 @@ export const submitTaskWithAttachments = (id, formData) =>
     api.put(`/tasks/${id}/submit`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const reviewTask = (id, status, adminComments, reviewStage) =>
     api.put(`/tasks/${id}/review`, { status, adminComments, reviewStage });
-export const addComment = (id, comment) => api.put(`/tasks/${id}/comment`, { comment });
+export const addComment = (id, text) => api.put(`/tasks/${id}/comment`, { text });
 export const reassignTask = (id, data) => api.put(`/tasks/${id}/reassign`, data);
+export const getTaskAnalytics = () => api.get('/tasks/analytics');
 export const getTimeReport = (params) => {
     const q = new URLSearchParams(params).toString();
     return api.get(`/tasks/reports/time${q ? `?${q}` : ''}`);

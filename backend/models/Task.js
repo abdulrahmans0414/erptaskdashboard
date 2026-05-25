@@ -139,6 +139,9 @@ department: {
     // Current session tracking
     currentSessionStart: Date,
     currentSessionTotal: { type: Number, default: 0 },
+    
+    // Anti-Spam Escalation Tracking
+    lastEscalationSentAt: { type: Date, default: null },
 
     // Overall workflow tracking:
     // department-head review happens first, then branch-head review.
@@ -361,5 +364,9 @@ taskSchema.index({ createdAt: -1, _id: -1 });
 taskSchema.index({ dueDate: 1 });
 taskSchema.index({ status: 1 });
 taskSchema.index({ title: 'text', description: 'text' });
+
+// Phase 2 Query Optimizations (High-volume soft-delete avoidance)
+taskSchema.index({ isDeleted: 1, assignedTo: 1, status: 1 });
+taskSchema.index({ isDeleted: 1, department: 1, branch: 1, createdAt: -1 });
 
 export default mongoose.model('Task', taskSchema);

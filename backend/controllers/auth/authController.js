@@ -4,8 +4,13 @@ import Notification from '../../models/Notification.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { sendOTPEmail, sendWelcomeEmail } from '../../utils/emailService.js';
+import RefreshToken from '../../models/RefreshToken.js';
+import { createAuditLog } from '../../utils/auditLogger.js';
 
-const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+const getClientIp = (req) => req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || 'unknown';
+
+const generateAccessToken = (id, ipAddress) => jwt.sign({ id, ip: ipAddress }, process.env.JWT_SECRET, { expiresIn: '5m' });
+const generateRefreshToken = (id, ipAddress) => crypto.randomBytes(40).toString('hex');
 const generateOTP   = () => crypto.randomInt(100000, 999999).toString();
 
 // ── SELF SIGNUP (public) ──────────────────────────────────────────
@@ -243,13 +248,33 @@ export const verifyOtp = async (req, res) => {
             console.error('Failed to send welcome email:', err.message);
         });
 
-        const token = generateToken(user._id);
+        const ipAddress = getClientIp(req);
+        const userAgent = req.headers['user-agent'] || 'unknown';
+
+        const token = generateAccessToken(user._id, ipAddress);
+        const refreshTokenStr = generateRefreshToken(user._id, ipAddress);
+
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        await RefreshToken.create({
+            userId: user._id,
+            token: refreshTokenStr,
+            ipAddress,
+            userAgent,
+            expiresAt
+        });
 
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+            maxAge: 5 * 60 * 1000 // 5 minutes
+        });
+
+        res.cookie('refreshToken', refreshTokenStr, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
         res.json({
@@ -318,14 +343,37 @@ export const login = async (req, res) => {
         user.lastLogin = new Date();
         await user.save();
 
-        const token = generateToken(user._id);
+        const ipAddress = getClientIp(req);
+        const userAgent = req.headers['user-agent'] || 'unknown';
 
+        const token = generateAccessToken(user._id, ipAddress);
+        const refreshTokenStr = generateRefreshToken(user._id, ipAddress);
+
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        await RefreshToken.create({
+            userId: user._id,
+            token: refreshTokenStr,
+            ipAddress,
+            userAgent,
+            expiresAt
+        });
+
+        // The refreshToken is sent as an HTTP-only cookie, and the short-lived access token is also sent in the cookie
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+            maxAge: 5 * 60 * 1000 // 5 minutes
         });
+
+        res.cookie('refreshToken', refreshTokenStr, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        await createAuditLog(req, 'LOGIN', 'USER', user._id, null, null);
 
         res.json({
             success: true,
@@ -367,13 +415,33 @@ export const register = async (req, res) => {
             isActive: true
         });
 
-        const token = generateToken(user._id);
+        const ipAddress = getClientIp(req);
+        const userAgent = req.headers['user-agent'] || 'unknown';
+
+        const token = generateAccessToken(user._id, ipAddress);
+        const refreshTokenStr = generateRefreshToken(user._id, ipAddress);
+
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        await RefreshToken.create({
+            userId: user._id,
+            token: refreshTokenStr,
+            ipAddress,
+            userAgent,
+            expiresAt
+        });
 
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+            maxAge: 5 * 60 * 1000 // 5 minutes
+        });
+
+        res.cookie('refreshToken', refreshTokenStr, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
         res.status(201).json({ success: true, data: { _id: user._id, name: user.name, email: user.email, role: user.role, token } });
@@ -389,6 +457,78 @@ export const getUsers = async (req, res) => {
         let q = role === 'admin' ? {} : role === 'department-head' ? { department, branch } : role === 'branch-head' ? { branch } : { _id };
         const users = await User.find(q).select('-password').sort({ name: 1 });
         res.json({ success: true, data: users });
+    } catch (error) {
+    }
+};
+
+// ── REFRESH TOKEN ──────────────────────────────────────────────────
+export const refreshToken = async (req, res) => {
+    try {
+        const incomingRefreshToken = req.cookies.refreshToken;
+        if (!incomingRefreshToken) {
+            return res.status(401).json({ success: false, message: 'No refresh token provided' });
+        }
+
+        const ipAddress = getClientIp(req);
+
+        const storedToken = await RefreshToken.findOne({ token: incomingRefreshToken });
+        if (!storedToken) {
+            return res.status(401).json({ success: false, message: 'Invalid refresh token' });
+        }
+
+        if (storedToken.expiresAt < new Date()) {
+            await RefreshToken.deleteOne({ _id: storedToken._id });
+            return res.status(401).json({ success: false, message: 'Refresh token expired' });
+        }
+
+        // IP/Device Binding Check
+        if (storedToken.ipAddress !== ipAddress) {
+            // Potential token theft: Stolen refresh token used from a different IP
+            await RefreshToken.deleteOne({ _id: storedToken._id });
+            await createAuditLog(req, 'SUSPICIOUS_ACTIVITY', 'SYSTEM', storedToken.userId, null, {
+                reason: 'Refresh token used from IP mismatch',
+                expectedIP: storedToken.ipAddress,
+                actualIP: ipAddress
+            });
+            return res.status(403).json({ success: false, message: 'Session invalidated due to IP mismatch. Please log in again.' });
+        }
+
+        const user = await User.findById(storedToken.userId);
+        if (!user || !user.isActive || user.isDeleted) {
+            return res.status(401).json({ success: false, message: 'User account is no longer active' });
+        }
+
+        // Issue new access token
+        const newToken = generateAccessToken(user._id, ipAddress);
+
+        res.cookie('token', newToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 5 * 60 * 1000 // 5 minutes
+        });
+
+        res.json({ success: true, token: newToken });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ── LOGOUT ────────────────────────────────────────────────────────
+export const logout = async (req, res) => {
+    try {
+        const incomingRefreshToken = req.cookies.refreshToken;
+        if (incomingRefreshToken) {
+            await RefreshToken.deleteOne({ token: incomingRefreshToken });
+        }
+
+        res.clearCookie('token');
+        res.clearCookie('refreshToken');
+        
+        // Log Audit
+        await createAuditLog(req, 'LOGOUT', 'USER', req.user ? req.user._id : null, null, null);
+
+        res.json({ success: true, message: 'Logged out successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -3,6 +3,8 @@ import Branch from '../../models/Branch.js';
 import Department from '../../models/Department.js';
 import User from '../../models/User.js';
 import Task from '../../models/Task.js';
+import { createAuditLog } from '../../utils/auditLogger.js';
+import { getCache, setCache, flushCachePattern } from '../../utils/cacheService.js';
 
 const getOrCreateSettings = async () => {
     let settings = await Settings.findOne({ singleton: 'SYSTEM_SETTINGS' });
@@ -17,8 +19,18 @@ const getOrCreateSettings = async () => {
 // @access  Public (or Private depending on needs, usually everyone needs to read them)
 export const getSettings = async (req, res) => {
     try {
-        const settings = await getOrCreateSettings();
-        const settingsObj = settings.toObject();
+        const cacheKey = 'settings:singleton';
+        
+        // Cache logic
+        // Only return from cache if the user is not an admin, because admins might need the real object to see if pass is set
+        // Actually, password is removed for non-admins, so we should cache the non-admin version, or we can just cache the raw object and strip it for non-admins
+        let settingsObj = await getCache(cacheKey);
+        
+        if (!settingsObj) {
+            const settings = await getOrCreateSettings();
+            settingsObj = settings.toObject();
+            await setCache(cacheKey, settingsObj, 3600); // 1 hour
+        }
         
         // Hide email config password from frontend for security
         // Only Admins can see the password when they load settings
@@ -114,6 +126,8 @@ export const updateSettings = async (req, res) => {
             }
         }
         
+        const oldSettings = settings.toObject();
+
         if (userCustomFields) settings.userCustomFields = userCustomFields;
         if (departmentEmails) settings.departmentEmails = departmentEmails;
         if (branchEmails) settings.branchEmails = branchEmails;
@@ -136,7 +150,15 @@ export const updateSettings = async (req, res) => {
         }
 
         await settings.save();
+        
+        await flushCachePattern('settings:*');
+
         res.json({ success: true, data: settings, message: 'Settings updated successfully' });
+
+        // Log Audit
+        const { emailConfig: _1, ...safeOldSettings } = oldSettings;
+        const { emailConfig: _2, ...safeNewSettings } = settings.toObject();
+        await createAuditLog(req, 'UPDATE', 'SETTINGS', settings._id, safeOldSettings, safeNewSettings);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

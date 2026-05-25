@@ -7,6 +7,7 @@ import Settings from '../../models/Settings.js';
 import Employee from '../../models/Employee.js';
 import Notification from '../../models/Notification.js';
 import ActivityLog from '../../models/ActivityLog.js';
+import { getCache, setCache, flushCachePattern } from '../../utils/cacheService.js';
 
 // Resilient transaction executor to support both standard replica sets (production) and standalone MongoDB instances (local dev fallback)
 const runInTransaction = async (workFn) => {
@@ -114,11 +115,21 @@ export const getAllBranches = async (req, res) => {
                 { location: { $regex: search, $options: 'i' } }
             ];
         }
+
+        const cacheKey = `branches:all:s:${search}`;
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, data: cachedData });
+        }
+
         const branches = await Branch.find(query)
             .populate('manager', 'name email avatar')
             .populate('head', 'name email avatar')
             .collation({ locale: 'en', strength: 2 })
             .lean();
+
+        await setCache(cacheKey, branches, 300); // 5 mins cache
+
         res.json({ success: true, data: branches });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -161,6 +172,8 @@ export const restoreBranch = async (req, res) => {
         if (!result.success) {
             return res.status(result.status || 400).json({ success: false, message: result.message });
         }
+        
+        await flushCachePattern('branches:*');
 
         res.json({ success: true, message: 'Branch and all its associated users and tasks restored successfully', data: result.data });
     } catch (error) {
@@ -238,6 +251,9 @@ export const createBranch = async (req, res) => {
         if (!result.success) {
             return res.status(result.status || 400).json({ success: false, message: result.message });
         }
+        
+        await flushCachePattern('branches:*');
+        
         res.status(201).json({ success: true, data: result.data });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
@@ -357,6 +373,8 @@ export const updateBranch = async (req, res) => {
             return res.status(result.status || 400).json({ success: false, message: result.message });
         }
 
+        await flushCachePattern('branches:*');
+
         res.json({ success: true, data: result.data });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
@@ -388,6 +406,8 @@ export const deleteBranch = async (req, res) => {
         if (!result.success) {
             return res.status(result.status || 400).json({ success: false, message: result.message });
         }
+
+        await flushCachePattern('branches:*');
 
         res.json({ success: true, message: 'Branch soft-deleted successfully, linked users and tasks archived' });
     } catch (error) {

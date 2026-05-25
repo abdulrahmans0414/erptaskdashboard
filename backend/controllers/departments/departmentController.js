@@ -5,12 +5,22 @@ import PendingRegistration from '../../models/PendingRegistration.js';
 import Settings from '../../models/Settings.js';
 import Employee from '../../models/Employee.js';
 import Branch from '../../models/Branch.js';
+import { getCache, setCache, flushCachePattern } from '../../utils/cacheService.js';
 
 // @desc    Get all departments
 // @route   GET /api/departments
 export const getDepartments = async (req, res) => {
     try {
+        const cacheKey = 'departments:all';
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json({ success: true, data: cachedData });
+        }
+
         const departments = await Department.find({ isActive: true }).sort({ name: 1 }).lean();
+        
+        await setCache(cacheKey, departments, 300); // 5 mins cache
+        
         res.json({ success: true, data: departments });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -30,6 +40,8 @@ export const createDepartment = async (req, res) => {
             settings.markModified('departments');
             await settings.save();
         }
+
+        await flushCachePattern('departments:*');
 
         res.status(201).json({ success: true, data: department });
     } catch (error) {
@@ -89,6 +101,8 @@ export const updateDepartment = async (req, res) => {
         Object.assign(department, req.body);
         const updated = await department.save();
 
+        await flushCachePattern('departments:*');
+
         res.json({ success: true, data: updated });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
@@ -136,6 +150,8 @@ export const deleteDepartment = async (req, res) => {
 
         // Delete from collection
         await department.deleteOne();
+
+        await flushCachePattern('departments:*');
 
         res.json({ success: true, message: 'Department deleted successfully (Cascade Settings Cleaned)' });
     } catch (error) {

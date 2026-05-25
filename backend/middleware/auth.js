@@ -22,6 +22,14 @@ export const protect = async (req, res, next) => {
         }
         
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // IP/Device Binding Check
+        const currentIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || 'unknown';
+        if (decoded.ip && decoded.ip !== currentIp) {
+            console.warn(`IP Mismatch detected. Token IP: ${decoded.ip}, Current IP: ${currentIp}`);
+            return res.status(403).json({ success: false, message: 'Session invalidated due to IP mismatch. Please log in again.' });
+        }
+
         const user = await User.findById(decoded.id).select('-password');
         
         if (!user) {

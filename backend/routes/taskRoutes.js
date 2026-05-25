@@ -5,7 +5,7 @@ import {
     startTask, submitTaskWithTime, reviewTask,
     getDashboardStats, getEmployeeSummary, getTimeReport,
     updateTaskStatus, addComment, reassignTask,
-    getDeletedTasks, restoreTask
+    getDeletedTasks, restoreTask, getTaskAnalytics
 } from '../controllers/tasks/taskController.js';
 import { protect, authorize, filterTasksByUserAccess, canModifyTask } from '../middleware/auth.js';
 import { uploadToCloudinary } from '../middleware/uploadMiddleware.js';
@@ -18,6 +18,7 @@ router.use(protect);
 
 // Dashboard, Analytical Stats & Management Reports
 router.get('/dashboard/stats', filterTasksByUserAccess, getDashboardStats);
+router.get('/analytics', filterTasksByUserAccess, getTaskAnalytics);
 router.get('/employees/summary', authorize('admin', 'it', 'department-head', 'branch-head', 'hr'), getEmployeeSummary);
 router.get('/reports/time', authorize('admin', 'it', 'department-head', 'hr'), getTimeReport);
 

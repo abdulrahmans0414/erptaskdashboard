@@ -140,4 +140,7 @@ userSchema.index(
 
 userSchema.index({ name: 'text', email: 'text', employeeId: 'text' });
 
+// Phase 2 Query Optimization
+userSchema.index({ isDeleted: 1, department: 1, branch: 1, role: 1 });
+
 export default mongoose.model('User', userSchema);

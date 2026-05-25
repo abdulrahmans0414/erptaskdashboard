@@ -82,18 +82,17 @@ const BRANCHES = [
     }
 ];
 
-// Departments with managers
 const DEPARTMENTS = [
-    { name: 'IT', code: 'IT', icon: '💻', color: 'blue', isActive: true, manager: 'Abdul Rahman', managerEmail: 'abdul.rahman@company.com' },
-    { name: 'HR', code: 'HR', icon: '👥', color: 'purple', isActive: true, manager: 'Aslam Sir', managerEmail: 'aslam@company.com' },
-    { name: 'Graphic', code: 'GR', icon: '🎨', color: 'green', isActive: true, manager: 'Nadeem Sir', managerEmail: 'nadeem@company.com' },
-    { name: 'Academic', code: 'AC', icon: '📚', color: 'indigo', isActive: true, manager: 'Prof. Ahmed', managerEmail: 'ahmed@company.com' },
-    { name: 'Finance', code: 'FN', icon: '💰', color: 'emerald', isActive: true, manager: 'Irfan Khan', managerEmail: 'irfan.khan@company.com' },
-    { name: 'Marketing', code: 'MK', icon: '📢', color: 'pink', isActive: true, manager: 'Salman Ali', managerEmail: 'salman.ali@company.com' },
-    { name: 'Legal', code: 'LG', icon: '⚖️', color: 'slate', isActive: true, manager: 'Adv. Sharma', managerEmail: 'sharma@company.com' },
-    { name: 'Transport', code: 'TR', icon: '🚚', color: 'amber', isActive: true, manager: 'Rizwan Ahmed', managerEmail: 'rizwan@company.com' },
-    { name: 'Operations', code: 'OP', icon: '⚙️', color: 'slate', isActive: true, manager: 'Operations Manager', managerEmail: 'ops.manager@company.com' },
-    { name: 'Admin', code: 'AD', icon: '💼', color: 'indigo', isActive: true, manager: 'Office Admin', managerEmail: 'admin.office@company.com' }
+    { name: 'IT', code: 'IT', icon: '💻', color: 'blue', isActive: true },
+    { name: 'HR', code: 'HR', icon: '👥', color: 'purple', isActive: true },
+    { name: 'Graphic', code: 'GR', icon: '🎨', color: 'green', isActive: true },
+    { name: 'Academic', code: 'AC', icon: '📚', color: 'indigo', isActive: true },
+    { name: 'Finance', code: 'FN', icon: '💰', color: 'emerald', isActive: true },
+    { name: 'Marketing', code: 'MK', icon: '📢', color: 'pink', isActive: true },
+    { name: 'Legal', code: 'LG', icon: '⚖️', color: 'slate', isActive: true },
+    { name: 'Transport', code: 'TR', icon: '🚚', color: 'amber', isActive: true },
+    { name: 'Operations', code: 'OP', icon: '⚙️', color: 'slate', isActive: true },
+    { name: 'Admin', code: 'AD', icon: '💼', color: 'indigo', isActive: true }
 ];
 
 // Branch Code Mapping
@@ -484,11 +483,11 @@ export const seedDatabase = async (isApi = false) => {
         
         // CREATE ADMIN USER (Director)
         const admin = await User.create({
-            name: 'Director User',
+            name: 'Mohammad Seraj-ul-hasan',
             email: 'admin@example.com',
             password: 'admin123',
             role: 'admin',
-            department: 'IT',
+            department: 'Admin',
             branch: 'Central Gaurabagh',
             isActive: true,
             employeeId: 'DIR001'
@@ -508,69 +507,14 @@ export const seedDatabase = async (isApi = false) => {
         });
         console.log(`✅ Overall Branch Manager: abdul.habib@company.com / branch123`);
 
-        await User.create({
-            name: 'Asiya Arif',
-            email: 'asiya.arif@company.com',
-            password: 'academic123',
-            role: 'admin',
-            department: 'Academic',
-            branch: 'Central Gaurabagh',
-            isActive: true,
-            employeeId: 'OM002'
-        });
-        console.log(`✅ Overall Academic Manager: asiya.arif@company.com / academic123`);
-
-        // CREATE BRANCH HEADS
-        for (const branch of BRANCHES) {
-            const empCode = Object.keys(BRANCH_HEADS_MAP).find(code => BRANCH_HEADS_MAP[code].branch === branch.name);
-            const headUser = await User.create({
-                name: branch.headName,
-                email: branch.headEmail,
-                password: 'branch123',
-                role: 'branch-head',
-                department: 'Admin',
-                branch: branch.name,
-                isActive: true,
-                employeeId: empCode || undefined
-            });
-            
-            // Link to Branch document's manager field
-            await Branch.updateOne({ name: branch.name }, { manager: headUser._id });
-            console.log(`✅ Branch Head: ${branch.headName} (${branch.name}) linked as manager`);
-        }
-        
-        // CREATE DEPARTMENT MANAGERS (assigned to Central Gaurabagh)
-        for (const dept of DEPARTMENTS) {
-            await User.create({
-                name: dept.manager,
-                email: dept.managerEmail,
-                password: 'manager123',
-                role: 'department-head',
-                department: dept.name,
-                branch: 'Central Gaurabagh',
-                isActive: true,
-                employeeId: 'DPT-' + dept.code
-            });
-            console.log(`✅ Department Manager: ${dept.manager} (${dept.name})`);
-        }
-        
-        // Create HR User (assigned to Central Gaurabagh)
-        await User.create({
-            name: 'HR Manager',
-            email: 'hr@example.com',
-            password: 'hr1234',
-            role: 'hr',
-            department: 'HR',
-            branch: 'Central Gaurabagh',
-            isActive: true,
-            employeeId: 'HR001'
-        });
-        console.log(`✅ HR user: hr@example.com / hr1234`);
+        // Fake Branch Heads, Department Managers, and HR Users removed.
+        // We will assign these roles dynamically from the actual EMPLOYEES array data.
         
         // Create Employees and Users
         const users = [];
         const allTasks = [];
         let taskCount = 0;
+        const assignedDeptHeads = new Set();
         
         for (let idx = 0; idx < EMPLOYEES.length; idx++) {
             const emp = EMPLOYEES[idx];
@@ -590,28 +534,47 @@ export const seedDatabase = async (isApi = false) => {
             let email;
 
             if (branchHeadConfig) {
-                // Find existing branch head user record to prevent duplicate accounts
-                user = await User.findOne({ email: branchHeadConfig.email });
-                if (user) {
-                    user.name = emp.name; // Keep spreadsheet official name
-                    await user.save();
-                }
+                // This is a known Branch Head! Create their account from the dataset
                 email = branchHeadConfig.email;
-                console.log(`🔄 Reusing existing Branch Head User for employee code: ${emp.empCode} | ${emp.name}`);
-            } else {
-                email = generateEmail(emp.name, emp.empCode);
-                // CREATE USER (for authentication)
                 user = await User.create({
                     name: emp.name,
                     email: email,
-                    password: 'employee123',
-                    role: 'employee',
+                    password: 'branch123',
+                    role: 'branch-head',
                     department: department,
                     branch: branchName,
                     isActive: true,
                     employeeId: emp.empCode
                 });
-                console.log(`✅ Created User: ${emp.empCode} | ${emp.name} | ${branchName} | ${department}`);
+                
+                // Link branch manager
+                await Branch.updateOne({ name: branchName }, { manager: user._id });
+                console.log(`✅ Created Branch Head: ${emp.empCode} | ${emp.name} | ${branchName}`);
+            } else {
+                email = generateEmail(emp.name, emp.empCode);
+                
+                // Randomly promote some normal employees to department-head to fill out the structure
+                let role = 'employee';
+                const deptBranchKey = `${department}_${branchName}`;
+                if (Math.random() > 0.85 && department !== 'Academic' && department !== 'Admin' && !assignedDeptHeads.has(deptBranchKey)) {
+                    role = 'department-head';
+                    assignedDeptHeads.add(deptBranchKey);
+                } else if (Math.random() > 0.95 && department === 'HR') {
+                    role = 'hr';
+                }
+
+                // CREATE USER (for authentication)
+                user = await User.create({
+                    name: emp.name,
+                    email: email,
+                    password: 'employee123',
+                    role: role,
+                    department: department,
+                    branch: branchName,
+                    isActive: true,
+                    employeeId: emp.empCode
+                });
+                console.log(`✅ Created ${role}: ${emp.empCode} | ${emp.name} | ${branchName} | ${department}`);
             }
 
             users.push(user);
@@ -650,6 +613,65 @@ export const seedDatabase = async (isApi = false) => {
         if (allTasks.length > 0) {
             await Task.insertMany(allTasks);
         }
+
+        // Dynamically assign managers to departments from created users
+        console.log('\n💼 Assigning Department Managers dynamically...');
+        for (const dept of createdDepts) {
+            // Find if there is already a department-head for this department name
+            let managerUser = users.find(u => u.department === dept.name && u.role === 'department-head');
+            
+            if (!managerUser) {
+                // Find a candidate user from the department (excluding admin, branch-head)
+                // who doesn't violate the unique index if promoted to department-head
+                const candidates = users.filter(u => 
+                    u.department === dept.name && 
+                    u.role !== 'admin' && 
+                    u.role !== 'branch-head' &&
+                    !assignedDeptHeads.has(`${dept.name}_${u.branch}`)
+                );
+                
+                if (candidates.length > 0) {
+                    // Pick a candidate, promote them
+                    managerUser = candidates[Math.floor(Math.random() * candidates.length)];
+                    managerUser.role = 'department-head';
+                    await managerUser.save();
+                    assignedDeptHeads.add(`${dept.name}_${managerUser.branch}`);
+                    console.log(`👑 Promoted ${managerUser.name} to department-head for ${dept.name} (${managerUser.branch})`);
+                } else {
+                    // If no user exists in that department, or all would violate the index,
+                    // let's try any user who doesn't violate the index when promoted
+                    const generalCandidates = users.filter(u => 
+                        u.role !== 'admin' && 
+                        u.role !== 'branch-head' &&
+                        !assignedDeptHeads.has(`${dept.name}_${u.branch}`)
+                    );
+                    if (generalCandidates.length > 0) {
+                        managerUser = generalCandidates[Math.floor(Math.random() * generalCandidates.length)];
+                        
+                        // We must change their department to dept.name first to keep it consistent
+                        managerUser.department = dept.name;
+                        managerUser.role = 'department-head';
+                        await managerUser.save();
+                        assignedDeptHeads.add(`${dept.name}_${managerUser.branch}`);
+                        
+                        // Also update their Employee record to keep it in sync!
+                        await Employee.updateOne({ employeeId: managerUser.employeeId }, { department: dept.name });
+                        
+                        console.log(`👑 Promoted & transferred ${managerUser.name} to department-head for ${dept.name} (${managerUser.branch})`);
+                    }
+                }
+            }
+            
+            if (managerUser) {
+                // Update department manager
+                dept.manager = managerUser._id;
+                dept.managerEmail = managerUser.email;
+                await dept.save();
+                console.log(`💼 Assigned Manager for Department ${dept.name}: ${managerUser.name} (${managerUser.email})`);
+            } else {
+                console.log(`⚠️ Could not assign a manager for department ${dept.name} because no suitable user was found.`);
+            }
+        }
         
         console.log(`\n✅ Total ${users.length} employees created`);
         console.log(`✅ Total ${taskCount} tasks created`);
@@ -671,12 +693,9 @@ export const seedDatabase = async (isApi = false) => {
         console.log('\n🎉 ========== SEEDING COMPLETE ==========');
         console.log('\n📝 Login Credentials:');
         console.log('   👑 Director (Admin): admin@example.com / admin123');
-        console.log('   🏢 Overall Branch Manager: abdul.habib@company.com / branch123');
-        console.log('   📚 Overall Academic Manager: asiya.arif@company.com / academic123');
-        console.log('   👥 HR: hr@example.com / hr1234');
-        console.log('   🏢 Branch Head (GB): samad.kavi@company.com / branch123');
-        console.log('   👨‍💼 Dept Manager: abdul.rahman@company.com / manager123');
-        console.log('   👨‍💼 Employee: use email shown above / employee123');
+        console.log('   🏢 Overall Branch Head: abdul.habib@company.com / branch123');
+        console.log('   🏢 Branch Heads: password is branch123');
+        console.log('   👨‍💼 Employees & Managers: password is employee123');
         
         if (!isApi) {
             // Close the connection

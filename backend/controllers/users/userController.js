@@ -5,6 +5,8 @@ import Employee from '../../models/Employee.js';
 import Branch from '../../models/Branch.js';
 import eventBus, { EVENTS } from '../../utils/eventBus.js';
 import { deleteFromCloudinary } from '../../middleware/uploadMiddleware.js';
+import { createAuditLog } from '../../utils/auditLogger.js';
+import { getCache, setCache, flushCachePattern } from '../../utils/cacheService.js';
 
 // Resilient transaction executor to support both standard replica sets (production) and standalone MongoDB instances (local dev fallback)
 const runInTransaction = async (workFn) => {
@@ -48,6 +50,14 @@ export const getAllUsers = async (req, res) => {
         let query = req.userFilter ? { ...req.userFilter } : {};
         query.isDeleted = { $ne: true };
 
+        // Generate Cache Key
+        const cacheKey = `users:${JSON.stringify(query)}:s:${search}:d:${department}:b:${branch}:r:${filterRole}:p:${page}:l:${limit}`;
+        
+        const cachedData = await getCache(cacheKey);
+        if (cachedData) {
+            return res.json(cachedData);
+        }
+
         // Search logic with injection protection
         if (search) {
             query.$or = [
@@ -81,7 +91,7 @@ export const getAllUsers = async (req, res) => {
             User.countDocuments({ ...(req.userFilter || {}), role: 'admin', isDeleted: { $ne: true } })
         ]);
 
-        res.json({ 
+        const responseData = { 
             success: true, 
             data: users,
             pagination: {
@@ -94,7 +104,11 @@ export const getAllUsers = async (req, res) => {
                 active,
                 admins
             }
-        });
+        };
+
+        await setCache(cacheKey, responseData, 300); // 5 mins cache
+
+        res.json(responseData);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -180,6 +194,11 @@ export const createUser = async (req, res) => {
         const { password: _, ...userWithoutPassword } = user.toObject();
         res.status(201).json({ success: true, data: userWithoutPassword });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
+        
+        await flushCachePattern('users:*');
+        
+        // Log Audit
+        await createAuditLog(req, 'CREATE', 'USER', user._id, null, userWithoutPassword);
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
@@ -199,6 +218,7 @@ export const updateUser = async (req, res) => {
             if (!user) {
                 return { status: 404, success: false, message: 'User not found' };
             }
+            const oldData = user.toObject();
 
             const isSelf = req.user._id.toString() === id;
             const canEditAll = ['admin', 'it'].includes(req.user.role);
@@ -302,7 +322,8 @@ export const updateUser = async (req, res) => {
             await user.save(session ? { session } : {});
             
             const { password: _, ...userWithoutPassword } = user.toObject();
-            return { success: true, data: userWithoutPassword };
+            const { password: __, ...oldDataWithoutPassword } = oldData;
+            return { status: 200, success: true, data: userWithoutPassword, oldData: oldDataWithoutPassword };
         });
 
         if (!result.success) {
@@ -311,6 +332,11 @@ export const updateUser = async (req, res) => {
 
         res.json({ success: true, data: result.data });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
+        
+        await flushCachePattern('users:*');
+
+        // Log Audit
+        await createAuditLog(req, 'UPDATE', 'USER', result.data._id, result.oldData, result.data);
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
@@ -368,6 +394,11 @@ export const deleteUser = async (req, res) => {
 
         res.json({ success: true, message: 'User soft-deleted successfully and tasks cascaded to Unassigned state' });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
+        
+        await flushCachePattern('users:*');
+
+        // Log Audit
+        await createAuditLog(req, 'DELETE', 'USER', id, null, { isDeleted: true });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -415,6 +446,7 @@ export const restoreUser = async (req, res) => {
 
         res.json({ success: true, message: 'User restored successfully', data: result.data });
         eventBus.emit('data_change', { type: EVENTS.USER_UPDATED });
+        await flushCachePattern('users:*');
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
     }
