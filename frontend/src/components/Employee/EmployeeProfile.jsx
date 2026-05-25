@@ -118,6 +118,9 @@ const EmployeeProfile = () => {
 
       setEmployee(emp);
       setProfileImage(emp.avatar || null);
+      if (['admin', 'director'].includes(emp.role) && ['charts', 'tasks', 'history'].includes(selectedTab)) {
+        setSelectedTab('overview');
+      }
 
       const employeeId = emp._id?.toString();
       const empTasks = allTasks.filter((task) => {
@@ -636,13 +639,15 @@ const EmployeeProfile = () => {
         <div className="bg-white rounded-xl p-1.5 shadow-sm border border-slate-200 flex gap-1 overflow-x-auto">
           {[
             { key: "overview", label: "Overview", icon: "📊" },
-            { key: "charts", label: "Charts", icon: "📈" },
-            { key: "tasks", label: `Tasks (${stats.total})`, icon: "📋" },
-            {
-              key: "history",
-              label: `History (${stats.completed})`,
-              icon: "✅",
-            },
+            ...(!['admin', 'director'].includes(employee.role) ? [
+              { key: "charts", label: "Charts", icon: "📈" },
+              { key: "tasks", label: `Tasks (${stats.total})`, icon: "📋" },
+              {
+                key: "history",
+                label: `History (${stats.completed})`,
+                icon: "✅",
+              },
+            ] : []),
             { key: "team", label: `Team (${teamMembers.length})`, icon: "👥" },
           ].map((tab) => (
             <button
@@ -663,42 +668,69 @@ const EmployeeProfile = () => {
         {/* ---------------- Overview Tab ---------------- */}
         {selectedTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-in">
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-              <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm">
-                  📊
-                </span>
-                Performance
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Completion Rate</span>
-                  <span className="font-bold text-emerald-600">
-                    {stats.rate}%
+            {['admin', 'director'].includes(employee.role) ? (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-650 flex items-center justify-center text-white text-sm">
+                    🛡️
                   </span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-400 to-green-600 rounded-full transition-all duration-700"
-                    style={{ width: `${stats.rate}%` }}
-                  />
-                </div>
-                {[
-                  { l: "Pending", v: stats.pending, c: "text-amber-600" },
-                  { l: "In Progress", v: stats.inProgress, c: "text-blue-600" },
-                  { l: "Submitted", v: stats.submitted, c: "text-violet-600" },
-                  { l: "Rejected", v: stats.rejected, c: "text-rose-600" },
-                ].map((r) => (
-                  <div
-                    key={r.l}
-                    className="flex justify-between items-center py-1.5 border-b border-slate-100 last:border-0"
-                  >
-                    <span className="text-slate-500">{r.l}</span>
-                    <span className={`font-bold ${r.c}`}>{r.v}</span>
+                  Administrative Scope
+                </h3>
+                <div className="space-y-4 text-sm">
+                  <p className="text-slate-500 leading-relaxed">
+                    As a member of the management and administrative team, this user holds high-level privileges to oversee operations, assign tasks, and monitor system performance across branches.
+                  </p>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      <span>Authorized Operations</span>
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-slate-650 list-disc list-inside">
+                      <li>Create and assign tasks to employees and teams</li>
+                      <li>Review and approve/reject task submissions</li>
+                      <li>Manage department and branch configurations</li>
+                      <li>Access system-wide analytical reports</li>
+                    </ul>
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm">
+                    📊
+                  </span>
+                  Performance
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Completion Rate</span>
+                    <span className="font-bold text-emerald-600">
+                      {stats.rate}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-400 to-green-600 rounded-full transition-all duration-700"
+                      style={{ width: `${stats.rate}%` }}
+                    />
+                  </div>
+                  {[
+                    { l: "Pending", v: stats.pending, c: "text-amber-600" },
+                    { l: "In Progress", v: stats.inProgress, c: "text-blue-600" },
+                    { l: "Submitted", v: stats.submitted, c: "text-violet-600" },
+                    { l: "Rejected", v: stats.rejected, c: "text-rose-600" },
+                  ].map((r) => (
+                    <div
+                      key={r.l}
+                      className="flex justify-between items-center py-1.5 border-b border-slate-100 last:border-0"
+                    >
+                      <span className="text-slate-500">{r.l}</span>
+                      <span className={`font-bold ${r.c}`}>{r.v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
               <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">

@@ -1081,37 +1081,25 @@ export const getDashboardStats = async (req, res) => {
         const now = new Date();
         const queryWithDate = { ...query, ...dateQuery };
 
-        const [statsAgg, branchAgg] = await Promise.all([
-            Task.aggregate([
-                { $match: queryWithDate },
-                {
-                    $group: {
-                        _id: null,
-                        totalTasks: { $sum: 1 },
-                        completedTasks: { $sum: { $cond: [{ $in: ["$status", ["completed", "approved"]] }, 1, 0] } },
-                        pendingTasks: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
-                        inProgressTasks: { $sum: { $cond: [{ $eq: ["$status", "in-progress"] }, 1, 0] } },
-                        submittedTasks: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } },
-                        rejectedTasks: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
-                        urgentTasks: { $sum: { $cond: [{ $eq: ["$priority", "urgent"] }, 1, 0] } },
-                        highPriorityTasks: { $sum: { $cond: [{ $eq: ["$priority", "high"] }, 1, 0] } },
-                        overdueTasks: {
-                            $sum: {
-                                $cond: [
-                                    {
-                                        $and: [
-                                            { $lt: ["$dueDate", now] },
-                                            { $not: { $in: ["$status", ["completed", "approved"]] } }
-                                        ]
-                                    },
-                                    1,
-                                    0
-                                ]
-                            }
-                        }
-                    }
-                }
-            ]),
+        const empPage = req.query.empPage ? parseInt(req.query.empPage, 10) : 1;
+        const empLimit = req.query.empLimit ? parseInt(req.query.empLimit, 10) : 10;
+        const skip = (empPage - 1) * empLimit;
+
+        // Build user filter matching the same branch / department filters (for admin/it or restricted roles)
+        let userFilter = { isDeleted: { $ne: true }, role: { $ne: 'admin' } };
+        if (role !== 'admin' && role !== 'it') {
+            userFilter.branch = userBranch;
+            if (role === 'department-head' || role === 'hr' || role === 'employee') {
+                userFilter.department = role === 'hr' ? 'HR' : userDept;
+            } else if (department && department !== 'all') {
+                userFilter.department = department;
+            }
+        } else {
+            if (branch && branch !== 'all') userFilter.branch = branch;
+            if (department && department !== 'all') userFilter.department = department;
+        }
+
+        const [branchAgg, users, totalUsers, tasksForPerformance] = await Promise.all([
             Task.aggregate([
                 { $match: queryWithDate },
                 { $group: {
@@ -1123,20 +1111,144 @@ export const getDashboardStats = async (req, res) => {
                     submitted: { $sum: { $cond: [{ $eq: ["$status", "submitted"] }, 1, 0] } }
                 }},
                 { $sort: { total: -1 } }
-            ])
+            ]),
+            User.find(userFilter).select('name department branch role').skip(skip).limit(empLimit).lean(),
+            User.countDocuments(userFilter),
+            Task.find(queryWithDate).lean()
         ]);
 
-        const summaryData = statsAgg[0] || {
-            totalTasks: 0,
-            completedTasks: 0,
-            pendingTasks: 0,
-            inProgressTasks: 0,
-            submittedTasks: 0,
-            rejectedTasks: 0,
-            urgentTasks: 0,
-            highPriorityTasks: 0,
-            overdueTasks: 0
+        const totalTasks = tasksForPerformance.length;
+        const completedTasks = tasksForPerformance.filter(t => ['completed', 'approved'].includes(t.status)).length;
+        const pendingTasks = tasksForPerformance.filter(t => t.status === 'pending').length;
+        const inProgressTasks = tasksForPerformance.filter(t => t.status === 'in-progress').length;
+        const submittedTasks = tasksForPerformance.filter(t => t.status === 'submitted').length;
+        const rejectedTasks = tasksForPerformance.filter(t => t.status === 'rejected').length;
+        const urgentTasks = tasksForPerformance.filter(t => t.priority === 'urgent').length;
+        const highPriorityTasks = tasksForPerformance.filter(t => t.priority === 'high').length;
+        const overdueTasks = tasksForPerformance.filter(t => !['completed', 'approved'].includes(t.status) && new Date(t.dueDate) < now).length;
+
+        // Calculate on-time rate and average turnaround time (avgCompletionDays)
+        const completedTasksList = tasksForPerformance.filter(t => ['completed', 'approved'].includes(t.status));
+        
+        const onTimeCompleted = completedTasksList.filter(t => {
+            const completionDate = t.completedAt || t.approvedAt || t.updatedAt;
+            return new Date(completionDate) <= new Date(t.dueDate);
+        }).length;
+        const onTimeRate = completedTasksList.length > 0 ? Math.round((onTimeCompleted / completedTasksList.length) * 100) : 0;
+
+        const overdueRate = totalTasks - completedTasks > 0 ? Math.round((overdueTasks / (totalTasks - completedTasks)) * 100) : 0;
+
+        let totalCompletionTimeMs = 0;
+        let completedWithDates = 0;
+        completedTasksList.forEach(t => {
+            const completionDate = t.completedAt || t.approvedAt || t.updatedAt;
+            const startDate = t.createdAt;
+            if (completionDate && startDate) {
+                totalCompletionTimeMs += (new Date(completionDate) - new Date(startDate));
+                completedWithDates++;
+            }
+        });
+        const avgCompletionDays = completedWithDates > 0 
+            ? Math.round((totalCompletionTimeMs / (1000 * 60 * 60 * 24)) * 10) / 10 
+            : 0;
+
+        const summaryData = {
+            totalTasks,
+            completedTasks,
+            pendingTasks,
+            inProgressTasks,
+            submittedTasks,
+            rejectedTasks,
+            urgentTasks,
+            highPriorityTasks,
+            overdueTasks,
+            onTimeRate,
+            overdueRate,
+            avgCompletionDays
         };
+
+        // Calculate employeePerformance for paginated users
+        const employeePerformance = users.map(u => {
+            const userIdStr = u._id.toString();
+            const userTasks = tasksForPerformance.filter(t => {
+                const assignedToId = t.assignedTo?.toString();
+                const assignedTeamIds = (t.assignedTeam || []).map(m => m.toString());
+                return assignedToId === userIdStr || assignedTeamIds.includes(userIdStr);
+            });
+
+            const userTotalTasks = userTasks.length;
+            const userCompletedTasks = userTasks.filter(t => ['completed', 'approved'].includes(t.status)).length;
+            const userPendingTasks = userTotalTasks - userCompletedTasks;
+            
+            const userCompletedTasksList = userTasks.filter(t => ['completed', 'approved'].includes(t.status));
+            const userOnTimeCompleted = userCompletedTasksList.filter(t => {
+                const completionDate = t.completedAt || t.approvedAt || t.updatedAt;
+                return new Date(completionDate) <= new Date(t.dueDate);
+            }).length;
+            const userOnTimeRate = userCompletedTasksList.length > 0 ? Math.round((userOnTimeCompleted / userCompletedTasksList.length) * 100) : 0;
+
+            const userCompletionRate = userTotalTasks > 0 ? Math.round((userCompletedTasks / userTotalTasks) * 100) : 0;
+
+            let userCompletionTimeMs = 0;
+            let userCompletedWithDates = 0;
+            userCompletedTasksList.forEach(t => {
+                const completionDate = t.completedAt || t.approvedAt || t.updatedAt;
+                const startDate = t.createdAt;
+                if (completionDate && startDate) {
+                    userCompletionTimeMs += (new Date(completionDate) - new Date(startDate));
+                    userCompletedWithDates++;
+                }
+            });
+            const userAvgCompletionDays = userCompletedWithDates > 0 
+                ? Math.round((userCompletionTimeMs / (1000 * 60 * 60 * 24)) * 10) / 10 
+                : 0;
+
+            return {
+                id: userIdStr,
+                _id: u._id,
+                name: u.name,
+                department: u.department,
+                branch: u.branch,
+                role: u.role,
+                totalTasks: userTotalTasks,
+                completedTasks: userCompletedTasks,
+                pendingTasks: userPendingTasks,
+                completionRate: userCompletionRate,
+                onTimeRate: userOnTimeRate,
+                avgCompletionDays: userAvgCompletionDays
+            };
+        });
+
+        // Calculate weeklyTrend (last 7 days)
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const weeklyTrend = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+            const dayName = daysOfWeek[d.getDay()];
+            
+            const dayStart = new Date(d);
+            const dayEnd = new Date(d);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const dayTasks = tasksForPerformance.filter(t => {
+                const dateToCheck = t.completedAt || t.approvedAt || t.updatedAt || t.createdAt;
+                const dDate = new Date(dateToCheck);
+                return dDate >= dayStart && dDate <= dayEnd;
+            });
+
+            const completedCount = dayTasks.filter(t => ['completed', 'approved'].includes(t.status)).length;
+            const pendingCount = dayTasks.filter(t => !['completed', 'approved'].includes(t.status)).length;
+            const dayTimeSpent = dayTasks.reduce((sum, t) => sum + (t.totalTimeSpent || 0), 0);
+
+            weeklyTrend.push({
+                day: dayName,
+                completed: completedCount,
+                pending: pendingCount,
+                totalTimeSpent: dayTimeSpent
+            });
+        }
 
         res.json({
             success: true,
@@ -1150,6 +1262,14 @@ export const getDashboardStats = async (req, res) => {
                     inProgress: b.inProgress,
                     submitted: b.submitted
                 })),
+                employeePerformance: employeePerformance.sort((a, b) => b.completedTasks - a.completedTasks),
+                employeePagination: {
+                    page: empPage,
+                    pages: Math.ceil(totalUsers / empLimit),
+                    total: totalUsers,
+                    limit: empLimit
+                },
+                weeklyTrend,
                 recentTasks: []
             }
         });

@@ -3,18 +3,16 @@ import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTasks, fetchDashboardStats } from "../../store/features/tasks";
 import {
-  getUsers,
-  getUsersByBranch,
-  getUsersByDepartment,
   getEmployeeSummary,
-  getBranches
+  getBranches,
+  reviewTask,
+  getTaskAnalytics
 } from "../../services/api";
-import { reviewTask } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend, ResponsiveContainer, ComposedChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { getTaskAnalytics } from '../../services/api';
+import toast from "react-hot-toast";
 
 const API_ORIGIN = (
   import.meta.env.VITE_API_URL || "http://localhost:5001/api"
@@ -23,7 +21,7 @@ const API_ORIGIN = (
 // ==================== ANIMATIONS ====================
 const animations = `
   @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
   @keyframes fadeIn {
@@ -31,97 +29,91 @@ const animations = `
     to { opacity: 1; }
   }
   @keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.95); }
+    from { opacity: 0; transform: scale(0.98); }
     to { opacity: 1; transform: scale(1); }
-  }
-  @keyframes slideInRight {
-    from { opacity: 0; transform: translateX(20px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
   }
   @keyframes shimmer {
     0% { background-position: -1000px 0; }
     100% { background-position: 1000px 0; }
   }
-  .animate-fadeInUp { animation: fadeInUp 0.5s ease-out; }
-  .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
-  .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
-  .animate-slideInRight { animation: slideInRight 0.3s ease-out; }
-  .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  .animate-fadeInUp { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .animate-fadeIn { animation: fadeIn 0.25s ease-out both; }
+  .animate-scaleIn { animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
   .skeleton { 
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
     background-size: 1000px 100%;
-    animation: shimmer 2s infinite;
+    animation: shimmer 1.8s infinite linear;
   }
-  .stagger-1 { animation-delay: 0.05s; }
-  .stagger-2 { animation-delay: 0.1s; }
-  .stagger-3 { animation-delay: 0.15s; }
-  .stagger-4 { animation-delay: 0.2s; }
-  .stagger-5 { animation-delay: 0.25s; }
-  .stagger-6 { animation-delay: 0.3s; }
-  .hover-lift { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-  .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(0,0,0,0.15); }
-  .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-  .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-  .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+  .stagger-1 { animation-delay: 40ms; }
+  .stagger-2 { animation-delay: 80ms; }
+  .stagger-3 { animation-delay: 120ms; }
+  .stagger-4 { animation-delay: 160ms; }
+  .stagger-5 { animation-delay: 200ms; }
+  .stagger-6 { animation-delay: 240ms; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 `;
 
-import toast from "react-hot-toast";
-
 // ==================== SKELETON LOADER ====================
 const Skeleton = ({ className = "" }) => (
-  <div className={`skeleton rounded-lg ${className}`} />
+  <div className={`skeleton rounded-xl ${className}`} />
 );
 
 const DashboardSkeleton = () => (
   <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-    <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl p-6">
-      <Skeleton className="h-6 w-48 bg-white/20 mb-2" />
-      <Skeleton className="h-4 w-32 bg-white/20" />
+    <div className="bg-gradient-to-r from-slate-800 to-slate-950 rounded-2xl p-6 md:p-8">
+      <Skeleton className="h-6 w-48 bg-slate-700/60 mb-2" />
+      <Skeleton className="h-4 w-32 bg-slate-700/40" />
     </div>
 
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {[...Array(6)].map((_, i) => (
-        <div key={i} className="bg-white rounded-xl p-4 shadow-sm border">
-          <Skeleton className="h-3 w-16 mb-2" />
-          <Skeleton className="h-8 w-12" />
+        <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <Skeleton className="h-3 w-16 mb-2 bg-slate-100" />
+          <Skeleton className="h-7 w-12 bg-slate-200" />
         </div>
       ))}
     </div>
 
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm border">
-        <Skeleton className="h-4 w-32 mb-4" />
-        <Skeleton className="h-48 w-full" />
+      <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-150">
+        <Skeleton className="h-4 w-32 mb-4 bg-slate-200" />
+        <Skeleton className="h-56 w-full bg-slate-100" />
       </div>
-      <div className="bg-white rounded-xl p-6 shadow-sm border">
-        <Skeleton className="h-4 w-24 mb-4" />
-        <Skeleton className="h-48 w-full rounded-full" />
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-150">
+        <Skeleton className="h-4 w-24 mb-4 bg-slate-200" />
+        <Skeleton className="h-56 w-full rounded-full bg-slate-100" />
       </div>
     </div>
 
-    <div className="bg-white rounded-xl p-6 shadow-sm border">
-      <Skeleton className="h-4 w-32 mb-4" />
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-150">
+      <Skeleton className="h-4 w-32 mb-4 bg-slate-200" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="p-4 rounded-xl border">
+          <div key={i} className="p-4 rounded-xl border border-slate-100">
             <div className="flex items-center gap-3">
-              <Skeleton className="w-10 h-10 rounded-full" />
+              <Skeleton className="w-10 h-10 rounded-full bg-slate-200" />
               <div className="flex-1">
-                <Skeleton className="h-4 w-24 mb-1" />
-                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-4 w-24 mb-1 bg-slate-200" />
+                <Skeleton className="h-3 w-16 bg-slate-100" />
               </div>
             </div>
           </div>
         ))}
       </div>
     </div>
+  </div>
+);
+
+// ==================== EMPTY STATE ====================
+const EmptyState = ({ message = "No records found" }) => (
+  <div className="flex flex-col items-center justify-center py-12 text-center">
+    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-3 border border-slate-100">
+      <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <p className="text-slate-400 text-xs font-medium">{message}</p>
   </div>
 );
 
@@ -151,15 +143,12 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
   return (
     <div
       onClick={onClick}
-      className={`group relative bg-white rounded-2xl border border-slate-200/60 p-4 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer transition-all duration-200 animate-fadeInUp stagger-${(index % 6) + 1}`}
+      className={`group relative bg-white rounded-2xl border border-slate-200/60 p-4 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer transition-all duration-300 animate-fadeInUp stagger-${(index % 6) + 1}`}
     >
-      {/* Decorative hover gradient glow */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/0 via-indigo-500/0 to-indigo-500/[0.02] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/0 via-indigo-500/0 to-indigo-500/[0.01] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-      {/* Top Header Row */}
       <div className="flex items-start justify-between mb-3 relative z-10">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Avatar Container */}
           <div className="relative flex-shrink-0">
             {emp.avatar ? (
               <img
@@ -173,78 +162,73 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
               />
             ) : (
               <div
-                className={`w-10 h-10 bg-gradient-to-br ${colors[emp.department] || "from-slate-500 to-slate-600"} rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm transition-all duration-300 group-hover:scale-105`}
+                className={`w-10 h-10 bg-gradient-to-br ${colors[emp.department] || "from-slate-500 to-slate-650"} rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm transition-all duration-300 group-hover:scale-105`}
               >
                 {getInitials(emp.name)}
               </div>
             )}
-            {/* Online status dot */}
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
           </div>
 
           <div className="min-w-0">
-            <h4 className="font-semibold text-slate-800 text-sm tracking-tight truncate group-hover:text-blue-600 transition-colors duration-200">
+            <h4 className="font-semibold text-slate-800 text-sm tracking-tight truncate group-hover:text-blue-600 transition-colors duration-305">
               {emp.name}
             </h4>
-            <span className="text-xs font-medium text-slate-500 capitalize truncate block mt-0.5">
+            <span className="text-[10px] font-medium text-slate-400 capitalize truncate block mt-0.5">
               {emp.role?.replace(/-/g, " ") || "Member"}
             </span>
           </div>
         </div>
 
-        {/* Employee ID Badge */}
-        <span className="text-[10px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 group-hover:border-blue-200 group-hover:bg-blue-50/50 group-hover:text-blue-600 transition-all duration-200">
+        <span className="text-[9px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/50 group-hover:border-blue-100 group-hover:bg-blue-50/50 group-hover:text-blue-650 transition-all duration-305">
           #{emp.employeeId || "N/A"}
         </span>
       </div>
 
-      {/* Info Panel: Email & Phone */}
-      <div className="flex flex-col gap-1 mb-3 p-2 bg-slate-50/50 group-hover:bg-blue-50/10 rounded-xl border border-slate-200/50 transition-all duration-300 relative z-10">
-        <div className="flex items-center gap-2 min-w-0 text-slate-500 group-hover:text-slate-600 transition-colors" title={emp.email}>
-          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex flex-col gap-1 mb-3 p-2 bg-slate-50/50 group-hover:bg-blue-50/10 rounded-xl border border-slate-100 transition-all duration-300 relative z-10">
+        <div className="flex items-center gap-2 min-w-0 text-slate-500" title={emp.email}>
+          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors duration-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
           <span className="text-xs truncate">{emp.email || "No Email"}</span>
         </div>
-        <div className="flex items-center gap-2 min-w-0 text-slate-500 group-hover:text-slate-600 transition-colors">
-          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex items-center gap-2 min-w-0 text-slate-500">
+          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors duration-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
           </svg>
           <span className="text-xs truncate">{emp.phone || "Not Provided"}</span>
         </div>
       </div>
 
-      {/* Task Performance Grid with mini indicators */}
       <div className="grid grid-cols-3 gap-2 mb-4 relative z-10">
-        <div className="bg-white group-hover:bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100/70 text-center transition-all duration-300">
+        <div className="bg-slate-50 group-hover:bg-slate-100/50 p-2 rounded-xl text-center transition-all duration-300">
           <div className="flex items-center justify-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <p className="text-xs font-extrabold text-slate-700">{stats.completed}</p>
+            <p className="text-xs font-bold text-slate-700">{stats.completed}</p>
           </div>
           <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Done</p>
         </div>
-        <div className="bg-white group-hover:bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100/70 text-center transition-all duration-300">
+        <div className="bg-slate-50 group-hover:bg-slate-100/50 p-2 rounded-xl text-center transition-all duration-300">
           <div className="flex items-center justify-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            <p className="text-xs font-extrabold text-slate-700">{stats.inProgress}</p>
+            <p className="text-xs font-bold text-slate-700">{stats.inProgress}</p>
           </div>
           <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Progress</p>
         </div>
-        <div className="bg-white group-hover:bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100/70 text-center transition-all duration-300">
+        <div className="bg-slate-50 group-hover:bg-slate-100/50 p-2 rounded-xl text-center transition-all duration-300">
           <div className="flex items-center justify-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            <p className="text-xs font-extrabold text-slate-700">{stats.pending}</p>
+            <p className="text-xs font-bold text-slate-700">{stats.pending}</p>
           </div>
           <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Pending</p>
         </div>
       </div>
 
-      {/* Footer Tags */}
-      <div className="flex items-center justify-between border-t border-slate-200/50 pt-3 relative z-10">
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
+      <div className="flex items-center justify-between border-t border-slate-100 pt-3 relative z-10">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold border border-blue-100">
           🏢 {emp.department}
         </span>
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50 text-slate-600 rounded-full text-xs font-medium border border-slate-200/60">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-50 text-slate-600 rounded-full text-[10px] font-semibold border border-slate-200/60">
           📍 {emp.branch?.replace(" Branch", "")}
         </span>
       </div>
@@ -271,9 +255,9 @@ const BranchCard = ({ branch, color, onClick, isSelected }) => {
   return (
     <div
       onClick={onClick}
-      className={`rounded-2xl p-4 border transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:shadow-md ${
+      className={`rounded-2xl p-4 border transition-all duration-300 cursor-pointer hover:-translate-y-0.5 hover:shadow-md ${
         isSelected
-          ? "border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50/50 shadow-md ring-1 ring-blue-100"
+          ? "border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50/40 shadow-sm ring-1 ring-blue-100"
           : "border-slate-200/60 bg-white hover:border-slate-300 shadow-sm"
       }`}
     >
@@ -285,10 +269,10 @@ const BranchCard = ({ branch, color, onClick, isSelected }) => {
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-sm text-slate-800 tracking-tight truncate">{branch.name}</h4>
-          <p className="text-xs font-medium text-slate-500">{branch.total} tasks</p>
+          <p className="text-[11px] font-medium text-slate-400">{branch.total} tasks</p>
         </div>
         <span
-          className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
             rate >= 80
               ? "bg-emerald-50 text-emerald-600 border-emerald-100"
               : rate >= 50
@@ -300,21 +284,21 @@ const BranchCard = ({ branch, color, onClick, isSelected }) => {
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2 text-[10px]">
-        <div className="flex justify-between bg-emerald-50 px-2 py-1.5 rounded-lg">
-          <span className="text-gray-600">Done</span>
-          <span className="font-bold text-emerald-700">{branch.completed}</span>
+        <div className="flex justify-between bg-emerald-50/50 px-2 py-1.5 rounded-lg border border-emerald-100/50">
+          <span className="text-emerald-700">Done</span>
+          <span className="font-bold text-emerald-800">{branch.completed}</span>
         </div>
-        <div className="flex justify-between bg-blue-50 px-2 py-1.5 rounded-lg">
-          <span className="text-gray-600">Progress</span>
-          <span className="font-bold text-blue-700">{branch.inProgress}</span>
+        <div className="flex justify-between bg-blue-50/50 px-2 py-1.5 rounded-lg border border-blue-100/50">
+          <span className="text-blue-700">Progress</span>
+          <span className="font-bold text-blue-800">{branch.inProgress}</span>
         </div>
-        <div className="flex justify-between bg-purple-50 px-2 py-1.5 rounded-lg">
-          <span className="text-gray-600">Submitted</span>
-          <span className="font-bold text-purple-700">{branch.submitted}</span>
+        <div className="flex justify-between bg-purple-50/50 px-2 py-1.5 rounded-lg border border-purple-100/50">
+          <span className="text-purple-700">Submitted</span>
+          <span className="font-bold text-purple-800">{branch.submitted}</span>
         </div>
-        <div className="flex justify-between bg-amber-50 px-2 py-1.5 rounded-lg">
-          <span className="text-gray-600">Pending</span>
-          <span className="font-bold text-amber-700">{branch.pending}</span>
+        <div className="flex justify-between bg-amber-50/50 px-2 py-1.5 rounded-lg border border-amber-100/50">
+          <span className="text-amber-700">Pending</span>
+          <span className="font-bold text-amber-800">{branch.pending}</span>
         </div>
       </div>
     </div>
@@ -336,24 +320,14 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+        className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all duration-300 ${
           currentPage === 1
-            ? "bg-gray-50 text-gray-300 cursor-not-allowed"
-            : "bg-white border hover:bg-gray-50 hover:border-gray-300 shadow-sm"
+            ? "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed"
+            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"
         }`}
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
       </button>
 
@@ -361,11 +335,11 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
         <>
           <button
             onClick={() => onPageChange(1)}
-            className="w-9 h-9 rounded-lg text-sm bg-white border hover:bg-gray-50 shadow-sm font-medium"
+            className="w-9 h-9 rounded-lg text-sm bg-white border border-slate-200 hover:bg-slate-50 shadow-sm font-semibold transition-all duration-300"
           >
             1
           </button>
-          <span className="text-gray-400 text-sm px-1">...</span>
+          <span className="text-slate-400 text-sm px-1 font-bold">...</span>
         </>
       )}
 
@@ -373,10 +347,10 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
         <button
           key={p}
           onClick={() => onPageChange(p)}
-          className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${
+          className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all duration-300 ${
             currentPage === p
-              ? "bg-blue-600 text-white shadow-md shadow-blue-200 scale-105"
-              : "bg-white border hover:bg-gray-50 shadow-sm"
+              ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200 scale-105"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"
           }`}
         >
           {p}
@@ -385,10 +359,10 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
       {end < totalPages && (
         <>
-          <span className="text-gray-400 text-sm px-1">...</span>
+          <span className="text-slate-400 text-sm px-1 font-bold">...</span>
           <button
             onClick={() => onPageChange(totalPages)}
-            className="w-9 h-9 rounded-lg text-sm bg-white border hover:bg-gray-50 shadow-sm font-medium"
+            className="w-9 h-9 rounded-lg text-sm bg-white border border-slate-200 hover:bg-slate-50 shadow-sm font-semibold transition-all duration-300"
           >
             {totalPages}
           </button>
@@ -398,24 +372,14 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+        className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all duration-300 ${
           currentPage === totalPages
-            ? "bg-gray-50 text-gray-300 cursor-not-allowed"
-            : "bg-white border hover:bg-gray-50 hover:border-gray-300 shadow-sm"
+            ? "bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed"
+            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"
         }`}
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </button>
     </div>
@@ -434,45 +398,32 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel, loading }) => {
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
       onClick={(e) => e.target === e.currentTarget && !loading && onCancel()}
     >
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scaleIn">
-        <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-4">
-          <svg
-            className="w-6 h-6 text-rose-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-            />
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-slate-100 animate-scaleIn">
+        <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-4 border border-rose-100">
+          <svg className="w-6 h-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <h3 className="text-lg font-bold text-center mb-2">{title}</h3>
-        <p className="text-sm text-gray-600 text-center mb-6">{message}</p>
+        <h3 className="text-lg font-bold text-center mb-2 text-slate-800">{title}</h3>
+        <p className="text-xs text-slate-500 text-center mb-6 leading-relaxed">{message}</p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200/80 text-slate-700 rounded-xl text-sm font-semibold transition-all duration-300 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Processing...
-              </>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               "Confirm"
             )}
@@ -527,13 +478,15 @@ const Dashboard = () => {
   const [confirmModal, setConfirmModal] = useState(null);
   const itemsPerPage = 8;
 
-  // Lock filters for branch-head / department-head so UI matches access level.
+  // Lock filters for branch-head / department-head
   useEffect(() => {
     if (!user) return;
-    if ((user.role === "branch-head" || user.role === "department-head") && user.branch)
+    if ((user.role === "branch-head" || user.role === "department-head") && user.branch) {
       setSelectedBranch(user.branch);
-    if (user.role === "department-head" && user.department)
+    }
+    if (user.role === "department-head" && user.department) {
       setSelectedDepartment(user.department);
+    }
   }, [user]);
 
   const branches = settings?.branches || [
@@ -560,14 +513,17 @@ const Dashboard = () => {
     "Admin",
   ];
 
-  const visibleBranches =
-    (user?.role === "branch-head" || user?.role === "department-head") && user?.branch
+  const visibleBranches = useMemo(() => {
+    return (user?.role === "branch-head" || user?.role === "department-head") && user?.branch
       ? [user.branch]
       : branches;
-  const visibleDepartments =
-    user?.role === "department-head" && user?.department
+  }, [user, branches]);
+
+  const visibleDepartments = useMemo(() => {
+    return user?.role === "department-head" && user?.department
       ? [user.department]
       : departments;
+  }, [user, departments]);
 
   const departmentsForSelectedBranch = useMemo(() => {
     if (selectedBranch === "all") {
@@ -584,21 +540,15 @@ const Dashboard = () => {
   }, [selectedBranch, visibleDepartments, dbBranches]);
 
   const branchColors = [
-    "bg-gradient-to-br from-blue-500 to-blue-600",
-    "bg-gradient-to-br from-emerald-500 to-emerald-600",
-    "bg-gradient-to-br from-purple-500 to-purple-600",
-    "bg-gradient-to-br from-orange-500 to-orange-600",
-    "bg-gradient-to-br from-pink-500 to-pink-600",
-    "bg-gradient-to-br from-indigo-500 to-indigo-600",
-    "bg-gradient-to-br from-teal-500 to-teal-600",
-    "bg-gradient-to-br from-rose-500 to-rose-600",
+    "bg-gradient-to-br from-blue-500 to-indigo-600",
+    "bg-gradient-to-br from-emerald-500 to-teal-600",
+    "bg-gradient-to-br from-purple-500 to-violet-600",
+    "bg-gradient-to-br from-orange-500 to-amber-600",
+    "bg-gradient-to-br from-pink-500 to-rose-600",
+    "bg-gradient-to-br from-cyan-500 to-blue-600",
+    "bg-gradient-to-br from-teal-500 to-emerald-600",
+    "bg-gradient-to-br from-rose-500 to-pink-600",
   ];
-
-  const showToast = useCallback((message, type = "success") => {
-    if (type === "success") toast.success(message);
-    else if (type === "error") toast.error(message);
-    else toast(message);
-  }, []);
 
   const loadTasks = useCallback(async () => {
     const statsParams = {
@@ -611,9 +561,8 @@ const Dashboard = () => {
       statsParams.endDate = customEnd;
     }
     
-    // Both tasks and stats should be filtered by the selection
     dispatch(fetchTasks({ 
-      limit: 1000, // Increased for dashboard charts & performance stats
+      limit: 1000,
       department: selectedDepartment,
       branch: selectedBranch,
       timeFilter
@@ -621,7 +570,7 @@ const Dashboard = () => {
     dispatch(fetchDashboardStats(statsParams));
     
     getTaskAnalytics().then(res => {
-        if (res.data.success) setAnalyticsData(res.data.data);
+        if (res?.data?.success) setAnalyticsData(res.data.data);
     }).catch(err => console.error("Error fetching analytics", err));
   }, [dispatch, selectedDepartment, selectedBranch, timeFilter, customStart, customEnd]);
 
@@ -644,12 +593,10 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error("Failed to load employees:", error);
-      showToast("Failed to load employees", "error");
+      toast.error("Failed to load employee list");
     }
-  }, [showToast, user]);
+  }, [user]);
 
-  // Real-time polling handled centrally by useRealtimeSync in App.jsx
-  // Local effect only loads employees (not handled by central hook)
   useEffect(() => {
     const loadData = async () => {
       if (allTasks.length === 0) setLoading(true);
@@ -665,9 +612,8 @@ const Dashboard = () => {
       setLoading(false);
     };
     loadData();
-  }, [dispatch, loadEmployees, dashboardStats]); // Interlink employee updates with real-time stats updates
+  }, [loadEmployees, allTasks.length]);
 
-  // When branch changes, reset department filter — departments vary per branch
   useEffect(() => {
     if (user?.role !== "branch-head" && user?.role !== "department-head") {
       setSelectedDepartment("all");
@@ -681,8 +627,9 @@ const Dashboard = () => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (searchInputRef.current && !searchInputRef.current.contains(e.target))
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target)) {
         setShowSearchDropdown(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -694,105 +641,6 @@ const Dashboard = () => {
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
-
-  const getFilteredTasks = useMemo(() => {
-    const now = new Date();
-    let filtered = [...allTasks];
-
-    // ── Time filter ────────────────────────────────────────────────
-    switch (timeFilter) {
-      case "daily": {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        filtered = filtered.filter((x) => new Date(x.createdAt) >= today);
-        break;
-      }
-      case "weekly": {
-        const weekAgo = new Date(now);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        weekAgo.setHours(0, 0, 0, 0);
-        filtered = filtered.filter((x) => new Date(x.createdAt) >= weekAgo);
-        break;
-      }
-      case "monthly": {
-        const monthAgo = new Date(now);
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        monthAgo.setHours(0, 0, 0, 0);
-        filtered = filtered.filter((x) => new Date(x.createdAt) >= monthAgo);
-        break;
-      }
-      case "custom": {
-        if (customStart && customEnd) {
-          const start = new Date(customStart);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(customEnd);
-          end.setHours(23, 59, 59, 999);
-          filtered = filtered.filter((x) => {
-            const d = new Date(x.createdAt);
-            return d >= start && d <= end;
-          });
-        }
-        break;
-      }
-      default:
-        break; // "all" — no filter
-    }
-
-    // ── Department & Branch filter ─────────────────────────────────
-    if (selectedDepartment !== "all")
-      filtered = filtered.filter((t) => t.department === selectedDepartment);
-    if (selectedBranch !== "all")
-      filtered = filtered.filter((t) => t.branch === selectedBranch);
-
-    // ── Search filter ──────────────────────────────────────────────
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (t) =>
-          t.title?.toLowerCase().includes(q) ||
-          t.assignedTo?.name?.toLowerCase().includes(q) ||
-          t.assignedTo?.employeeId?.toLowerCase().includes(q),
-      );
-    }
-
-    return filtered;
-  }, [
-    allTasks,
-    timeFilter,
-    customStart,
-    customEnd,
-    selectedDepartment,
-    selectedBranch,
-    searchQuery,
-  ]);
-
-  const filteredTasks = getFilteredTasks;
-
-  // Use live MongoDB stats from API (Most accurate for Dashboard)
-  const apiStats = dashboardStats?.summary;
-
-  const totalTasks = apiStats?.totalTasks ?? 0;
-  const completedTasks = apiStats?.completedTasks ?? 0;
-  const inProgressTasks = apiStats?.inProgressTasks ?? 0;
-  const submittedTasks = apiStats?.submittedTasks ?? 0;
-  const pendingTasks = apiStats?.pendingTasks ?? 0;
-  const rejectedTasks = apiStats?.rejectedTasks ?? 0;
-
-  const pendingSubmissions = allTasks.filter((t) => t.status === "submitted");
-  const canReview =
-    user?.role === "department-head" && pendingSubmissions.length > 0;
-
-  const searchResults = employees
-    .filter((emp) => {
-      if (!searchQuery) return false;
-      const q = searchQuery.toLowerCase();
-      return (
-        emp.name?.toLowerCase().includes(q) ||
-        emp.email?.toLowerCase().includes(q) ||
-        emp.employeeId?.toLowerCase().includes(q)
-      );
-    })
-    .slice(0, 5);
 
   const filteredLeadershipEmployees = useMemo(() => {
     const leadershipRoles = ["admin", "branch-head", "department-head", "manager"];
@@ -830,11 +678,12 @@ const Dashboard = () => {
     });
   }, [employees, selectedBranch, selectedDepartment, searchQuery]);
 
-  const filteredEmployees = useMemo(() => {
+  const filteredEmployeesForCSV = useMemo(() => {
     return [...filteredLeadershipEmployees, ...filteredStaffEmployees];
   }, [filteredLeadershipEmployees, filteredStaffEmployees]);
 
   const totalPages = Math.ceil(filteredStaffEmployees.length / itemsPerPage);
+  
   const paginatedEmployees = useMemo(() => {
     return filteredStaffEmployees.slice(
       (currentPage - 1) * itemsPerPage,
@@ -842,326 +691,7 @@ const Dashboard = () => {
     );
   }, [filteredStaffEmployees, currentPage, itemsPerPage]);
 
-  const getEmpStats = (eid) => {
-    // This function is no longer used since backend handles it, but keeping it as a safe fallback just in case
-    return { totalTasks: 0, completed: 0, pending: 0, inProgress: 0 };
-  };
-
   const branchStats = dashboardStats?.branchStats || [];
-
-  // ==================== CHART DATA GENERATION ====================
-  const getMonthlyChartData = (tasks, startDate, endDate) => {
-    const labels = [];
-    const completedData = [];
-    const inProgressData = [];
-    const submittedData = [];
-    const pendingData = [];
-
-    let currentDate = new Date(
-      startDate.getFullYear(),
-      startDate.getMonth(),
-      1,
-    );
-    const lastDate = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
-
-    while (currentDate <= lastDate) {
-      const monthStart = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth(),
-        1,
-      );
-      const monthEnd = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999,
-      );
-
-      labels.push(
-        currentDate.toLocaleDateString("en-US", {
-          month: "short",
-          year: "numeric",
-        }),
-      );
-
-      const monthTasks = tasks.filter((t) => {
-        const taskDate = new Date(t.createdAt);
-        return taskDate >= monthStart && taskDate <= monthEnd;
-      });
-
-      completedData.push(
-        monthTasks.filter(
-          (t) => t.status === "completed" || t.status === "approved",
-        ).length,
-      );
-      inProgressData.push(
-        monthTasks.filter((t) => t.status === "in-progress").length,
-      );
-      submittedData.push(
-        monthTasks.filter((t) => t.status === "submitted").length,
-      );
-      pendingData.push(monthTasks.filter((t) => t.status === "pending").length);
-
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-
-    return {
-      labels,
-      completed: completedData,
-      inProgress: inProgressData,
-      submitted: submittedData,
-      pending: pendingData,
-    };
-  };
-
-  const getWeeklyChartData = (tasks, startDate, endDate) => {
-    const labels = [];
-    const completedData = [];
-    const inProgressData = [];
-    const submittedData = [];
-    const pendingData = [];
-
-    let currentDate = new Date(startDate);
-    currentDate.setHours(0, 0, 0, 0);
-    const day = currentDate.getDay();
-    const diff = currentDate.getDate() - day + (day === 0 ? -6 : 1);
-    currentDate.setDate(diff);
-
-    while (currentDate <= endDate) {
-      const weekStart = new Date(currentDate);
-      const weekEnd = new Date(currentDate);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
-
-      labels.push(
-        `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-      );
-
-      const weekTasks = tasks.filter((t) => {
-        const taskDate = new Date(t.createdAt);
-        return taskDate >= weekStart && taskDate <= weekEnd;
-      });
-
-      completedData.push(
-        weekTasks.filter(
-          (t) => t.status === "completed" || t.status === "approved",
-        ).length,
-      );
-      inProgressData.push(
-        weekTasks.filter((t) => t.status === "in-progress").length,
-      );
-      submittedData.push(
-        weekTasks.filter((t) => t.status === "submitted").length,
-      );
-      pendingData.push(weekTasks.filter((t) => t.status === "pending").length);
-
-      currentDate.setDate(currentDate.getDate() + 7);
-    }
-
-    return {
-      labels,
-      completed: completedData,
-      inProgress: inProgressData,
-      submitted: submittedData,
-      pending: pendingData,
-    };
-  };
-
-  const getChartData = () => {
-    const now = new Date();
-
-    // Daily - show hourly
-    if (timeFilter === "daily") {
-      const hours = [];
-      const hourlyData = {
-        completed: [],
-        inProgress: [],
-        submitted: [],
-        pending: [],
-      };
-
-      for (let h = 0; h < 24; h++) {
-        const hourStart = new Date(now);
-        hourStart.setHours(h, 0, 0, 0);
-        const hourEnd = new Date(now);
-        hourEnd.setHours(h, 59, 59, 999);
-
-        hours.push(`${h}:00`);
-
-        const hourTasks = filteredTasks.filter((t) => {
-          const taskDate = new Date(t.createdAt);
-          return taskDate >= hourStart && taskDate <= hourEnd;
-        });
-
-        hourlyData.completed.push(
-          hourTasks.filter(
-            (t) => t.status === "completed" || t.status === "approved",
-          ).length,
-        );
-        hourlyData.inProgress.push(
-          hourTasks.filter((t) => t.status === "in-progress").length,
-        );
-        hourlyData.submitted.push(
-          hourTasks.filter((t) => t.status === "submitted").length,
-        );
-        hourlyData.pending.push(
-          hourTasks.filter((t) => t.status === "pending").length,
-        );
-      }
-
-      return {
-        labels: hours,
-        completed: hourlyData.completed,
-        inProgress: hourlyData.inProgress,
-        submitted: hourlyData.submitted,
-        pending: hourlyData.pending,
-      };
-    }
-
-    // Custom range
-    if (timeFilter === "custom" && customStart && customEnd) {
-      const start = new Date(customStart);
-      const end = new Date(customEnd);
-      const diffTime = Math.abs(end - start);
-      const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-      if (days > 90) return getMonthlyChartData(filteredTasks, start, end);
-      if (days > 31) return getWeeklyChartData(filteredTasks, start, end);
-    }
-
-    // All time - monthly
-    if (timeFilter === "all" && filteredTasks.length > 0) {
-      const sortedTasks = [...filteredTasks].sort(
-        (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-      );
-      const firstDate = new Date(sortedTasks[0].createdAt);
-      const lastDate = new Date(sortedTasks[sortedTasks.length - 1].createdAt);
-      return getMonthlyChartData(filteredTasks, firstDate, lastDate);
-    }
-
-    // Default: daily for weekly/monthly
-    let days = timeFilter === "monthly" ? 30 : 7;
-    const labels = [];
-    const completedData = [];
-    const inProgressData = [];
-    const submittedData = [];
-    const pendingData = [];
-
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      const nextDate = new Date(date);
-      nextDate.setDate(date.getDate() + 1);
-
-      labels.push(
-        date.toLocaleDateString("en-US", { weekday: "short", day: "numeric" }),
-      );
-
-      const dayTasks = filteredTasks.filter((t) => {
-        const taskDate = new Date(t.createdAt);
-        return taskDate >= date && taskDate < nextDate;
-      });
-
-      completedData.push(
-        dayTasks.filter(
-          (t) => t.status === "completed" || t.status === "approved",
-        ).length,
-      );
-      inProgressData.push(
-        dayTasks.filter((t) => t.status === "in-progress").length,
-      );
-      submittedData.push(
-        dayTasks.filter((t) => t.status === "submitted").length,
-      );
-      pendingData.push(dayTasks.filter((t) => t.status === "pending").length);
-    }
-
-    return {
-      labels,
-      completed: completedData,
-      inProgress: inProgressData,
-      submitted: submittedData,
-      pending: pendingData,
-    };
-  };
-
-  const chartData = getChartData();
-
-  const barData = {
-    labels: chartData.labels,
-    datasets: [
-      {
-        label: "Completed",
-        data: chartData.completed,
-        backgroundColor: "rgba(16, 185, 129, 0.8)",
-        borderColor: "rgb(16, 185, 129)",
-        borderWidth: 1,
-        borderRadius: 6,
-        borderSkipped: false,
-      },
-      {
-        label: "In Progress",
-        data: chartData.inProgress,
-        backgroundColor: "rgba(59, 130, 246, 0.8)",
-        borderColor: "rgb(59, 130, 246)",
-        borderWidth: 1,
-        borderRadius: 6,
-        borderSkipped: false,
-      },
-      {
-        label: "Submitted",
-        data: chartData.submitted,
-        backgroundColor: "rgba(168, 85, 247, 0.8)",
-        borderColor: "rgb(168, 85, 247)",
-        borderWidth: 1,
-        borderRadius: 6,
-        borderSkipped: false,
-      },
-      {
-        label: "Pending",
-        data: chartData.pending,
-        backgroundColor: "rgba(234, 179, 8, 0.8)",
-        borderColor: "rgb(234, 179, 8)",
-        borderWidth: 1,
-        borderRadius: 6,
-        borderSkipped: false,
-      },
-    ],
-  };
-
-  const doughnutData = {
-    labels: ["Pending", "In Progress", "Submitted", "Completed", "Rejected"],
-    datasets: [
-      {
-        data: [
-          pendingTasks,
-          inProgressTasks,
-          submittedTasks,
-          completedTasks,
-          rejectedTasks,
-        ],
-        backgroundColor: [
-          "rgba(234, 179, 8, 0.9)",
-          "rgba(59, 130, 246, 0.9)",
-          "rgba(168, 85, 247, 0.9)",
-          "rgba(16, 185, 129, 0.9)",
-          "rgba(239, 68, 68, 0.9)",
-        ],
-        borderColor: [
-          "rgb(234, 179, 8)",
-          "rgb(59, 130, 246)",
-          "rgb(168, 85, 247)",
-          "rgb(16, 185, 129)",
-          "rgb(239, 68, 68)",
-        ],
-        borderWidth: 2,
-      },
-    ],
-  };
 
   const exportCSV = () => {
     const rows = [
@@ -1171,13 +701,13 @@ const Dashboard = () => {
         "Branch",
         "Role",
         "Email",
-        "Total",
-        "Done",
-        "Progress",
+        "Total Tasks",
+        "Completed",
+        "In Progress",
         "Pending",
       ],
     ];
-    filteredEmployees.forEach((emp) => {
+    filteredEmployeesForCSV.forEach((emp) => {
       rows.push([
         emp.name || "",
         emp.department || "",
@@ -1198,67 +728,34 @@ const Dashboard = () => {
     );
     a.download = `dashboard_report_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
-    showToast("Report downloaded successfully!", "success");
+    toast.success("Report downloaded successfully!");
   };
 
   const handleReview = async (tid, status, comments) => {
     setReviewLoading(true);
     try {
       await reviewTask(tid, status, comments);
-      showToast(`Task ${status} successfully!`, "success");
+      toast.success(`Task ${status} successfully!`);
       await loadTasks();
       setSelectedTaskForReview(null);
       setReviewComment("");
     } catch (err) {
-      showToast(
-        err?.response?.data?.message || "Failed to review task",
-        "error",
-      );
+      toast.error(err?.response?.data?.message || "Failed to review task");
     }
     setReviewLoading(false);
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: "index", intersect: false },
-    plugins: {
-      legend: {
-        position: "top",
-        labels: { usePointStyle: true, padding: 16, font: { size: 11 } },
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: { stepSize: 1, font: { size: 10 } },
-        grid: { color: "rgba(0,0,0,0.05)" },
-      },
-      x: {
-        grid: { display: false },
-        ticks: { font: { size: 10 }, maxRotation: 45 },
-      },
-    },
   };
 
   const getTimeLabel = () => {
     if (timeFilter === "daily") return "Today (Hourly)";
     if (timeFilter === "weekly") return "Last 7 days";
     if (timeFilter === "monthly") return "Last 30 days";
-    if (timeFilter === "custom")
-      return `${customStart || "?"} to ${customEnd || "?"}`;
+    if (timeFilter === "custom") return `${customStart || "?"} to ${customEnd || "?"}`;
     return "All Time (Monthly)";
   };
 
-  // ==================== AUTH HYDRATION GUARD ====================
-  // If auth is still loading (token exists, currentUser not yet resolved from API),
-  // show skeleton immediately. Prevents reading user?.role as undefined on first paint.
   if (authLoading && !user) return <DashboardSkeleton />;
 
-  // ==================== ROLE CHECK ====================
-  const isManagerRole = ["admin", "department-head", "branch-head"].includes(
-    user?.role,
-  );
+  const isManagerRole = ["admin", "department-head", "branch-head"].includes(user?.role);
 
   // ==================== EMPLOYEE VIEW ====================
   if (!isManagerRole) {
@@ -1278,80 +775,49 @@ const Dashboard = () => {
 
     return (
       <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto animate-fadeIn">
-
         {/* Welcome Card */}
-        <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 md:p-8 text-white shadow-xl shadow-blue-500/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">
-                Welcome back, {user?.name?.split(" ")[0]}! 👋
-              </h1>
-              <p className="text-blue-100 mt-2 capitalize">
-                {user?.role?.replace(/-/g, " ")} • {user?.department} •{" "}
-                {user?.branch}
-              </p>
-            </div>
+        <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-6 md:p-8 text-white shadow-xl shadow-blue-500/10">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              Welcome back, {user?.name?.split(" ")[0]}! 👋
+            </h1>
+            <p className="text-blue-100 text-sm mt-2 font-medium capitalize">
+              {user?.role?.replace(/-/g, " ")} 
+              {user?.department && user.department.toLowerCase() !== user.role?.toLowerCase() && ` • ${user.department}`}
+              {user?.branch && ` • ${user.branch}`}
+            </p>
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
-            {
-              label: "Total Tasks",
-              value: stats.totalTasks,
-              icon: "📋",
-              color: "bg-slate-100 text-slate-600",
-            },
-            {
-              label: "Pending",
-              value: stats.pendingTasks,
-              icon: "⏳",
-              color: "bg-amber-100 text-amber-600",
-            },
-            {
-              label: "In Progress",
-              value: stats.inProgressTasks,
-              icon: "🔄",
-              color: "bg-blue-100 text-blue-600",
-            },
-            {
-              label: "Submitted",
-              value: stats.submittedTasks,
-              icon: "📤",
-              color: "bg-purple-100 text-purple-600",
-            },
-            {
-              label: "Completed",
-              value: stats.completedTasks,
-              icon: "✅",
-              color: "bg-emerald-100 text-emerald-600",
-            },
+            { label: "Total Tasks", value: stats.totalTasks, bg: "bg-slate-50/60 border-slate-200/80 text-slate-700", fill: "bg-slate-100 text-slate-600" },
+            { label: "Pending", value: stats.pendingTasks, bg: "bg-amber-50/40 border-amber-100 text-amber-700", fill: "bg-amber-100/60 text-amber-600" },
+            { label: "In Progress", value: stats.inProgressTasks, bg: "bg-blue-50/40 border-blue-100 text-blue-700", fill: "bg-blue-100/60 text-blue-600" },
+            { label: "Submitted", value: stats.submittedTasks, bg: "bg-purple-50/40 border-purple-100 text-purple-700", fill: "bg-purple-100/60 text-purple-600" },
+            { label: "Completed", value: stats.completedTasks, bg: "bg-emerald-50/40 border-emerald-100 text-emerald-700", fill: "bg-emerald-100/60 text-emerald-600" },
           ].map((s, i) => (
             <div
               key={i}
-              className="bg-white rounded-2xl px-2 py-2.5 md:px-4 md:py-3 shadow-sm border border-slate-200/60 text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-fadeInUp"
+              className={`rounded-2xl px-2 py-3.5 md:px-4 md:py-4 shadow-sm border text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 animate-fadeInUp stagger-${i + 1} ${s.bg}`}
             >
-              <div
-                className={`w-8 h-8 md:w-10 md:h-10 ${s.color} rounded-lg flex items-center justify-center text-base md:text-lg mx-auto mb-1.5 md:mb-2`}
-              >
-                {s.icon}
+              <div className={`w-8 h-8 ${s.fill} rounded-xl flex items-center justify-center text-sm mx-auto mb-2.5 font-bold shadow-sm`}>
+                {s.label.charAt(0)}
               </div>
-              <p className="text-[10px] md:text-xs text-gray-500 truncate">{s.label}</p>
-              <p className="text-lg md:text-2xl font-bold text-gray-800">{s.value}</p>
+              <p className="text-[10px] md:text-xs text-slate-500 font-semibold tracking-wider uppercase truncate">{s.label}</p>
+              <p className="text-xl md:text-2xl font-bold mt-1 text-slate-800">{s.value}</p>
             </div>
           ))}
         </div>
 
         {/* Progress Bar */}
-        <div className="bg-white rounded-xl p-5 shadow-sm border">
-          <div className="flex justify-between mb-3">
-            <span className="font-semibold">Completion Rate</span>
-            <span className="text-2xl font-bold text-emerald-600">
-              {completionRate}%
-            </span>
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/60">
+          <div className="flex justify-between items-center mb-3">
+            <span className="font-semibold text-slate-700 text-sm">Completion Rate</span>
+            <span className="text-xl font-bold text-emerald-600">{completionRate}%</span>
           </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full transition-all duration-1000"
               style={{ width: `${completionRate}%` }}
@@ -1361,17 +827,17 @@ const Dashboard = () => {
 
         {/* Overdue */}
         {stats.overdueTasks > 0 && (
-          <div className="bg-gradient-to-r from-rose-50 to-red-50 border border-rose-200 rounded-xl p-5 flex items-center gap-4">
-            <span className="text-2xl">⚠️</span>
+          <div className="bg-gradient-to-r from-rose-50 to-red-50/55 border border-rose-200/80 rounded-2xl p-5 flex items-center gap-4 animate-pulse">
+            <span className="text-xl">⚠️</span>
             <div className="flex-1">
-              <p className="font-semibold text-rose-700">Overdue Tasks!</p>
-              <p className="text-sm text-rose-600">
-                You have {stats.overdueTasks} overdue task{stats.overdueTasks > 1 ? "s" : ""}.
+              <p className="font-semibold text-rose-700 text-sm">Overdue Tasks!</p>
+              <p className="text-xs text-rose-600/80 mt-0.5 leading-relaxed">
+                You have {stats.overdueTasks} overdue task{stats.overdueTasks > 1 ? "s" : ""}. Please complete them immediately.
               </p>
             </div>
             <button
               onClick={() => navigate("/tasks")}
-              className="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm hover:bg-rose-700"
+              className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-semibold hover:bg-rose-700 shadow-sm transition-all duration-300"
             >
               View Tasks
             </button>
@@ -1379,27 +845,17 @@ const Dashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {[
-            {
-              label: "My Tasks",
-              icon: "📋",
-              path: "/tasks",
-              color: "from-blue-500 to-blue-600",
-            },
-            {
-              label: "Profile",
-              icon: "👤",
-              path: "/profile",
-              color: "from-purple-500 to-purple-600",
-            },
+            { label: "My Tasks", icon: "📋", path: "/tasks", color: "from-blue-600 to-indigo-600 shadow-blue-100" },
+            { label: "Profile", icon: "👤", path: "/profile", color: "from-purple-600 to-violet-600 shadow-purple-100" },
           ].map((a, i) => (
             <button
               key={i}
               onClick={() => navigate(a.path)}
-              className={`bg-gradient-to-r ${a.color} text-white rounded-xl p-4 hover-lift flex items-center gap-3 font-medium`}
+              className={`bg-gradient-to-r ${a.color} text-white rounded-2xl p-4 hover-lift flex items-center justify-center gap-3 font-semibold text-sm shadow-md transition-all duration-300`}
             >
-              <span className="text-2xl">{a.icon}</span> {a.label}
+              <span className="text-lg">{a.icon}</span> {a.label}
             </button>
           ))}
         </div>
@@ -1408,127 +864,184 @@ const Dashboard = () => {
   }
 
   // ==================== MANAGER VIEW ====================
-  if (loading && (!dashboardStats || allTasks.length === 0))
+  if (loading && (!dashboardStats || allTasks.length === 0)) {
     return <DashboardSkeleton />;
+  }
+
+  const apiStats = dashboardStats?.summary || {
+    totalTasks: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    inProgressTasks: 0,
+    submittedTasks: 0,
+    rejectedTasks: 0
+  };
+
+  const totalTasks = apiStats.totalTasks ?? 0;
+  const completedTasks = apiStats.completedTasks ?? 0;
+  const inProgressTasks = apiStats.inProgressTasks ?? 0;
+  const submittedTasks = apiStats.submittedTasks ?? 0;
+  const pendingTasks = apiStats.pendingTasks ?? 0;
+  const rejectedTasks = apiStats.rejectedTasks ?? 0;
+
+  const pendingSubmissions = allTasks.filter((t) => t.status === "submitted");
+  const canReview = user?.role === "department-head" && pendingSubmissions.length > 0;
+
+  const searchQueryLowerCase = searchQuery?.toLowerCase();
+  const searchResults = searchQuery
+    ? employees
+        .filter((emp) => {
+          return (
+            emp.name?.toLowerCase().includes(searchQueryLowerCase) ||
+            emp.email?.toLowerCase().includes(searchQueryLowerCase) ||
+            emp.employeeId?.toLowerCase().includes(searchQueryLowerCase)
+          );
+        })
+        .slice(0, 5)
+    : [];
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-
       {/* Header */}
-      <div className="bg-gradient-to-br from-slate-800 to-gray-900 rounded-2xl p-6 text-white shadow-xl animate-fadeIn">
-        <div className="flex justify-between items-center">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-950 rounded-2xl p-6 text-white shadow-xl animate-fadeIn">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white">📊 Dashboard</h1>
-            <p className="text-slate-300 text-sm mt-1">
-              {user?.name} •{" "}
-              <span className="capitalize">
-                {user?.role?.replace(/-/g, " ")}
-              </span>{" "}
-              • {user?.department}
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">📊 Dashboard</h1>
+            <p className="text-slate-400 text-xs mt-1 font-medium leading-relaxed capitalize">
+              {user?.name} • {user?.role?.replace(/-/g, " ")}
+              {user?.department && user.department.toLowerCase() !== user.role?.toLowerCase() && ` • ${user.department}`}
             </p>
           </div>
           <button
             onClick={loadTasks}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm transition-colors"
+            className="w-full sm:w-auto px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 text-white"
           >
-            🔄 Refresh
+            🔄 Refresh Data
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp space-y-4">
-        {/* Time Period */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-gray-500 uppercase">
-            Period:
-          </span>
-          {[
-            { k: "daily", l: "📅 Today" },
-            { k: "weekly", l: "📆 Weekly" },
-            { k: "monthly", l: "📊 Monthly" },
-            { k: "custom", l: "📋 Custom" },
-            { k: "all", l: "🗂 All Time" },
-          ].map(({ k, l }) => (
+      {/* Filters Card */}
+      <div className="relative z-30 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/60 animate-fadeInUp space-y-4">
+        {/* Time Period Filter */}
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Period:</span>
+            {[
+              { k: "daily", l: "📅 Today" },
+              { k: "weekly", l: "📆 Weekly" },
+              { k: "monthly", l: "📊 Monthly" },
+              { k: "custom", l: "📋 Custom" },
+              { k: "all", l: "🗂 All Time" },
+            ].map(({ k, l }) => (
+              <button
+                key={k}
+                onClick={() => setTimeFilter(k)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-300 ${
+                  timeFilter === k
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-100"
+                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/50"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+
+          <div className="lg:ml-auto">
             <button
-              key={k}
-              onClick={() => setTimeFilter(k)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
-                timeFilter === k
-                  ? "bg-blue-600 text-white shadow-lg"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              onClick={exportCSV}
+              className="w-full lg:w-auto px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold hover:bg-emerald-100/70 border border-emerald-200 active:scale-95 transition-all duration-300 flex items-center justify-center gap-1.5"
             >
-              {l}
+              📥 Export CSV
             </button>
-          ))}
-          <div className="flex-1" />
-          <button
-            onClick={exportCSV}
-            className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-semibold hover:bg-emerald-100 border border-emerald-200"
-          >
-            📥 Export CSV
-          </button>
+          </div>
         </div>
 
-        {/* Custom Date */}
+        {/* Custom Date Inputs */}
         {timeFilter === "custom" && (
-          <div className="flex flex-wrap items-center gap-3 bg-gray-50 rounded-xl p-3 animate-fadeIn">
-            <span className="text-xs">From:</span>
-            <input
-              type="date"
-              value={customStart}
-              onChange={(e) => setCustomStart(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-xs"
-            />
-            <span className="text-xs">To:</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(e) => setCustomEnd(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-xs"
-            />
+          <div className="flex flex-wrap items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">From:</span>
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">To:</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
             <button
               onClick={() => {
                 setTimeFilter("weekly");
                 setCustomStart("");
                 setCustomEnd("");
               }}
-              className="text-xs text-rose-600 ml-auto"
+              className="text-xs font-bold text-rose-600 hover:text-rose-700 transition-colors ml-auto"
             >
-              Clear
+              Clear Range
             </button>
           </div>
         )}
 
-        {/* Branch + Dept + Search */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            disabled={user?.role === "branch-head"}
-            className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition truncate"
-          >
-            <option value="all">All Branches</option>
-            {visibleBranches.map((b) => (
-              <option key={b} value={b}>
-                📍 {b}
-              </option>
-            ))}
-          </select>
-          <div className="flex-[2] relative" ref={searchInputRef}>
+        {/* Branch Select + Department Select + Search Box + Reset */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1">
+          {/* Branch Select */}
+          <div>
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              disabled={user?.role === "branch-head" || user?.role === "department-head"}
+              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition truncate"
+            >
+              <option value="all">📍 All Branches</option>
+              {visibleBranches.map((b) => (
+                <option key={b} value={b}>
+                  📍 {b}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Department Select */}
+          <div>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              disabled={user?.role === "department-head"}
+              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition truncate"
+            >
+              <option value="all">🏢 All Departments</option>
+              {departmentsForSelectedBranch.map((d) => (
+                <option key={d} value={d}>
+                  🏢 {d === "Academic" ? "Academics" : d}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative" ref={searchInputRef}>
             <input
               type="text"
-              placeholder="🔍 Search..."
+              placeholder="🔍 Search employees..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setShowSearchDropdown(true);
               }}
-              className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
             />
             {showSearchDropdown && searchQuery && searchResults.length > 0 && (
-              <div className="absolute z-20 top-full mt-2 w-full bg-white border rounded-xl shadow-xl max-h-60 overflow-y-auto">
+              <div className="absolute z-20 top-full mt-2 w-full bg-white border border-slate-200/80 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-fadeIn divide-y divide-slate-50">
                 {searchResults.map((emp) => (
                   <div
                     key={emp._id}
@@ -1537,14 +1050,14 @@ const Dashboard = () => {
                       setShowSearchDropdown(false);
                       navigate(`/employee/${emp._id}`);
                     }}
-                    className="px-4 py-3 hover:bg-blue-50 cursor-pointer flex items-center gap-3"
+                    className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 transition-colors duration-200"
                   >
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
                       {emp.name?.charAt(0)}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold">{emp.name}</p>
-                      <p className="text-[11px] text-gray-500">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-800 truncate">{emp.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">
                         {emp.department} • {emp.branch}
                       </p>
                     </div>
@@ -1553,102 +1066,102 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-          <button
-            onClick={() => {
-              setTimeFilter("weekly");
-              setSelectedBranch("all");
-              setSelectedDepartment("all");
-              setSearchQuery("");
-              setCustomStart("");
-              setCustomEnd("");
-            }}
-            className="flex-none px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold hover:bg-rose-100 border border-rose-200 active:scale-95 transition-all flex items-center justify-center gap-1.5"
-          >
-            <span>✕</span> <span>Reset</span>
-          </button>
+
+          {/* Reset Filters Button */}
+          <div>
+            <button
+              onClick={() => {
+                setTimeFilter("weekly");
+                setSelectedBranch("all");
+                setSelectedDepartment("all");
+                setSearchQuery("");
+                setCustomStart("");
+                setCustomEnd("");
+              }}
+              className="w-full px-4 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold hover:bg-rose-100/70 border border-rose-200 active:scale-95 transition-all duration-300 flex items-center justify-center gap-1.5"
+            >
+              ✕ Reset Filters
+            </button>
+          </div>
         </div>
 
-        {/* Summary */}
-        <div className="text-xs text-gray-500 pt-3 border-t">
-          📊 <strong className="text-gray-700">{totalTasks}</strong> tasks for{" "}
-          <strong className="text-gray-700">{getTimeLabel()}</strong>
+        {/* Selected parameters label */}
+        <div className="text-[11px] text-slate-400 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+          <span>📊 Showing</span>
+          <strong className="text-slate-600 font-bold">{totalTasks}</strong>
+          <span>tasks for</span>
+          <strong className="text-slate-600 font-bold">{getTimeLabel()}</strong>
           {selectedBranch !== "all" && (
-            <span className="ml-2">
-              • 📍 <strong>{selectedBranch}</strong>
-            </span>
+            <>
+              <span>• Branch:</span>
+              <strong className="text-slate-600 font-bold">📍 {selectedBranch}</strong>
+            </>
           )}
           {selectedDepartment !== "all" && (
-            <span className="ml-2">
-              • 🏢 <strong>{selectedDepartment}</strong>
-            </span>
+            <>
+              <span>• Dept:</span>
+              <strong className="text-slate-600 font-bold">🏢 {selectedDepartment}</strong>
+            </>
           )}
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Cards Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {[
-          { l: "Total", v: totalTasks },
-          { l: "Done", v: completedTasks, c: "text-emerald-600" },
-          { l: "Progress", v: inProgressTasks, c: "text-blue-600" },
-          { l: "Pending", v: pendingTasks, c: "text-amber-600" },
-          { l: "Submitted", v: submittedTasks, c: "text-purple-600" },
-          { l: "Rejected", v: rejectedTasks, c: "text-rose-600" },
+          { l: "Total", v: totalTasks, bg: "bg-slate-50/50 border-slate-200/80 hover:bg-slate-100/50", c: "text-slate-700" },
+          { l: "Done", v: completedTasks, bg: "bg-emerald-50/30 border-emerald-100/80 hover:border-emerald-200 hover:bg-emerald-50/50", c: "text-emerald-600" },
+          { l: "Progress", v: inProgressTasks, bg: "bg-blue-50/30 border-blue-100/80 hover:border-blue-200 hover:bg-blue-50/50", c: "text-blue-600" },
+          { l: "Pending", v: pendingTasks, bg: "bg-amber-50/30 border-amber-100/80 hover:border-emerald-200 hover:bg-amber-50/50", c: "text-amber-600" },
+          { l: "Submitted", v: submittedTasks, bg: "bg-purple-50/30 border-purple-100/80 hover:border-purple-200 hover:bg-purple-50/50", c: "text-purple-650" },
+          { l: "Rejected", v: rejectedTasks, bg: "bg-rose-50/30 border-rose-100/80 hover:border-rose-200 hover:bg-rose-50/50", c: "text-rose-600" },
         ].map((s, i) => (
           <div
             key={i}
-            className="bg-white rounded-2xl px-2 py-2.5 md:px-4 md:py-3 shadow-sm border border-slate-200/60 text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-fadeInUp"
+            className={`rounded-2xl px-2 py-3.5 md:px-4 md:py-4 shadow-sm border text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 animate-fadeInUp stagger-${i + 1} ${s.bg}`}
           >
-            <p className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-wider truncate">
+            <p className="text-[10px] md:text-xs text-slate-500 uppercase tracking-wider truncate font-semibold">
               {s.l}
             </p>
-            <p className={`text-lg md:text-xl font-bold ${s.c || "text-gray-800"}`}>
+            <p className={`text-xl md:text-2xl font-bold mt-1 tracking-tight ${s.c}`}>
               {s.v}
             </p>
           </div>
         ))}
       </div>
 
-      {/* Charts */}
+      {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-fadeInUp">
+        <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/60 animate-fadeInUp">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-semibold text-sm text-slate-700">
               📈 Employee Productivity ({timeFilter})
             </h2>
-            <select 
-              value={timeFilter}
-              onChange={e => setTimeFilter(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="last7">Last 7 Days</option>
-              <option value="thisMonth">This Month</option>
-              <option value="all">All Time</option>
-            </select>
           </div>
           <div className="w-full h-64 max-h-[260px]">
-            {analyticsData?.employeeProductivity ? (
+            {analyticsData?.employeeProductivity && analyticsData.employeeProductivity.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={analyticsData.employeeProductivity}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                        <XAxis dataKey="employeeName" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} />
-                        <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} />
-                        <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} />
-                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                        <RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#475569' }} />
-                        <Bar yAxisId="left" dataKey="totalTasksCompleted" name="Tasks Completed" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={20} />
-                        <Line yAxisId="right" type="monotone" dataKey="averageTimeSpent" name="Avg Time (mins)" stroke="#8B5CF6" strokeWidth={3} dot={{ r: 4, fill: '#8B5CF6' }} />
+                        <XAxis dataKey="employeeName" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748B' }} />
+                        <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748B' }} />
+                        <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748B' }} />
+                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '11px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }} />
+                        <RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', color: '#475569' }} />
+                        <Bar yAxisId="left" dataKey="totalTasksCompleted" name="Tasks Completed" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={16} />
+                        <Line yAxisId="right" type="monotone" dataKey="averageTimeSpent" name="Avg Time (mins)" stroke="#8B5CF6" strokeWidth={2.5} dot={{ r: 3.5, fill: '#8B5CF6' }} />
                     </ComposedChart>
                 </ResponsiveContainer>
             ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Loading Analytics...</div>
+                <EmptyState message="No productivity data available" />
             )}
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-fadeInUp">
+
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/60 animate-fadeInUp">
           <h2 className="font-semibold text-sm mb-4 text-slate-700">🏢 Department Workload</h2>
           <div className="w-full h-64 max-h-[260px] flex items-center justify-center">
-             {analyticsData?.departmentWorkload ? (
+             {analyticsData?.departmentWorkload && analyticsData.departmentWorkload.length > 0 ? (
                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
@@ -1657,65 +1170,45 @@ const Dashboard = () => {
                             nameKey="_id"
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={2}
+                            innerRadius={55}
+                            outerRadius={75}
+                            paddingAngle={3}
                         >
                             {analyticsData.departmentWorkload.map((entry, index) => {
-                                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
+                                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
                                 return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
                             })}
                         </Pie>
-                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                        <RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#475569' }} />
+                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '11px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }} />
+                        <RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', color: '#475569' }} />
                     </PieChart>
                  </ResponsiveContainer>
              ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Loading Analytics...</div>
+                <EmptyState message="No workload data available" />
              )}
           </div>
         </div>
       </div>
 
-      {/* Department Health (Hidden per user request) */}
-      {/* {visibleDepartments.length > 0 && selectedDepartment === "all" && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
-          <h2 className="font-semibold text-sm mb-4">🏢 Department Health</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {departmentStats.map((d, index) => (
-              <DepartmentCard
-                key={d.name}
-                department={{
-                  name: d.name,
-                  icon: "🏢",
-                }}
-                stats={d}
-                onClick={() => setSelectedDepartment(d.name)}
-              />
-            ))}
-          </div>
-        </div>
-      )} */}
-
       {/* Heads & Management */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/60 animate-fadeInUp space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <h2 className="font-semibold text-sm text-slate-700">
             Heads & Management ({filteredLeadershipEmployees.length})
           </h2>
-          {/* Scroll Buttons */}
+          {/* Slider controls placed in the header right corner */}
           {filteredLeadershipEmployees.length > 0 && (
             <div className="flex items-center gap-1.5">
               <button
                 onClick={scrollLeft}
-                className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center transition active:scale-90 text-[11px] font-extrabold shadow-sm"
+                className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center transition-all duration-200 active:scale-90 text-xs font-extrabold shadow-sm"
                 title="Scroll Left"
               >
                 &lt;
               </button>
               <button
                 onClick={scrollRight}
-                className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center transition active:scale-90 text-[11px] font-extrabold shadow-sm"
+                className="w-7 h-7 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center transition-all duration-200 active:scale-90 text-xs font-extrabold shadow-sm"
                 title="Scroll Right"
               >
                 &gt;
@@ -1723,146 +1216,116 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+
         {filteredLeadershipEmployees.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 text-xs">
-            🔍 No management profiles found
-          </div>
+          <EmptyState message="No leadership or management records found for this branch" />
         ) : (
-          <div 
-            ref={scrollContainerRef}
-            className="flex gap-4 overflow-x-auto pb-3 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory"
-          >
-            {filteredLeadershipEmployees.map((emp, index) => {
-              const getInitialsForAvatar = (name) => {
-                if (!name) return "?";
-                const parts = name.split(" ");
-                if (parts.length > 1) {
-                  return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
-                }
-                return name.charAt(0).toUpperCase();
-              };
+          <div className="relative">
+            {/* Scroll Container */}
+            <div 
+              ref={scrollContainerRef}
+              className="flex gap-4 overflow-x-auto pb-3 pt-1 no-scrollbar scroll-smooth snap-x snap-mandatory px-1"
+            >
+              {filteredLeadershipEmployees.map((emp) => {
+                const getInitialsForAvatar = (name) => {
+                  if (!name) return "?";
+                  const parts = name.split(" ");
+                  if (parts.length > 1) {
+                    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+                  }
+                  return name.charAt(0).toUpperCase();
+                };
 
-              const colors = {
-                IT: "from-blue-600 to-indigo-500 shadow-blue-100",
-                HR: "from-pink-500 to-rose-500 shadow-pink-100",
-                Graphic: "from-purple-500 to-violet-500 shadow-purple-100",
-                Academic: "from-violet-600 to-indigo-600 shadow-violet-100",
-                Finance: "from-emerald-500 to-teal-500 shadow-emerald-100",
-                Marketing: "from-amber-500 to-orange-500 shadow-amber-100",
-                Legal: "from-slate-600 to-slate-500 shadow-slate-100",
-                Transport: "from-yellow-500 to-amber-500 shadow-yellow-100",
-                Operations: "from-cyan-600 to-blue-500 shadow-cyan-100",
-              };
+                const colors = {
+                  IT: "from-blue-600 to-indigo-500 shadow-blue-100",
+                  HR: "from-pink-500 to-rose-500 shadow-pink-100",
+                  Graphic: "from-purple-500 to-violet-500 shadow-purple-100",
+                  Academic: "from-violet-600 to-indigo-600 shadow-violet-100",
+                  Finance: "from-emerald-500 to-teal-500 shadow-emerald-100",
+                  Marketing: "from-amber-500 to-orange-500 shadow-amber-100",
+                  Legal: "from-slate-600 to-slate-500 shadow-slate-100",
+                  Transport: "from-yellow-500 to-amber-500 shadow-yellow-100",
+                  Operations: "from-cyan-600 to-blue-500 shadow-cyan-100",
+                };
 
-              return (
-                <div
-                  key={emp._id || emp.id}
-                  onClick={() => navigate(`/employee/${emp._id || emp.id}`)}
-                  className="flex-none w-72 snap-start bg-gradient-to-br from-white to-indigo-50/10 border border-indigo-100 rounded-2xl p-4 hover:border-indigo-200 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between h-48 relative group"
-                >
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="relative">
-                        {emp.avatar ? (
-                          <img
-                            src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
-                            alt={emp.name}
-                            className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-50 group-hover:scale-105 transition"
-                            onError={(e) => {
-                              e.currentTarget.src = "";
-                              e.currentTarget.removeAttribute("src");
-                            }}
-                          />
-                        ) : (
-                          <div className={`w-10 h-10 bg-gradient-to-br ${colors[emp.department] || "from-indigo-500 to-purple-650"} rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:scale-105 transition`}>
-                            {getInitialsForAvatar(emp.name)}
-                          </div>
-                        )}
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-indigo-500 border-2 border-white rounded-full" />
+                return (
+                  <div
+                    key={emp._id || emp.id}
+                    onClick={() => navigate(`/employee/${emp._id || emp.id}`)}
+                    className="flex-none w-72 snap-start bg-gradient-to-br from-white to-indigo-50/10 border border-indigo-100/80 rounded-2xl p-4 hover:border-indigo-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between h-48 relative group"
+                  >
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="relative flex-shrink-0">
+                          {emp.avatar ? (
+                            <img
+                              src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
+                              alt={emp.name}
+                              className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-50 group-hover:scale-105 transition duration-300"
+                              onError={(e) => {
+                                e.currentTarget.src = "";
+                                e.currentTarget.removeAttribute("src");
+                              }}
+                            />
+                          ) : (
+                            <div className={`w-10 h-10 bg-gradient-to-br ${colors[emp.department] || "from-indigo-500 to-purple-650"} rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:scale-105 transition duration-300`}>
+                              {getInitialsForAvatar(emp.name)}
+                            </div>
+                          )}
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-indigo-500 border-2 border-white rounded-full" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-slate-800 text-sm tracking-tight truncate group-hover:text-blue-650 transition-colors duration-300">
+                            {emp.name}
+                          </h4>
+                          <span className="text-[9px] font-bold text-indigo-500 tracking-wider uppercase block mt-0.5">
+                            {emp.role?.replace(/-/g, " ")}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-slate-800 text-sm tracking-tight truncate group-hover:text-indigo-655 transition">
-                          {emp.name}
-                        </h4>
-                        <span className="text-[10px] font-bold text-indigo-500 tracking-wider uppercase block mt-0.5">
-                          {emp.role?.replace(/-/g, " ")}
-                        </span>
+                      <div className="flex flex-col gap-1 p-2 bg-slate-50/80 group-hover:bg-indigo-50/20 rounded-xl border border-slate-100/80 transition-colors duration-300">
+                        <div className="flex items-center gap-2 min-w-0 text-slate-500">
+                          <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <span className="text-xs truncate">{emp.email || "No Email"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0 text-slate-500">
+                          <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          </svg>
+                          <span className="text-xs truncate">{emp.phone || "Not Provided"}</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-1 p-2 bg-slate-50 group-hover:bg-indigo-50/10 rounded-xl border border-slate-150 transition-colors duration-205">
-                      <div className="flex items-center gap-2 min-w-0 text-slate-500">
-                        <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-xs truncate">{emp.email || "No Email"}</span>
-                      </div>
-                      <div className="flex items-center gap-2 min-w-0 text-slate-500">
-                        <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <span className="text-xs truncate">{emp.phone || "Not Provided"}</span>
-                      </div>
+                    <div className="flex items-center justify-between border-t border-indigo-50 pt-2.5 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                      <span>🏢 {emp.department}</span>
+                      <span>📍 {emp.branch?.replace(" Branch", "")}</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between border-t border-indigo-100/50 pt-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                    <span>🏢 {emp.department}</span>
-                    <span>📍 {emp.branch?.replace(" Branch", "")}</span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
 
       {/* Staff Directory */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp space-y-4">
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/60 animate-fadeInUp space-y-4">
         <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-          <h2 className="font-semibold text-sm">
+          <h2 className="font-semibold text-sm text-slate-700">
             👥 Employees ({filteredStaffEmployees.length})
           </h2>
-          <span className="text-xs text-gray-400">
+          <span className="text-[11px] text-slate-400 font-medium">
             Page {currentPage} of {totalPages || 1}
           </span>
         </div>
 
-        {/* Filter by Department inside Employee Directory */}
-        <div className="space-y-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Filter by Department
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {["all", ...departmentsForSelectedBranch].map((dept) => {
-              const getDisplayName = (d) => {
-                if (d === "all") return "All";
-                if (d === "Academic") return "Academics";
-                return d;
-              };
-              const isActive = selectedDepartment === dept;
-              return (
-                <button
-                  key={dept}
-                  onClick={() => setSelectedDepartment(dept)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-155 border active:scale-95 shadow-sm whitespace-nowrap ${
-                    isActive
-                      ? "bg-blue-600 border-blue-500 text-white shadow-blue-500/10"
-                      : "bg-slate-50 border-slate-200/80 text-slate-655 hover:bg-slate-100 hover:border-slate-300"
-                  }`}
-                >
-                  {getDisplayName(dept)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {filteredStaffEmployees.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            🔍 No employees found
-          </div>
+          <EmptyState message="No employee records found matching your filters" />
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -1890,43 +1353,47 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Branches */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border animate-fadeInUp">
-        <h2 className="font-semibold text-sm mb-4">📍 Branch Performance</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {branchStats.map((b, i) => (
-            <BranchCard
-              key={b.name}
-              branch={b}
-              color={branchColors[i % branchColors.length]}
-              isSelected={selectedBranch === b.name}
-              onClick={() =>
-                setSelectedBranch(selectedBranch === b.name ? "all" : b.name)
-              }
-            />
-          ))}
-        </div>
+      {/* Branches List */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/60 animate-fadeInUp">
+        <h2 className="font-semibold text-sm mb-4 text-slate-700">📍 Branch Performance</h2>
+        {branchStats.length === 0 ? (
+          <EmptyState message="No branch performance statistics available" />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {branchStats.map((b, i) => (
+              <BranchCard
+                key={b.name}
+                branch={b}
+                color={branchColors[i % branchColors.length]}
+                isSelected={selectedBranch === b.name}
+                onClick={() => setSelectedBranch(selectedBranch === b.name ? "all" : b.name)}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Review Section */}
       {canReview && (
-        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-5 border border-orange-200 animate-fadeInUp">
-          <h2 className="font-semibold text-sm mb-3">
+        <div className="bg-gradient-to-r from-amber-50/50 to-orange-50/50 rounded-2xl p-5 border border-orange-200/80 animate-fadeInUp">
+          <h2 className="font-semibold text-sm mb-3 text-slate-700">
             ⏳ Pending Reviews ({pendingSubmissions.length})
           </h2>
-          <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+          <div className="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
             {pendingSubmissions.slice(0, 5).map((t) => (
               <div
                 key={t._id}
-                className="bg-white rounded-xl p-3 border border-orange-100 flex justify-between items-center gap-3"
+                className="bg-white rounded-xl p-3 border border-orange-100 flex justify-between items-center gap-3 shadow-sm"
               >
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm truncate">{t.title}</h3>
-                  <p className="text-[11px] text-gray-500">
+                  <h3 className="font-bold text-xs text-slate-800 truncate">{t.title}</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
                     {t.assignedTo?.name} • {t.department}
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedTaskForReview(t)}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-semibold hover:bg-purple-700"
+                  className="px-4 py-2 bg-purple-650 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-300"
                 >
                   Review
                 </button>
@@ -1936,67 +1403,50 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Review Modal */}
+      {/* Review Modal Dialog */}
       {selectedTaskForReview && createPortal(
         <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
-          onClick={(e) =>
-            e.target === e.currentTarget &&
-            !reviewLoading &&
-            setSelectedTaskForReview(null)
-          }
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+          onClick={(e) => e.target === e.currentTarget && !reviewLoading && setSelectedTaskForReview(null)}
         >
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-scaleIn">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl border border-slate-100 animate-scaleIn">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">📋 Review Task</h3>
+              <h3 className="text-base font-bold text-slate-800">📋 Review Task</h3>
               <button
                 onClick={() => {
                   setSelectedTaskForReview(null);
                   setReviewComment("");
                 }}
-                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+                className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-500 flex items-center justify-center transition-colors duration-300"
               >
                 ✕
               </button>
             </div>
-            <div className="bg-gray-50 rounded-xl p-4 mb-4">
-              <p className="font-semibold">{selectedTaskForReview.title}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                {selectedTaskForReview.assignedTo?.name} •{" "}
-                {selectedTaskForReview.department}
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4">
+              <p className="font-bold text-xs text-slate-800 leading-normal">{selectedTaskForReview.title}</p>
+              <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                Assigned: {selectedTaskForReview.assignedTo?.name} • {selectedTaskForReview.department}
               </p>
             </div>
             <textarea
               value={reviewComment}
               onChange={(e) => setReviewComment(e.target.value)}
-              className="w-full p-3 border rounded-xl text-sm mb-4 resize-none"
+              className="w-full p-3 border border-slate-200 rounded-xl text-xs mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-700"
               rows={3}
-              placeholder="Feedback..."
+              placeholder="Provide comments or feedback for this review..."
             />
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
-                onClick={() =>
-                  handleReview(
-                    selectedTaskForReview._id,
-                    "approved",
-                    reviewComment,
-                  )
-                }
+                onClick={() => handleReview(selectedTaskForReview._id, "approved", reviewComment)}
                 disabled={reviewLoading}
-                className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+                className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 ✅ Approve
               </button>
               <button
-                onClick={() =>
-                  handleReview(
-                    selectedTaskForReview._id,
-                    "rejected",
-                    reviewComment,
-                  )
-                }
+                onClick={() => handleReview(selectedTaskForReview._id, "rejected", reviewComment)}
                 disabled={reviewLoading}
-                className="flex-1 bg-rose-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-rose-700 disabled:opacity-50"
+                className="flex-1 bg-rose-600 text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-rose-700 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 ❌ Reject
               </button>
@@ -2006,7 +1456,7 @@ const Dashboard = () => {
                   setReviewComment("");
                 }}
                 disabled={reviewLoading}
-                className="px-4 py-2.5 bg-gray-100 rounded-xl text-sm"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200/80 text-slate-700 rounded-xl text-xs font-semibold transition-all duration-300"
               >
                 Cancel
               </button>
