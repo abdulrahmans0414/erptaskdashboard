@@ -168,10 +168,10 @@ const Header = ({
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">
+                      <p className="text-sm font-semibold text-slate-800 tracking-tight truncate">
                         {user?.name}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs font-medium text-slate-500 truncate">
                         {user?.email}
                       </p>
                     </div>

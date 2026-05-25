@@ -388,10 +388,10 @@ const SystemSettings = () => {
   );
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6 animate-fadeIn">
+    <div className="p-2 md:p-6 max-w-5xl mx-auto space-y-4 md:space-y-6 animate-fadeIn">
 
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white text-xl shadow-md shadow-blue-200">⚙️</span>
           <div>

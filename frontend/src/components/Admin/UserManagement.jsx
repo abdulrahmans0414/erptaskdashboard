@@ -559,17 +559,17 @@ const UserManagement = () => {
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex w-full sm:w-auto gap-2.5">
             <Link
               to="/admin/users/trash"
-              className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-350 active:scale-95 text-slate-700 px-5 py-2.5 rounded-xl font-semibold shadow-sm transition-all text-sm"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-350 active:scale-95 text-slate-700 px-4 py-2.5 rounded-xl font-semibold shadow-sm transition-all text-xs sm:text-sm"
             >
               ♻️ Recycle Bin
             </Link>
             {isAdmin && (
               <button
                 onClick={openCreate}
-                className="inline-flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg shadow-sky-500/10 transition-all text-sm"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white px-4 py-2.5 rounded-xl font-semibold shadow-md shadow-blue-500/20 transition-all text-xs sm:text-sm"
               >
                 <FiUserPlus size={16} /> Add User
               </button>
@@ -588,16 +588,16 @@ const UserManagement = () => {
           ].map((s, idx) => (
             <div
               key={idx}
-              className="relative overflow-hidden bg-white/70 border border-slate-100 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md group hover:border-slate-200 transition-all duration-300"
+              className="relative overflow-hidden bg-gradient-to-br from-white to-slate-50/80 border border-slate-100 rounded-2xl px-3 py-2.5 md:px-5 md:py-4 shadow-sm hover:shadow-md group hover:border-slate-200 transition-all duration-300"
             >
-              <div className="absolute right-3 top-3 opacity-20 group-hover:opacity-40 transition-opacity">
+              <div className="absolute right-2 top-2 md:right-3 md:top-3 opacity-20 group-hover:opacity-40 transition-opacity scale-75 md:scale-100">
                 {s.icon}
               </div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
-              <p className={`text-2xl font-bold mt-1.5 tracking-tight ${s.color}`}>
+              <p className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
+              <p className={`text-xl md:text-2xl font-bold mt-1 md:mt-1.5 tracking-tight ${s.color}`}>
                 {s.value}
               </p>
-              <p className="text-[10px] text-slate-400 mt-2.5 select-none font-medium leading-normal tracking-wide border-t border-slate-100/50 pt-1.5">
+              <p className="hidden md:block text-[10px] text-slate-400 mt-2.5 select-none font-medium leading-normal tracking-wide border-t border-slate-100/50 pt-1.5">
                 {s.desc}
               </p>
             </div>
@@ -652,12 +652,12 @@ const UserManagement = () => {
             />
           </div>
           
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 w-full md:w-auto">
             {activeTab === "all" && (
               <select
                 value={roleFilter}
                 onChange={(e) => setPage(1) || setRoleFilter(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
+                className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-2 py-2.5 md:px-4 text-[11px] md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer truncate"
               >
                 <option value="all">All Roles</option>
                 {(roles || []).map((r) => (
@@ -671,7 +671,7 @@ const UserManagement = () => {
             <select
               value={branchFilter}
               onChange={(e) => setPage(1) || setBranchFilter(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer"
+              className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-2 py-2.5 md:px-4 text-[11px] md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer truncate"
             >
               <option value="all">All Branches</option>
               {(finalBranches || []).map((b) => (
@@ -786,50 +786,51 @@ const UserManagement = () => {
                 return (
                   <div
                     key={item._id}
-                    className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover:shadow-md transition-all duration-300 space-y-3"
+                    className="bg-white rounded-2xl border border-slate-200/60 p-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 space-y-3"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center font-bold text-sm uppercase">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white grid place-items-center font-bold text-sm uppercase shadow-sm">
                         {item.name?.charAt(0)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-bold text-slate-800 truncate">{item.name}</p>
-                        <p className="text-xs text-slate-500 truncate">{item.email}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">ID: {item.employeeId || "—"}</p>
+                        <p className="font-semibold text-slate-800 tracking-tight truncate">{item.name}</p>
+                        <p className="text-xs font-medium text-slate-500 truncate">{item.email}</p>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">ID: {item.employeeId || "—"}</p>
                       </div>
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-medium border ${
                           item.isActive !== false
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                            : "bg-rose-50 text-rose-700 border-rose-100"
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            : "bg-rose-50 text-rose-600 border-rose-100"
                         }`}
                       >
                         {item.isActive !== false ? "Active" : "Inactive"}
                       </span>
                     </div>
                     
-                    <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 text-[11px]">
-                      <span className={`px-2.5 py-0.5 rounded-lg border font-semibold ${DEPT_BADGE[item.department] || "bg-slate-50 text-slate-600"}`}>
+                    <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-200/50 pt-2.5 text-[11px]">
+                      <span className={`px-2.5 py-1 rounded-full border font-bold uppercase tracking-wider ${DEPT_BADGE[item.department] || "bg-slate-50 text-slate-600 border-slate-200"}`}>
                         {item.department || "IT"}
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-lg border border-slate-100 bg-slate-50 text-slate-655 flex flex-col font-medium">
-                        <span className="text-[9px] text-slate-400 uppercase tracking-wide">Manager of Branch</span>
-                        <span className="text-slate-855 font-semibold">👤 {managerInfo.name}</span>
-                        <span className="text-slate-400 text-[8px]">{managerInfo.label}</span>
-                      </span>
+                      {managerInfo && (
+                        <span className="px-2.5 py-1 rounded-full border border-slate-200/60 bg-slate-50 text-slate-600 flex items-center gap-1 font-medium">
+                          <span className="text-[9px] text-slate-400 uppercase tracking-wide">Manager:</span>
+                          <span className="text-slate-700 font-semibold">👤 {managerInfo.name}</span>
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex gap-2 border-t border-slate-100 pt-3">
+                    <div className="flex gap-2 border-t border-slate-200/50 pt-2.5">
                       <button
                         onClick={() => handleEditClick(item)}
-                        className="flex-1 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold transition border border-blue-100"
+                        className="flex-1 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-[10px] md:text-xs font-semibold transition-colors border border-blue-100 flex items-center justify-center gap-1"
                       >
                         ✏️ Edit
                       </button>
                       {isAdmin && (
                         <button
                           onClick={() => setConfirmDelete(item)}
-                          className="flex-1 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-655 text-xs font-bold transition border border-red-100"
+                          className="flex-1 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] md:text-xs font-semibold transition-colors border border-rose-100 flex items-center justify-center gap-1"
                         >
                           🗑️ Delete
                         </button>

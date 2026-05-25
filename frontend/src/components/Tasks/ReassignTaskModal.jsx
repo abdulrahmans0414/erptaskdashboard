@@ -23,7 +23,7 @@ const ReassignTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
         setUsers(
           r.data.data.filter(
             (u) =>
-              u.role !== "admin" &&
+              u._id !== task.assignedTo?._id &&
               u.department === task?.department &&
               u.branch === task?.branch,
           ),

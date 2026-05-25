@@ -159,8 +159,7 @@ const EmployeeProfile = () => {
           u.department === emp.department &&
           u.branch === emp.branch &&
           u._id !== emp._id &&
-          u._id?.toString() !== emp._id?.toString() &&
-          u.role !== "admin",
+          u._id?.toString() !== emp._id?.toString(),
       );
       setTeamMembers(sameTeam);
 

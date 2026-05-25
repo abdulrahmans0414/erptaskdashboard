@@ -70,7 +70,7 @@ const EditTaskModal = ({ isOpen, onClose, task, onUpdated }) => {
       if (r?.data?.success) {
         let list = r.data.data || [];
         if (role === "department-head" && branch) list = list.filter((u) => u.branch === branch);
-        setUsers(list.filter((u) => u.role !== "admin"));
+        setUsers(list);
       }
     } catch (e) { console.error("Failed to load users:", e); }
     finally { setUsersLoading(false); }

@@ -168,21 +168,21 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
   return (
     <div
       onClick={onClick}
-      className={`group relative bg-white rounded-3xl border border-slate-100/80 p-5 hover:border-blue-200/80 hover:shadow-[0_20px_40px_rgba(59,130,246,0.06)] hover-lift cursor-pointer transition-all duration-300 animate-fadeInUp stagger-${(index % 6) + 1}`}
+      className={`group relative bg-white rounded-2xl border border-slate-200/60 p-4 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer transition-all duration-200 animate-fadeInUp stagger-${(index % 6) + 1}`}
     >
       {/* Decorative hover gradient glow */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/0 via-indigo-500/0 to-indigo-500/[0.02] rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/0 via-indigo-500/0 to-indigo-500/[0.02] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
       {/* Top Header Row */}
-      <div className="flex items-start justify-between mb-4 relative z-10">
-        <div className="flex items-center gap-3.5 min-w-0">
+      <div className="flex items-start justify-between mb-3 relative z-10">
+        <div className="flex items-center gap-3 min-w-0">
           {/* Avatar Container */}
           <div className="relative flex-shrink-0">
             {emp.avatar ? (
               <img
                 src={emp.avatar.startsWith("http") ? emp.avatar : `${API_ORIGIN}${emp.avatar}`}
                 alt={emp.name}
-                className="w-12 h-12 rounded-2xl object-cover shadow-sm ring-4 ring-slate-50 group-hover:ring-blue-50 transition-all duration-300 group-hover:scale-105"
+                className="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-slate-50 group-hover:ring-blue-50 transition-all duration-300 group-hover:scale-105"
                 onError={(e) => {
                   e.currentTarget.src = "";
                   e.currentTarget.removeAttribute("src");
@@ -190,44 +190,44 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
               />
             ) : (
               <div
-                className={`w-12 h-12 bg-gradient-to-br ${colors[emp.department] || "from-slate-500 to-slate-600"} rounded-2xl flex items-center justify-center text-white font-extrabold text-sm shadow-md transition-all duration-300 group-hover:scale-105 group-hover:rotate-3`}
+                className={`w-10 h-10 bg-gradient-to-br ${colors[emp.department] || "from-slate-500 to-slate-600"} rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm transition-all duration-300 group-hover:scale-105`}
               >
                 {getInitials(emp.name)}
               </div>
             )}
             {/* Online status dot */}
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
           </div>
 
           <div className="min-w-0">
-            <h4 className="font-bold text-slate-800 text-sm tracking-tight truncate group-hover:text-blue-600 transition-colors duration-200">
+            <h4 className="font-semibold text-slate-800 text-sm tracking-tight truncate group-hover:text-blue-600 transition-colors duration-200">
               {emp.name}
             </h4>
-            <span className="text-[10px] font-semibold text-slate-400 capitalize truncate block tracking-wide mt-0.5">
+            <span className="text-xs font-medium text-slate-500 capitalize truncate block mt-0.5">
               {emp.role?.replace(/-/g, " ") || "Member"}
             </span>
           </div>
         </div>
 
         {/* Employee ID Badge */}
-        <span className="text-[9px] font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 group-hover:border-blue-100 group-hover:bg-blue-50/30 group-hover:text-blue-600 transition-all duration-200 tracking-wider">
+        <span className="text-[10px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 group-hover:border-blue-200 group-hover:bg-blue-50/50 group-hover:text-blue-600 transition-all duration-200">
           #{emp.employeeId || "N/A"}
         </span>
       </div>
 
-      {/* Info Panel: Email & Phone with SVG Icons */}
-      <div className="space-y-2 mb-4 p-3 bg-slate-50/50 group-hover:bg-blue-50/10 rounded-2xl border border-slate-100/50 transition-all duration-300 relative z-10">
-        <div className="flex items-center gap-2.5 min-w-0 text-slate-500 group-hover:text-slate-600 transition-colors" title={emp.email}>
-          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {/* Info Panel: Email & Phone */}
+      <div className="flex flex-col gap-1 mb-3 p-2 bg-slate-50/50 group-hover:bg-blue-50/10 rounded-xl border border-slate-200/50 transition-all duration-300 relative z-10">
+        <div className="flex items-center gap-2 min-w-0 text-slate-500 group-hover:text-slate-600 transition-colors" title={emp.email}>
+          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          <span className="text-xs truncate font-medium">{emp.email || "No Email"}</span>
+          <span className="text-xs truncate">{emp.email || "No Email"}</span>
         </div>
-        <div className="flex items-center gap-2.5 min-w-0 text-slate-500 group-hover:text-slate-600 transition-colors">
-          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex items-center gap-2 min-w-0 text-slate-500 group-hover:text-slate-600 transition-colors">
+          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
           </svg>
-          <span className="text-xs font-semibold tracking-wide">{emp.phone || "Not Provided"}</span>
+          <span className="text-xs truncate">{emp.phone || "Not Provided"}</span>
         </div>
       </div>
 
@@ -257,11 +257,11 @@ const EmployeeMiniCard = ({ emp, stats, onClick, index }) => {
       </div>
 
       {/* Footer Tags */}
-      <div className="flex items-center justify-between border-t border-slate-100/75 pt-3.5 relative z-10">
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50/60 text-blue-600 rounded-lg text-[9px] font-bold border border-blue-100/30">
+      <div className="flex items-center justify-between border-t border-slate-200/50 pt-3 relative z-10">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs font-medium border border-blue-100">
           🏢 {emp.department}
         </span>
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50/70 text-slate-500 rounded-lg text-[9px] font-bold border border-slate-100/50">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50 text-slate-600 rounded-full text-xs font-medium border border-slate-200/60">
           📍 {emp.branch?.replace(" Branch", "")}
         </span>
       </div>
@@ -288,29 +288,29 @@ const BranchCard = ({ branch, color, onClick, isSelected }) => {
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl p-4 border-2 transition-all duration-300 cursor-pointer hover-lift ${
+      className={`rounded-2xl p-4 border transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:shadow-md ${
         isSelected
-          ? "border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg ring-2 ring-blue-200"
-          : "border-gray-200 bg-white hover:border-gray-300"
+          ? "border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50/50 shadow-md ring-1 ring-blue-100"
+          : "border-slate-200/60 bg-white hover:border-slate-300 shadow-sm"
       }`}
     >
       <div className="flex items-center gap-3 mb-3">
         <div
-          className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center text-white text-xl shadow-lg`}
+          className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center text-white text-lg shadow-sm`}
         >
           {icons[branch.name] || "🏢"}
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-sm truncate">{branch.name}</h4>
-          <p className="text-[11px] text-gray-500">{branch.total} tasks</p>
+          <h4 className="font-semibold text-sm text-slate-800 tracking-tight truncate">{branch.name}</h4>
+          <p className="text-xs font-medium text-slate-500">{branch.total} tasks</p>
         </div>
         <span
-          className={`text-xs font-bold px-2.5 py-1.5 rounded-full ${
+          className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
             rate >= 80
-              ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+              ? "bg-emerald-50 text-emerald-600 border-emerald-100"
               : rate >= 50
-                ? "bg-amber-100 text-amber-700 ring-1 ring-amber-200"
-                : "bg-rose-100 text-rose-700 ring-1 ring-rose-200"
+                ? "bg-amber-50 text-amber-600 border-amber-100"
+                : "bg-rose-50 text-rose-600 border-rose-100"
           }`}
         >
           {rate}%
@@ -1302,15 +1302,15 @@ const Dashboard = () => {
           ].map((s, i) => (
             <div
               key={i}
-              className="bg-white rounded-xl p-4 shadow-sm border hover-lift animate-fadeInUp text-center"
+              className="bg-white rounded-2xl px-2 py-2.5 md:px-4 md:py-3 shadow-sm border border-slate-200/60 text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-fadeInUp"
             >
               <div
-                className={`w-10 h-10 ${s.color} rounded-lg flex items-center justify-center text-lg mx-auto mb-2`}
+                className={`w-8 h-8 md:w-10 md:h-10 ${s.color} rounded-lg flex items-center justify-center text-base md:text-lg mx-auto mb-1.5 md:mb-2`}
               >
                 {s.icon}
               </div>
-              <p className="text-xs text-gray-500">{s.label}</p>
-              <p className="text-2xl font-bold text-gray-800">{s.value}</p>
+              <p className="text-[10px] md:text-xs text-gray-500 truncate">{s.label}</p>
+              <p className="text-lg md:text-2xl font-bold text-gray-800">{s.value}</p>
             </div>
           ))}
         </div>
@@ -1474,12 +1474,12 @@ const Dashboard = () => {
         )}
 
         {/* Branch + Dept + Search */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-stretch lg:items-center gap-3">
+        <div className="grid grid-cols-2 lg:flex lg:flex-wrap items-stretch lg:items-center gap-2 md:gap-3">
           <select
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
             disabled={user?.role === "branch-head"}
-            className="w-full lg:w-auto px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition"
+            className="w-full px-2 py-2 md:px-3.5 md:py-2.5 bg-white border border-gray-200 rounded-xl text-xs min-w-[120px] lg:min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition truncate"
           >
             <option value="all">All Branches</option>
             {visibleBranches.map((b) => (
@@ -1492,7 +1492,7 @@ const Dashboard = () => {
             value={selectedDepartment}
             onChange={(e) => setSelectedDepartment(e.target.value)}
             disabled={user?.role === "department-head"}
-            className="w-full lg:w-auto px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition"
+            className="w-full px-2 py-2 md:px-3.5 md:py-2.5 bg-white border border-gray-200 rounded-xl text-xs min-w-[120px] lg:min-w-[150px] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed transition truncate"
           >
             <option value="all">All Departments</option>
             {departmentsForSelectedBranch.map((d) => (
@@ -1582,12 +1582,12 @@ const Dashboard = () => {
         ].map((s, i) => (
           <div
             key={i}
-            className="bg-white rounded-xl p-4 shadow-sm border text-center hover-lift animate-fadeInUp"
+            className="bg-white rounded-2xl px-2 py-2.5 md:px-4 md:py-3 shadow-sm border border-slate-200/60 text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 animate-fadeInUp"
           >
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+            <p className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-wider truncate">
               {s.l}
             </p>
-            <p className={`text-xl font-bold ${s.c || "text-gray-800"}`}>
+            <p className={`text-lg md:text-xl font-bold ${s.c || "text-gray-800"}`}>
               {s.v}
             </p>
           </div>

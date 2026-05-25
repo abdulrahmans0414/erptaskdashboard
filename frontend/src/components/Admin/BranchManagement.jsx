@@ -556,7 +556,7 @@ const BranchManagement = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 w-full sm:w-auto">
             {isAdmin && (
               <>
                 <Link
@@ -570,6 +570,17 @@ const BranchManagement = () => {
                     </span>
                   )}
                 </Link>
+
+                {selectedBranch && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => openEdit(selectedBranch)}
+                    className="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all w-full sm:w-auto"
+                  >
+                    <span>✏️</span> Edit Branch
+                  </motion.button>
+                )}
 
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -618,7 +629,7 @@ const BranchManagement = () => {
           ].map((s) => (
             <div
               key={s.label}
-              className="bg-white border border-slate-200/70 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex items-center justify-between"
+              className="bg-white border border-slate-200/60 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between"
             >
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{s.label}</p>
@@ -659,7 +670,7 @@ const BranchManagement = () => {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search branches..."
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-8.5 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-sm"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-sm"
                 />
               </div>
             </div>
@@ -746,7 +757,7 @@ const BranchManagement = () => {
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       onClick={() => setSelectedBranch(null)}
-                      className="lg:hidden p-1.5 rounded-lg bg-slate-200/60 hover:bg-slate-200 text-slate-700 text-xs transition font-semibold"
+                      className="lg:hidden p-1.5 rounded-lg bg-slate-200/60 hover:bg-slate-200 text-slate-700 text-xs transition font-semibold flex items-center justify-center flex-shrink-0"
                     >
                       ← Back
                     </button>
@@ -765,27 +776,10 @@ const BranchManagement = () => {
                       </p>
                     </div>
                   </div>
-
-                  {isAdmin && (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => openEdit(activeBranchData)}
-                        className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
-                      >
-                        ✏️ Edit
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(activeBranchData)}
-                        className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
-                      >
-                        🗑️ Archive
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 {/* Detail Body (Scrollable) */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-4 md:space-y-6">
                   {/* Cards Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     
@@ -919,7 +913,7 @@ const BranchManagement = () => {
                                 value={drawerStaffSearch}
                                 onChange={(e) => setDrawerStaffSearch(e.target.value)}
                                 placeholder="Search employees..."
-                                className="w-full bg-white border border-slate-200 rounded-xl pl-8.5 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
                               />
                             </div>
                           )}

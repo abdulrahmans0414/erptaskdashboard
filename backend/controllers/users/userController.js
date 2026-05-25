@@ -36,7 +36,7 @@ const runInTransaction = async (workFn) => {
 export const getAllUsers = async (req, res) => {
     try {
         const page = req.query.page ? Math.max(1, parseInt(String(req.query.page)) || 1) : 1;
-        const limit = req.query.limit ? Math.max(1, Math.min(100, parseInt(String(req.query.limit)) || 10)) : 10;
+        const limit = req.query.limit ? Math.max(1, Math.min(1000, parseInt(String(req.query.limit)) || 10)) : 10;
         const search = req.query.search ? String(req.query.search).trim() : undefined;
         const department = req.query.department ? String(req.query.department).trim() : undefined;
         const branch = req.query.branch ? String(req.query.branch).trim() : undefined;

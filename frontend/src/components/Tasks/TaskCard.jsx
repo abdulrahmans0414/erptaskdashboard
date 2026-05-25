@@ -635,7 +635,6 @@ function ReassignModal({ task, onClose, onDone }) {
           setUsers(
             res.data.data.filter(
               (u) =>
-                u.role !== "admin" &&
                 u._id !== (task.assignedTo?._id || task.assignedTo),
             ),
           );
@@ -1197,7 +1196,7 @@ export default function TaskCard({ task, onUpdate }) {
   return (
     <>
       <div
-        className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 hover-lift p-4 ${isOverdue ? "border-red-200 bg-red-50/20" : ""}`}
+        className={`bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isOverdue ? "border-red-200 bg-red-50/20" : ""}`}
       >
         {/* Progress stepper */}
         <Stepper status={task.status} />
@@ -1206,7 +1205,7 @@ export default function TaskCard({ task, onUpdate }) {
           <div className="flex-1 min-w-0">
             {/* Title row */}
             <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-              <h3 className="font-semibold text-gray-900 text-sm">
+              <h3 className="font-semibold text-slate-800 text-sm tracking-tight">
                 {task.title}
               </h3>
               <span
@@ -1232,18 +1231,18 @@ export default function TaskCard({ task, onUpdate }) {
             </div>
 
             {task.description && (
-              <p className="text-gray-500 text-xs mb-2 line-clamp-2 leading-relaxed">
+              <p className="text-slate-500 text-xs mb-2 line-clamp-2 leading-relaxed">
                 {task.description}
               </p>
             )}
 
             {/* Meta */}
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-gray-400 mt-1">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500 font-medium mt-1">
               <span>
                 📅 {new Date(task.dueDate).toLocaleDateString("en-IN")}
               </span>
               {task.assignedBy?.name && (
-                <span className="font-medium text-gray-600">
+                <span className="font-semibold text-slate-700">
                   Assigned by: {task.assignedBy.name}
                 </span>
               )}
